@@ -9,17 +9,17 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=stocks
-      
+
   keycloak:
     container_name: baeldung-keycloak.openid-provider
     image: keycloak/keycloak:26.6
     command:
-    - start-dev
-    - --import-realm
+      - start-dev
+      - --import-realm
     ports:
-    - 8080:8080
+      - 7777:7777
     volumes:
-    - keycloak:/opt/keycloak/data/import/
+      - keycloak:/opt/keycloak/data/import/
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
@@ -32,9 +32,13 @@ services:
       KC_HEALTH_ENABLED: true
       KC_METRICS_ENABLED: true
     extra_hosts:
-    - "host.docker.internal:host-gateway"
+      - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ['CMD-SHELL', '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8080/auth/health/live']
+      test:
+        [
+          "CMD-SHELL",
+          '[ -f /tmp/HealthCheck.java ] || echo "public class HealthCheck { public static void main(String[] args) throws java.lang.Throwable { System.exit(java.net.HttpURLConnection.HTTP_OK == ((java.net.HttpURLConnection)new java.net.URL(args[0]).openConnection()).getResponseCode() ? 0 : 1); } }" > /tmp/HealthCheck.java && java /tmp/HealthCheck.java http://localhost:8080/auth/health/live',
+        ]
       interval: 5s
       timeout: 5s
       retries: 20
