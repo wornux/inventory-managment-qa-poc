@@ -6,7 +6,7 @@
 
 **Goal:** As an inventory manager, I want to manage the product catalog (view, search, create, edit, delete) so that the inventory system remains accurate and current.
 
-**Status:** Pending
+**Status:** Implemented
 **Date:** 2025-01-01
 
 ---
@@ -174,19 +174,19 @@ User navigates to the Products view from the main navigation menu.
 
 ## Tests
 
-- [ ] Main Flow: View, search, and filter products covered
-- [ ] Main Flow: Create product covered
-- [ ] Main Flow: Edit product covered
-- [ ] Main Flow: Delete product covered
-- [ ] AF-1 (duplicate SKU) covered
-- [ ] AF-2 (missing required fields) covered
-- [ ] AF-3 (invalid unit price) covered
-- [ ] AF-4 (insufficient permissions) covered
-- [ ] AF-5 (product has stock movements) covered
-- [ ] AF-6 (category/supplier unavailable) covered
-- [ ] AF-7 (dirty state) covered
-- [ ] AF-8 (concurrent edit) covered
-- [ ] BR-01 through BR-10 covered
+- [x] Main Flow: View, search, and filter products covered
+- [x] Main Flow: Create product covered
+- [x] Main Flow: Edit product covered
+- [x] Main Flow: Delete product covered
+- [x] AF-1 (duplicate SKU) covered
+- [x] AF-2 (missing required fields) covered
+- [x] AF-3 (invalid unit price) covered
+- [x] AF-4 (insufficient permissions) covered
+- [x] AF-5 (product has stock movements) covered
+- [x] AF-6 (category/supplier unavailable) covered
+- [x] AF-7 (dirty state) covered
+- [x] AF-8 (concurrent edit) covered
+- [x] BR-01 through BR-10 covered
 
 ---
 

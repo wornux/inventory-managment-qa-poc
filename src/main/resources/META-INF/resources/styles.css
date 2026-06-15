@@ -66,6 +66,120 @@ body {
   padding: 2rem;
 }
 
+.products-view {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: var(--vaadin-gap-m);
+  height: 100vh;
+  padding: var(--vaadin-padding-l);
+}
+
+.products-header {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vaadin-gap-xs);
+}
+
+.products-header h1 {
+  font-size: var(--aura-font-size-xl);
+  font-weight: var(--aura-font-weight-semibold);
+  line-height: var(--aura-line-height-xl);
+  margin: 0;
+}
+
+.products-subtitle {
+  color: var(--vaadin-text-color-secondary);
+  font-size: var(--aura-font-size-s);
+}
+
+.products-toolbar {
+  flex-wrap: wrap;
+  gap: var(--vaadin-gap-s);
+}
+
+.products-toolbar vaadin-text-field {
+  min-width: 18rem;
+}
+
+.products-grid {
+  min-height: 0;
+}
+
+.product-cell {
+  display: flex;
+  flex-direction: column;
+  gap: var(--vaadin-gap-xs);
+}
+
+.product-cell span {
+  color: var(--vaadin-text-color-secondary);
+  font-size: var(--aura-font-size-xs);
+}
+
+.status-badge {
+  border-radius: var(--vaadin-radius-s);
+  display: inline-flex;
+  font-size: var(--aura-font-size-xs);
+  font-weight: var(--aura-font-weight-semibold);
+  padding: var(--vaadin-padding-xs) var(--vaadin-padding-s);
+}
+
+.stock-ok {
+  background: var(--aura-green);
+  color: var(--aura-accent-contrast-color);
+}
+
+.stock-low {
+  background: var(--aura-orange);
+  color: var(--aura-accent-contrast-color);
+}
+
+.active-yes {
+  background: var(--aura-blue);
+  color: var(--aura-accent-contrast-color);
+}
+
+.active-no {
+  background: var(--vaadin-background-container-strong);
+  color: var(--vaadin-text-color-secondary);
+}
+
+.row-actions {
+  gap: var(--vaadin-gap-xs);
+}
+
+.product-sidebar::part(overlay) {
+  border-radius: 0;
+  height: 100vh;
+  inset: 0 0 0 auto;
+  max-height: none;
+  max-width: min(30rem, 100vw);
+  width: min(30rem, 100vw);
+}
+
+.product-sidebar::part(content) {
+  padding: 0;
+}
+
+.sidebar-content {
+  box-sizing: border-box;
+  gap: var(--vaadin-gap-m);
+  min-height: 100vh;
+  padding: var(--vaadin-padding-l);
+  width: 100%;
+}
+
+.sidebar-content h1 {
+  font-size: var(--aura-font-size-l);
+  margin: 0;
+}
+
+.sidebar-footer {
+  gap: var(--vaadin-gap-s);
+  margin-top: auto;
+}
+
 @media (max-width: 520px) {
   .auth-page {
     padding: 1rem;
@@ -73,5 +187,14 @@ body {
 
   .auth-panel {
     padding: 1.25rem;
+  }
+
+  .products-view {
+    padding: var(--vaadin-padding-m);
+  }
+
+  .products-toolbar vaadin-text-field,
+  .products-toolbar vaadin-combo-box {
+    min-width: 100%;
   }
 }

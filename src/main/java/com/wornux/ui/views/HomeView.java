@@ -1,6 +1,7 @@
 package com.wornux.ui.views;
 
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.Anchor;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.router.PageTitle;
@@ -14,6 +15,9 @@ public class HomeView extends VerticalLayout {
 
     public HomeView() {
         addClassName("home-view");
-        add(new H1("Inventory Management"), new Paragraph("You are signed in."));
+        add(
+                new H1("Inventory Management"),
+                new Paragraph("You are signed in."),
+                new Anchor("products", "Manage products"));
     }
 }
