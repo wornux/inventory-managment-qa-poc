@@ -76,6 +76,10 @@ public class AppUser {
         return active;
     }
 
+    public void setActive(boolean active) {
+        this.active = active;
+    }
+
     public OffsetDateTime getCreatedAt() {
         return createdAt;
     }

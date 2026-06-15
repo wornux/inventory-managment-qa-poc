@@ -1,4 +1,4 @@
-package com.wornux.usecases.uc001_user_signup;
+package com.wornux.usecases;
 
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 @TestConfiguration(proxyBeanMethods = false)
-class PostgresContainerConfig {
+public class PostgresContainerConfig {
 
     @Bean
     @ServiceConnection

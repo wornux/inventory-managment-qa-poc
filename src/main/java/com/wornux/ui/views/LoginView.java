@@ -5,6 +5,7 @@ import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.login.LoginForm;
+import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
@@ -34,6 +35,7 @@ public class LoginView extends Div implements BeforeEnterObserver {
 
         loginForm.setAction("login");
         loginForm.addClassName("auth-form");
+        loginForm.setI18n(createLoginI18n());
 
         feedback.addClassName("auth-feedback");
         feedback.setVisible(false);
@@ -45,14 +47,31 @@ public class LoginView extends Div implements BeforeEnterObserver {
         add(panel);
     }
 
+    private LoginI18n createLoginI18n() {
+        LoginI18n i18n = LoginI18n.createDefault();
+        LoginI18n.ErrorMessage errorMessage = i18n.getErrorMessage();
+        errorMessage.setTitle("Invalid username or password.");
+        errorMessage.setMessage("");
+        i18n.setErrorMessage(errorMessage);
+        return i18n;
+    }
+
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         QueryParameters queryParameters = event.getLocation().getQueryParameters();
         Map<String, List<String>> parameters = queryParameters.getParameters();
-        loginForm.setError(parameters.containsKey("error"));
+        boolean inactive = parameters.containsKey("inactive");
+        if (inactive) {
+            feedback.setText("Account is inactive. Contact administrator.");
+            feedback.addClassName("auth-feedback-error");
+            feedback.setVisible(true);
+            return;
+        }
 
+        loginForm.setError(parameters.containsKey("error"));
         boolean signedUp = parameters.containsKey("signup");
         feedback.setText(signedUp ? "Account created. Sign in with your new credentials." : "");
+        feedback.removeClassName("auth-feedback-error");
         feedback.setVisible(signedUp);
     }
 }

@@ -50,6 +50,12 @@ body {
   padding: 0.75rem;
 }
 
+.auth-feedback-error {
+  background: #fff0f0;
+  border-color: #efb7b7;
+  color: #9d1c1c;
+}
+
 .auth-link {
   display: inline-block;
   margin-top: 1rem;

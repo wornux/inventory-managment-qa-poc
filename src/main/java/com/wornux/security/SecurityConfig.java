@@ -4,6 +4,7 @@ import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
 import com.wornux.ui.views.LoginView;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -16,8 +17,12 @@ public class SecurityConfig {
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        return http.with(VaadinSecurityConfigurer.vaadin(), configurer -> configurer.loginView(LoginView.class))
-                .build();
+        http.with(VaadinSecurityConfigurer.vaadin(), configurer -> configurer.loginView(LoginView.class));
+        http.formLogin(formLogin -> formLogin.failureHandler((request, response, exception) -> {
+            String failureQuery = exception instanceof DisabledException ? "inactive" : "error";
+            response.sendRedirect(request.getContextPath() + "/login?" + failureQuery);
+        }));
+        return http.build();
     }
 
     @Bean

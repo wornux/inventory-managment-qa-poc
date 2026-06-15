@@ -7,6 +7,7 @@ import com.wornux.user.AppUserRepository;
 import com.wornux.user.AppUserService;
 import com.wornux.user.SignupException;
 import com.wornux.user.SignupRequest;
+import com.wornux.usecases.PostgresContainerConfig;
 import jakarta.validation.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
