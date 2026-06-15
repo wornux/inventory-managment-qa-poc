@@ -4,6 +4,8 @@ import com.wornux.user.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -29,7 +31,8 @@ public class StockMovement {
     private AppUser user;
 
     @Column(name = "movement_type", nullable = false)
-    private String movementType;
+    @Enumerated(EnumType.STRING)
+    private MovementType movementType;
 
     @Column(name = "quantity_delta", nullable = false)
     private Integer quantityDelta;
@@ -42,7 +45,7 @@ public class StockMovement {
     protected StockMovement() {
     }
 
-    public StockMovement(Product product, AppUser user, String movementType, Integer quantityDelta, String reason) {
+    public StockMovement(Product product, AppUser user, MovementType movementType, Integer quantityDelta, String reason) {
         this.product = product;
         this.user = user;
         this.movementType = movementType;
@@ -62,7 +65,7 @@ public class StockMovement {
         return user;
     }
 
-    public String getMovementType() {
+    public MovementType getMovementType() {
         return movementType;
     }
 

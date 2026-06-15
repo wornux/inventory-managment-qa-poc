@@ -18,6 +18,7 @@ public class HomeView extends VerticalLayout {
         add(
                 new H1("Inventory Management"),
                 new Paragraph("You are signed in."),
-                new Anchor("products", "Manage products"));
+                new Anchor("products", "Manage products"),
+                new Anchor("stock-movements", "Stock movements"));
     }
 }

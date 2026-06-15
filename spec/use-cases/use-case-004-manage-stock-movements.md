@@ -6,7 +6,7 @@
 
 **Goal:** As a warehouse operator or manager, I want to record and view stock movements so that inventory levels are accurate and all changes are traceable.
 
-**Status:** Pending
+**Status:** Implemented
 **Date:** 2025-01-01
 
 ---
@@ -164,17 +164,17 @@ User navigates to the Stock Movements view from the main navigation menu or clic
 
 ## Tests
 
-- [ ] Main Flow: View and filter movements covered
-- [ ] Main Flow: Create movement covered
-- [ ] AF-1 (missing required fields) covered
-- [ ] AF-2 (invalid quantity delta) covered
-- [ ] AF-3 (insufficient stock) covered
-- [ ] AF-4 (product inactive) covered
-- [ ] AF-5 (insufficient permissions) covered
-- [ ] AF-6 (database error) covered
-- [ ] AF-7 (dirty state) covered
-- [ ] AF-8 (no products) covered
-- [ ] BR-01 through BR-11 covered
+- [x] Main Flow: View and filter movements covered
+- [x] Main Flow: Create movement covered
+- [x] AF-1 (missing required fields) covered
+- [x] AF-2 (invalid quantity delta) covered
+- [x] AF-3 (insufficient stock) covered
+- [x] AF-4 (product inactive) covered
+- [x] AF-5 (insufficient permissions) covered
+- [x] AF-6 (database error) covered
+- [x] AF-7 (dirty state) covered
+- [x] AF-8 (no products) covered
+- [x] BR-01 through BR-11 covered
 
 ---
 

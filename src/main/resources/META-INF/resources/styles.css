@@ -145,6 +145,33 @@ body {
   color: var(--vaadin-text-color-secondary);
 }
 
+.quantity-positive {
+  color: var(--aura-green-text);
+  font-weight: var(--aura-font-weight-semibold);
+}
+
+.quantity-negative {
+  color: var(--aura-red-text);
+  font-weight: var(--aura-font-weight-semibold);
+}
+
+.movement-purchase,
+.movement-return_in,
+.movement-adjustment_in,
+.movement-initial_stock {
+  background: var(--aura-green);
+  color: var(--aura-accent-contrast-color);
+}
+
+.movement-sale,
+.movement-return_out,
+.movement-adjustment_out,
+.movement-damaged,
+.movement-lost {
+  background: var(--aura-red);
+  color: var(--aura-accent-contrast-color);
+}
+
 .row-actions {
   gap: var(--vaadin-gap-xs);
 }

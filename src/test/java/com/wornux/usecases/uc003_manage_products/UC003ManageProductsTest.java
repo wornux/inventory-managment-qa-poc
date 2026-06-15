@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.wornux.catalog.Category;
 import com.wornux.catalog.CategoryRepository;
+import com.wornux.catalog.MovementType;
 import com.wornux.catalog.Product;
 import com.wornux.catalog.ProductException;
 import com.wornux.catalog.ProductFilter;
@@ -131,7 +132,7 @@ class UC003ManageProductsTest {
     @WithMockUser(roles = "INVENTORY_MANAGER")
     void af5_productWithStockMovementsIsDeactivatedInsteadOfDeleted() {
         Product product = productService.create(request("history-1", "History Product", 10, 3, 2));
-        stockMovementRepository.save(new StockMovement(product, null, "INITIAL_STOCK", 3, null));
+        stockMovementRepository.save(new StockMovement(product, null, MovementType.INITIAL_STOCK, 3, null));
 
         productService.delete(product.getId());
 

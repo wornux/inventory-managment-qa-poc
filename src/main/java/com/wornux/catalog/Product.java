@@ -158,4 +158,8 @@ public class Product {
     public void deactivate() {
         active = false;
     }
+
+    public void applyQuantityDelta(int quantityDelta) {
+        quantityOnHand += quantityDelta;
+    }
 }

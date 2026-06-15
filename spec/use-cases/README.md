@@ -9,7 +9,7 @@ This folder contains feature specifications for the Inventory Management applica
 | UC-001 | [User Signup](use-case-001-user-signup.md) | Implemented | Unauthenticated User | Account creation with default INVENTORY_VIEWER role |
 | UC-002 | [User Login](use-case-002-user-login.md) | Implemented | Registered User | Authentication with username/email and password |
 | UC-003 | [Manage Products](use-case-003-manage-products.md) | Implemented | Inventory Manager | CRUD operations for product catalog |
-| UC-004 | [Manage Stock Movements](use-case-004-manage-stock-movements.md) | Pending | Warehouse Operator / Manager | Create and view append-only stock movement ledger |
+| UC-004 | [Manage Stock Movements](use-case-004-manage-stock-movements.md) | Implemented | Warehouse Operator / Manager | Create and view append-only stock movement ledger |
 | UC-005 | [Manage Users](use-case-005-manage-users.md) | Pending | System Administrator | CRUD and deactivate user accounts with role assignment |
 | UC-006 | [Manage Categories](use-case-006-manage-categories.md) | Pending | Inventory Manager | CRUD and deactivate product categories |
 | UC-007 | [Manage Suppliers](use-case-007-manage-suppliers.md) | Pending | Inventory Manager | CRUD and deactivate supplier records |

@@ -26,6 +26,9 @@ public interface ProductRepository extends JpaRepository<Product, Long> {
     Optional<Product> findWithCategoryAndSupplierById(Long id);
 
     @EntityGraph(attributePaths = {"category", "supplier"})
+    List<Product> findByActiveTrueOrderBySkuAsc();
+
+    @EntityGraph(attributePaths = {"category", "supplier"})
     @Query("""
             select p
             from Product p
