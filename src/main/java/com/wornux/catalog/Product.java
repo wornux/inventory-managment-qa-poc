@@ -11,7 +11,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "product")
@@ -53,10 +53,10 @@ public class Product {
     private Long version;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private OffsetDateTime updatedAt;
+    private Instant updatedAt;
 
     protected Product() {
     }
@@ -139,11 +139,11 @@ public class Product {
         return version;
     }
 
-    public OffsetDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public OffsetDateTime getUpdatedAt() {
+    public Instant getUpdatedAt() {
         return updatedAt;
     }
 

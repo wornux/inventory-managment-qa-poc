@@ -10,7 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
@@ -35,10 +35,10 @@ public class AppUser {
     private boolean active = true;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private OffsetDateTime updatedAt;
+    private Instant updatedAt;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -80,11 +80,11 @@ public class AppUser {
         this.active = active;
     }
 
-    public OffsetDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 
-    public OffsetDateTime getUpdatedAt() {
+    public Instant getUpdatedAt() {
         return updatedAt;
     }
 

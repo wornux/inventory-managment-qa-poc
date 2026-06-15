@@ -4,6 +4,8 @@
 
 ## Core Entities
 
+Java entity timestamp fields use `Instant`. PostgreSQL persists them as `timestamptz` columns with `default now()`.
+
 | Entity | Key Fields | Relationships | Purpose |
 |--------|-----------|---------------|---------| 
 | AppUser | id, username (UK), email (UK), password_hash, active, created_at, updated_at | Has many UserRole | User accounts for application access |

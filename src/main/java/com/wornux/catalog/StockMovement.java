@@ -10,7 +10,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.OffsetDateTime;
+import java.time.Instant;
 
 @Entity
 @Table(name = "stock_movement")
@@ -37,7 +37,7 @@ public class StockMovement {
     private String reason;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private OffsetDateTime createdAt;
+    private Instant createdAt;
 
     protected StockMovement() {
     }
@@ -74,7 +74,7 @@ public class StockMovement {
         return reason;
     }
 
-    public OffsetDateTime getCreatedAt() {
+    public Instant getCreatedAt() {
         return createdAt;
     }
 }
