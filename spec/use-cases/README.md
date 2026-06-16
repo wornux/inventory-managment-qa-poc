@@ -16,6 +16,7 @@ This folder contains feature specifications for the Inventory Management applica
 | UC-008 | [Manage Roles](use-case-008-manage-roles.md) | Implemented | System Administrator | Create and manage roles with permission assignment |
 | UC-009 | [Manage Permissions](use-case-009-manage-permissions.md) | Implemented | System Administrator | Manage permission (resource-action) pairs |
 | UC-010 | [Entity Audit Logging](use-case-010-entity-audit-logging.md) | Implemented | System Administrator | Audit entity changes with Envers revision metadata |
+| UC-011 | [REST API Support](use-case-011-rest-api-support.md) | Implemented | API Client | JWT-protected REST API for product CRUD |
 
 ## How to Use
 

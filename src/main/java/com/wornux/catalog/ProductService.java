@@ -4,6 +4,8 @@ import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -45,6 +47,19 @@ public class ProductService {
                 safeFilter.supplierId(),
                 safeFilter.active(),
                 safeFilter.lowStockOnly());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Product> search(ProductFilter filter, Pageable pageable) {
+        requireRead();
+        ProductFilter safeFilter = filter == null ? new ProductFilter("", null, null, null, false) : filter;
+        return productRepository.searchPage(
+                normalizeSearch(safeFilter.text()),
+                safeFilter.categoryId(),
+                safeFilter.supplierId(),
+                safeFilter.active(),
+                safeFilter.lowStockOnly(),
+                pageable);
     }
 
     @Transactional(readOnly = true)
