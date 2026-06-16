@@ -6,6 +6,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 
 @Entity
@@ -23,6 +24,9 @@ public class Category {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    @Version
+    private Long version;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
@@ -54,11 +58,25 @@ public class Category {
         return active;
     }
 
+    public Long getVersion() {
+        return version;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void update(String name, String description, boolean active) {
+        this.name = name;
+        this.description = description;
+        this.active = active;
+    }
+
+    public void deactivate() {
+        active = false;
     }
 }

@@ -6,7 +6,7 @@
 
 **Goal:** As an inventory manager, I want to manage product categories so that products can be properly organized and filtered.
 
-**Status:** Pending
+**Status:** Implemented
 **Date:** 2025-01-01
 
 ---
@@ -155,17 +155,17 @@ User navigates to the Categories view from the inventory management menu.
 
 ## Tests
 
-- [ ] Main Flow: View and search categories covered
-- [ ] Main Flow: Create category covered
-- [ ] Main Flow: Edit category covered
-- [ ] Main Flow: Deactivate category covered
-- [ ] AF-1 (duplicate name) covered
-- [ ] AF-2 (missing required fields) covered
-- [ ] AF-3 (insufficient permissions) covered
-- [ ] AF-4 (category has products) covered
-- [ ] AF-5 (dirty state) covered
-- [ ] AF-6 (concurrent edit) covered
-- [ ] BR-01 through BR-07 covered
+- [x] Main Flow: View and search categories covered
+- [x] Main Flow: Create category covered
+- [x] Main Flow: Edit category covered
+- [x] Main Flow: Deactivate category covered
+- [x] AF-1 (duplicate name) covered
+- [x] AF-2 (missing required fields) covered
+- [x] AF-3 (insufficient permissions) covered
+- [x] AF-4 (category has products) covered
+- [x] AF-5 (dirty state) covered
+- [x] AF-6 (concurrent edit) covered
+- [x] BR-01 through BR-07 covered
 
 ---
 

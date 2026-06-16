@@ -9,6 +9,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface ProductRepository extends JpaRepository<Product, Long> {
 
+    long countByCategoryId(Long categoryId);
+
+    long countByCategoryIdAndActiveTrue(Long categoryId);
+
     boolean existsBySkuIgnoreCase(String sku);
 
     boolean existsBySkuIgnoreCaseAndIdNot(String sku, Long id);
