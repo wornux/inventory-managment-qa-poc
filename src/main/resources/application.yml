@@ -27,6 +27,7 @@ spring:
             store_data_at_delete: true
   flyway:
     enabled: true
+    locations: [classpath:db/migration/prod]
 
 springdoc:
   api-docs:
