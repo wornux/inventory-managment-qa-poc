@@ -86,7 +86,7 @@ class UC004ManageStockMovementsTest {
         signupUser("manager");
         Product product = productService.create(productRequest("stock-100", "Ledger Product", 5));
 
-        StockMovement created = stockMovementService.record(movementRequest(
+        StockMovement created = stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.PURCHASE, 3, null));
 
         assertThat(productRepository.findById(product.getId()).orElseThrow().getQuantityOnHand()).isEqualTo(8);
@@ -107,7 +107,7 @@ class UC004ManageStockMovementsTest {
     void af1_missingRequiredFieldsAreRejected() {
         signupUser("manager");
 
-        assertThatThrownBy(() -> stockMovementService.record(new StockMovementRequest()))
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(new StockMovementRequest()))
                 .isInstanceOf(ConstraintViolationException.class)
                 .hasMessageContaining("Product is required.")
                 .hasMessageContaining("Movement type is required.")
@@ -120,12 +120,12 @@ class UC004ManageStockMovementsTest {
         signupUser("manager");
         Product product = productService.create(productRequest("delta-100", "Delta Product", 5));
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.PURCHASE, -1, null)))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Quantity delta must be positive for this movement type.");
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.SALE, 1, null)))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Quantity delta must be negative for this movement type.");
@@ -137,7 +137,7 @@ class UC004ManageStockMovementsTest {
         signupUser("manager");
         Product product = productService.create(productRequest("short-100", "Short Product", 1));
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.SALE, -2, null)))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Insufficient stock. Current stock: 1, requested: 2.");
@@ -151,7 +151,7 @@ class UC004ManageStockMovementsTest {
         product.deactivate();
         productRepository.save(product);
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.PURCHASE, 1, null)))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Product is no longer available.");
@@ -163,7 +163,7 @@ class UC004ManageStockMovementsTest {
         signupUser("viewer");
         assertThat(stockMovementService.canCreateMovements()).isFalse();
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 1L, MovementType.PURCHASE, 1, null)))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("STOCK_MOVEMENT:CREATE permission is required.");
@@ -175,7 +175,7 @@ class UC004ManageStockMovementsTest {
         signupUser("manager");
         Product product = productService.create(productRequest("db-100", "Database Product", 5));
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.PURCHASE, 3, "x".repeat(501))))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Failed to save movement. Please try again.");
@@ -230,7 +230,7 @@ class UC004ManageStockMovementsTest {
         signupUser("manager");
         Product product = productService.create(productRequest("zero-100", "Zero Product", 5));
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.PURCHASE, 0, null)))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Quantity delta must not be zero.");
@@ -255,12 +255,12 @@ class UC004ManageStockMovementsTest {
         signupUser("manager");
         Product product = productService.create(productRequest("reason-100", "Reason Product", 5));
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.DAMAGED, -1, " ")))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Reason is required for this movement type.");
 
-        StockMovement sale = stockMovementService.record(movementRequest(
+        StockMovement sale = stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.SALE, -1, null));
         assertThat(sale.getReason()).isNull();
     }
@@ -271,11 +271,11 @@ class UC004ManageStockMovementsTest {
         signupUser("manager");
         Product product = productService.create(productRequest("atomic-100", "Atomic Product", 2));
 
-        assertThatThrownBy(() -> stockMovementService.record(movementRequest(
+        assertThatThrownBy(() -> stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.LOST, -3, "Count mismatch")))
                 .isInstanceOf(StockMovementException.class);
 
-        StockMovement movement = stockMovementService.record(movementRequest(
+        StockMovement movement = stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.LOST, -1, "Count mismatch"));
 
         assertThat(productRepository.findById(product.getId()).orElseThrow().getQuantityOnHand()).isEqualTo(1);
@@ -288,7 +288,7 @@ class UC004ManageStockMovementsTest {
         signupUser("manager");
         Product product = productService.create(productRequest("audit-100", "Audit Product", 5));
 
-        StockMovement movement = stockMovementService.record(movementRequest(
+        StockMovement movement = stockMovementService.recordStockMovement(movementRequest(
                 product.getId(), MovementType.RETURN_OUT, -2, null));
         StockMovement reloaded = stockMovementService.search(new StockMovementFilter(
                 Instant.now().minusSeconds(60),

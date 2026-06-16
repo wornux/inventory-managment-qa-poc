@@ -331,7 +331,7 @@ public class StockMovementsView extends Main {
             return;
         }
         try {
-            stockMovementService.record(formData);
+            stockMovementService.recordStockMovement(formData);
             showSuccess("Movement recorded.");
             products = stockMovementService.activeProducts();
             product.setItems(products);

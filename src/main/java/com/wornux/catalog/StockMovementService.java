@@ -3,6 +3,8 @@ package com.wornux.catalog;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
 import jakarta.validation.Valid;
+
+import java.time.Instant;
 import java.util.List;
 import org.springframework.dao.DataAccessException;
 import org.springframework.security.access.AccessDeniedException;
@@ -16,8 +18,8 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class StockMovementService {
 
-    private static final java.time.Instant LEDGER_START = java.time.Instant.parse("1970-01-01T00:00:00Z");
-    private static final java.time.Instant LEDGER_END = java.time.Instant.parse("9999-12-31T00:00:00Z");
+    private static final Instant LEDGER_START = java.time.Instant.parse("1970-01-01T00:00:00Z");
+    private static final Instant LEDGER_END = java.time.Instant.parse("9999-12-31T00:00:00Z");
     private static final String VIEWER = "ROLE_INVENTORY_VIEWER";
     private static final String OPERATOR = "ROLE_WAREHOUSE_OPERATOR";
     private static final String MANAGER = "ROLE_INVENTORY_MANAGER";
@@ -63,7 +65,7 @@ public class StockMovementService {
     }
 
     @Transactional
-    public StockMovement record(@Valid StockMovementRequest request) {
+    public StockMovement recordStockMovement(@Valid StockMovementRequest request) {
         requireCreate();
         validateQuantityDelta(request.getMovementType(), request.getQuantityDelta());
         String reason = normalizeReason(request.getReason());
