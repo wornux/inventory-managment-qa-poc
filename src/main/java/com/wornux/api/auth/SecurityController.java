@@ -6,6 +6,8 @@ import com.wornux.api.security.JwtService;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserService;
 import com.wornux.user.SignupRequest;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/auth")
+@Tag(name = "Authentication", description = "JWT authentication and account registration")
 public class SecurityController extends AbstractRestController {
 
     private final UserDetailsService userDetailsService;
@@ -41,6 +44,7 @@ public class SecurityController extends AbstractRestController {
     }
 
     @PostMapping("/login")
+    @Operation(summary = "Log in", description = "Authenticates an active user and returns a JWT bearer token.")
     ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.usernameOrEmail());
         if (!userDetails.isEnabled()) {
@@ -60,6 +64,7 @@ public class SecurityController extends AbstractRestController {
     }
 
     @PostMapping("/signup")
+    @Operation(summary = "Sign up", description = "Creates a new application account.")
     ResponseEntity<ApiResponse<SignupResponse>> signup(@Valid @RequestBody SignupRequest request) {
         AppUser user = appUserService.signup(request);
         SignupResponse response = new SignupResponse(user.getId(), user.getUsername(), user.getEmail());

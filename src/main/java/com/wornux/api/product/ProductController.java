@@ -2,9 +2,13 @@ package com.wornux.api.product;
 
 import com.wornux.api.AbstractRestController;
 import com.wornux.api.ApiResponse;
+import com.wornux.api.OpenApiConfig;
 import com.wornux.catalog.Product;
 import com.wornux.catalog.ProductFilter;
 import com.wornux.catalog.ProductService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.net.URI;
 import java.util.List;
@@ -23,6 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/products")
+@Tag(name = "Products", description = "Product inventory CRUD")
+@SecurityRequirement(name = OpenApiConfig.JWT_BEARER_SCHEME)
 public class ProductController extends AbstractRestController {
 
     private final ProductService productService;
@@ -34,6 +40,7 @@ public class ProductController extends AbstractRestController {
     }
 
     @GetMapping
+    @Operation(summary = "List products", description = "Returns a pageable product list with optional filters.")
     ResponseEntity<ApiResponse<List<ProductResponse>>> list(
             @RequestParam(defaultValue = "") String text,
             @RequestParam(required = false) Long categoryId,
@@ -49,11 +56,13 @@ public class ProductController extends AbstractRestController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Get product", description = "Returns one product by identifier.")
     ResponseEntity<ApiResponse<ProductResponse>> get(@PathVariable Long id) {
         return ok("Product retrieved.", productApiMapper.toResponse(productService.get(id)));
     }
 
     @PostMapping
+    @Operation(summary = "Create product", description = "Creates a product and returns its API representation.")
     ResponseEntity<ApiResponse<ProductResponse>> create(@Valid @RequestBody ProductRequest request) {
         Product product = productService.create(productApiMapper.toDomainRequest(request));
         ProductResponse response = productApiMapper.toResponse(product);
@@ -61,6 +70,7 @@ public class ProductController extends AbstractRestController {
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Update product", description = "Updates an existing product using optimistic locking.")
     ResponseEntity<ApiResponse<ProductResponse>> update(
             @PathVariable Long id,
             @Valid @RequestBody ProductRequest request) {
@@ -69,6 +79,7 @@ public class ProductController extends AbstractRestController {
     }
 
     @DeleteMapping("/{id}")
+    @Operation(summary = "Delete product", description = "Deletes or deactivates a product according to domain rules.")
     ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         productService.delete(id);
         return noContentMessage("Product deleted or deactivated.");

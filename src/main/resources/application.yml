@@ -1,0 +1,35 @@
+server:
+  port: ${PORT:8080}
+
+logging:
+  level:
+    org:
+      atmosphere: warn
+
+vaadin:
+  launch-browser: false
+  allowed-packages: com.vaadin,org.vaadin,com.flowingcode,com.wornux
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/stocks
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+    properties:
+      org:
+        hibernate:
+          envers:
+            audit_table_suffix: _log
+            store_data_at_delete: true
+  flyway:
+    enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
