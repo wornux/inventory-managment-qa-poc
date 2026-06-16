@@ -1,17 +1,17 @@
 package com.wornux.ui.views;
 
-import com.vaadin.flow.component.html.Anchor;
+import com.vaadin.flow.component.UI;
+import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Paragraph;
-import com.vaadin.flow.component.login.LoginForm;
-import com.vaadin.flow.component.login.LoginI18n;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
+
 import java.util.List;
 import java.util.Map;
 
@@ -20,58 +20,52 @@ import java.util.Map;
 @AnonymousAllowed
 public class LoginView extends Div implements BeforeEnterObserver {
 
-    private final LoginForm loginForm = new LoginForm();
     private final Paragraph feedback = new Paragraph();
 
     public LoginView() {
         addClassName("auth-page");
 
-        var panel = new Div();
+        Div panel = new Div();
         panel.addClassName("auth-panel");
 
-        var title = new H1("Inventory Management");
-        var subtitle = new Paragraph("Sign in to manage products, stock, suppliers, and users.");
-        subtitle.addClassName("auth-subtitle");
+        H1 title = new H1("Inventory Management");
 
-        loginForm.setAction("login");
-        loginForm.addClassName("auth-form");
-        loginForm.setI18n(createLoginI18n());
+        Paragraph subtitle = new Paragraph("Sign in to manage products, stock, suppliers, and users.");
+        subtitle.addClassName("auth-subtitle");
 
         feedback.addClassName("auth-feedback");
         feedback.setVisible(false);
 
-        var signup = new Anchor("signup", "Create an account");
-        signup.addClassName("auth-link");
+        Button keycloakLogin = new Button("Iniciar sesión con Keycloak");
+        keycloakLogin.addClassName("auth-login-button");
 
-        panel.add(title, subtitle, feedback, loginForm, signup);
+        keycloakLogin.addClickListener(event ->
+                UI.getCurrent().getPage().setLocation("/oauth2/authorization/keycloak")
+        );
+
+        panel.add(title, subtitle, feedback, keycloakLogin);
         add(panel);
-    }
-
-    private LoginI18n createLoginI18n() {
-        LoginI18n i18n = LoginI18n.createDefault();
-        LoginI18n.ErrorMessage errorMessage = i18n.getErrorMessage();
-        errorMessage.setTitle("Invalid username or password.");
-        errorMessage.setMessage("");
-        i18n.setErrorMessage(errorMessage);
-        return i18n;
     }
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         QueryParameters queryParameters = event.getLocation().getQueryParameters();
         Map<String, List<String>> parameters = queryParameters.getParameters();
-        boolean inactive = parameters.containsKey("inactive");
-        if (inactive) {
-            feedback.setText("Account is inactive. Contact administrator.");
+
+        if (parameters.containsKey("error")) {
+            feedback.setText("Authentication failed. Try again or contact administrator.");
             feedback.addClassName("auth-feedback-error");
             feedback.setVisible(true);
             return;
         }
 
-        loginForm.setError(parameters.containsKey("error"));
-        boolean signedUp = parameters.containsKey("signup");
-        feedback.setText(signedUp ? "Account created. Sign in with your new credentials." : "");
-        feedback.removeClassName("auth-feedback-error");
-        feedback.setVisible(signedUp);
+        if (parameters.containsKey("logout")) {
+            feedback.setText("You have been signed out.");
+            feedback.removeClassName("auth-feedback-error");
+            feedback.setVisible(true);
+            return;
+        }
+
+        feedback.setVisible(false);
     }
 }

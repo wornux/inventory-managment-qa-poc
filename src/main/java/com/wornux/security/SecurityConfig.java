@@ -59,11 +59,16 @@ public class SecurityConfig {
     @Bean
     @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-        http.with(VaadinSecurityConfigurer.vaadin(), configurer -> configurer.loginView(LoginView.class));
-        http.formLogin(formLogin -> formLogin.failureHandler((request, response, exception) -> {
-            String failureQuery = exception instanceof DisabledException ? "inactive" : "error";
-            response.sendRedirect(request.getContextPath() + "/login?" + failureQuery);
-        }));
+
+        http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
+            configurer.loginView(LoginView.class);
+        });
+
+        http.oauth2Login(oauth2 -> oauth2
+                .loginPage("/login")
+                .failureUrl("/login?error")
+        );
+
         return http.build();
     }
 
