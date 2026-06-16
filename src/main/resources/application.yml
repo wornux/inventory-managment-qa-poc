@@ -11,6 +11,9 @@ vaadin:
   allowed-packages: com.vaadin,org.vaadin,com.flowingcode,com.wornux
 
 spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
   security:
     oauth2:
       client:
