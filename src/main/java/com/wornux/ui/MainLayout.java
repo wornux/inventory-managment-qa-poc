@@ -24,7 +24,6 @@ import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.wornux.ui.security.UiAccessService;
 import com.wornux.ui.views.CategoriesView;
 import com.wornux.ui.views.ForbiddenView;
-import com.wornux.ui.views.HomeView;
 import com.wornux.ui.views.PermissionsView;
 import com.wornux.ui.views.ProductsView;
 import com.wornux.ui.views.RolesView;
