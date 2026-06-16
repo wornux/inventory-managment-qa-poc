@@ -23,9 +23,7 @@ public final class CurrentUserUtils {
             return ANONYMOUS;
         }
         String username = authentication.getName();
-        if (username == null || username.isBlank()
-                || "anonymous".equalsIgnoreCase(username)
-                || "anonymousUser".equalsIgnoreCase(username)) {
+        if (username == null || username.isBlank()) {
             return ANONYMOUS;
         }
         return username;
