@@ -6,7 +6,7 @@
 
 **Goal:** As a system administrator, I want to manage permissions (resource-action pairs) so that the authorization model can be configured and maintained.
 
-**Status:** Pending
+**Status:** Implemented
 **Date:** 2025-01-01
 
 ---
@@ -175,19 +175,19 @@ User navigates to the Permissions view from the main administration menu.
 
 ## Tests
 
-- [ ] Main Flow: View and filter permissions covered
-- [ ] Main Flow: Create permission covered
-- [ ] Main Flow: Edit permission covered
-- [ ] Main Flow: Deactivate permission covered
-- [ ] AF-1 (duplicate pair) covered
-- [ ] AF-2 (missing required fields) covered
-- [ ] AF-3 (resource or action inactive) covered
-- [ ] AF-4 (insufficient permissions) covered
-- [ ] AF-5 (permission has role assignments) covered
-- [ ] AF-6 (dirty state) covered
-- [ ] AF-7 (concurrent edit) covered
-- [ ] AF-8 (resource/action no longer active) covered
-- [ ] BR-01 through BR-09 covered
+- [x] Main Flow: View and filter permissions covered
+- [x] Main Flow: Create permission covered
+- [x] Main Flow: Edit permission covered
+- [x] Main Flow: Deactivate permission covered
+- [x] AF-1 (duplicate pair) covered
+- [x] AF-2 (missing required fields) covered
+- [x] AF-3 (resource or action inactive) covered
+- [x] AF-4 (insufficient permissions) covered
+- [x] AF-5 (permission has role assignments) covered
+- [x] AF-6 (dirty state) covered
+- [x] AF-7 (concurrent edit) covered
+- [x] AF-8 (resource/action no longer active) covered
+- [x] BR-01 through BR-09 covered
 
 ---
 

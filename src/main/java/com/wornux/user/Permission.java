@@ -45,6 +45,13 @@ public class Permission {
     protected Permission() {
     }
 
+    public Permission(ProtectedResource resource, PermissionAction action, String description, boolean active) {
+        this.resource = resource;
+        this.action = action;
+        this.description = description;
+        this.active = active;
+    }
+
     public Long getId() {
         return id;
     }
@@ -83,6 +90,11 @@ public class Permission {
 
     public String getLabel() {
         return getCode() + " - " + resource.getName() + " / " + action.getName();
+    }
+
+    public void update(String description, boolean active) {
+        this.description = description;
+        this.active = active;
     }
 
     public void deactivate() {

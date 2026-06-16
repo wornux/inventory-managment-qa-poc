@@ -15,6 +15,8 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
 
     List<Role> findByActiveTrueOrderByNameAsc();
 
+    long countByPermissionsId(Long permissionId);
+
     @EntityGraph(attributePaths = {"permissions", "permissions.resource", "permissions.action"})
     Optional<Role> findWithPermissionsById(Long id);
 

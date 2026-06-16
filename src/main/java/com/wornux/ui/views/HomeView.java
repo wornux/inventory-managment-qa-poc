@@ -23,6 +23,7 @@ public class HomeView extends VerticalLayout {
                 new Anchor("suppliers", "Manage suppliers"),
                 new Anchor("stock-movements", "Stock movements"),
                 new Anchor("users", "Manage users"),
-                new Anchor("roles", "Manage roles"));
+                new Anchor("roles", "Manage roles"),
+                new Anchor("permissions", "Manage permissions"));
     }
 }

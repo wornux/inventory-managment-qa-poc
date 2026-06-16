@@ -63,4 +63,8 @@ public class PermissionAction {
     public Instant getUpdatedAt() {
         return updatedAt;
     }
+
+    public void deactivate() {
+        active = false;
+    }
 }

@@ -14,7 +14,7 @@ This folder contains feature specifications for the Inventory Management applica
 | UC-006 | [Manage Categories](use-case-006-manage-categories.md) | Implemented | Inventory Manager | CRUD and deactivate product categories |
 | UC-007 | [Manage Suppliers](use-case-007-manage-suppliers.md) | Implemented | Inventory Manager | CRUD and deactivate supplier records |
 | UC-008 | [Manage Roles](use-case-008-manage-roles.md) | Implemented | System Administrator | Create and manage roles with permission assignment |
-| UC-009 | [Manage Permissions](use-case-009-manage-permissions.md) | Pending | System Administrator | Manage permission (resource-action) pairs |
+| UC-009 | [Manage Permissions](use-case-009-manage-permissions.md) | Implemented | System Administrator | Manage permission (resource-action) pairs |
 
 ## How to Use
 
