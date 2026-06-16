@@ -19,7 +19,6 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
-import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
@@ -70,9 +69,6 @@ public class UsersView extends Main {
     private final UserRequest formData = new UserRequest();
     private final TextField username = new TextField("Username");
     private final EmailField email = new EmailField("Email");
-    private final PasswordField password = new PasswordField("Password");
-    private final PasswordField confirmPassword = new PasswordField("Confirm password");
-    private final VerticalLayout passwordFields = new VerticalLayout();
     private final Checkbox active = new Checkbox("Active");
     private final TextField createdAt = new TextField("Created at");
     private final MultiSelectComboBox<Role> roles = new MultiSelectComboBox<>("Roles");
@@ -196,14 +192,8 @@ public class UsersView extends Main {
         configureFields();
         bindForm();
 
-        passwordFields.addClassName("password-fields");
-        passwordFields.setPadding(false);
-        passwordFields.setSpacing(true);
-        passwordFields.setWidthFull();
-        passwordFields.add(password, confirmPassword);
-
         var form = new FormLayout();
-        form.add(username, email, passwordFields, active, roles, createdAt);
+        form.add(username, email, active, roles, createdAt);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -230,10 +220,6 @@ public class UsersView extends Main {
         username.setValueChangeMode(ValueChangeMode.EAGER);
         email.setRequiredIndicatorVisible(true);
         email.setValueChangeMode(ValueChangeMode.EAGER);
-        password.setRequiredIndicatorVisible(true);
-        password.setWidthFull();
-        confirmPassword.setRequiredIndicatorVisible(true);
-        confirmPassword.setWidthFull();
         active.setValue(true);
         roles.setItems(availableRoles);
         roles.setItemLabelGenerator(role -> role.getName() + " (" + role.getCode() + ")");
@@ -245,8 +231,6 @@ public class UsersView extends Main {
     private void bindForm() {
         binder.forField(username).asRequired("Username is required.").bind(UserRequest::getUsername, UserRequest::setUsername);
         binder.forField(email).asRequired("Email is required.").bind(UserRequest::getEmail, UserRequest::setEmail);
-        binder.bind(password, UserRequest::getPassword, UserRequest::setPassword);
-        binder.bind(confirmPassword, UserRequest::getConfirmPassword, UserRequest::setConfirmPassword);
         binder.bind(active, UserRequest::isActive, UserRequest::setActive);
         binder.forField(roles)
                 .withValidator(value -> value != null && !value.isEmpty(), "At least one role must be selected.")
@@ -281,9 +265,6 @@ public class UsersView extends Main {
         sidebarTitle.setText("New User");
         resetForm(new UserRequest(), null);
         setReadOnly(false);
-        passwordFields.setVisible(true);
-        password.setRequiredIndicatorVisible(true);
-        confirmPassword.setRequiredIndicatorVisible(true);
         save.setVisible(true);
         cancel.setVisible(true);
         close.setVisible(false);
@@ -298,9 +279,6 @@ public class UsersView extends Main {
         sidebarTitle.setText("Edit User");
         resetForm(fromUser(selectedUser), selectedUser.getCreatedAt());
         setReadOnly(false);
-        passwordFields.setVisible(false);
-        password.setRequiredIndicatorVisible(false);
-        confirmPassword.setRequiredIndicatorVisible(false);
         save.setVisible(true);
         cancel.setVisible(true);
         close.setVisible(false);
@@ -315,9 +293,6 @@ public class UsersView extends Main {
         sidebarTitle.setText("User Details");
         resetForm(fromUser(selectedUser), selectedUser.getCreatedAt());
         setReadOnly(true);
-        passwordFields.setVisible(false);
-        password.setRequiredIndicatorVisible(false);
-        confirmPassword.setRequiredIndicatorVisible(false);
         save.setVisible(false);
         cancel.setVisible(false);
         close.setVisible(true);
@@ -329,8 +304,6 @@ public class UsersView extends Main {
     private void resetForm(UserRequest request, Instant createdAtValue) {
         formData.setUsername(request.getUsername());
         formData.setEmail(request.getEmail());
-        formData.setPassword("");
-        formData.setConfirmPassword("");
         formData.setActive(request.isActive());
         formData.setRoleIds(request.getRoleIds());
         formData.setVersion(request.getVersion());
@@ -440,8 +413,6 @@ public class UsersView extends Main {
     private void clearValidationErrors() {
         username.setInvalid(false);
         email.setInvalid(false);
-        password.setInvalid(false);
-        confirmPassword.setInvalid(false);
         roles.setInvalid(false);
     }
 

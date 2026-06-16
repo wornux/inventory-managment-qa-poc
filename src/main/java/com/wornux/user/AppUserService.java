@@ -1,55 +1,142 @@
 package com.wornux.user;
 
-import jakarta.validation.Valid;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Locale;
-import org.springframework.security.crypto.password.PasswordEncoder;
+import java.util.Set;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.validation.annotation.Validated;
 
 @Service
-@Validated
 public class AppUserService {
 
     public static final String DEFAULT_ROLE_CODE = "INVENTORY_VIEWER";
+    public static final String SYSTEM_ADMINISTRATOR_ROLE_CODE = "SYSTEM_ADMINISTRATOR";
 
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public AppUserService(
-            AppUserRepository appUserRepository,
-            RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder) {
+    public AppUserService(AppUserRepository appUserRepository, RoleRepository roleRepository) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
-    public AppUser signup(@Valid SignupRequest request) {
-        String username = trim(request.getUsername());
-        String email = trim(request.getEmail()).toLowerCase(Locale.ROOT);
+    public AppUser provisionOidcUser(OidcUserProfile profile) {
+        return provision(profile, DEFAULT_ROLE_CODE);
+    }
 
-        if (!request.getPassword().equals(request.getConfirmPassword())) {
-            throw new SignupException("Passwords do not match.");
-        }
-        if (appUserRepository.existsByUsernameIgnoreCase(username)) {
-            throw new SignupException("Username already taken.");
-        }
-        if (appUserRepository.existsByEmailIgnoreCase(email)) {
-            throw new SignupException("Email already registered.");
-        }
+    @Transactional
+    public AppUser provisionSystemAdministrator(OidcUserProfile profile) {
+        OidcUserProfile normalized = profile.normalized();
+        AppUser user = appUserRepository
+                .findByOidcIssuerAndOidcSubject(normalized.issuer(), normalized.subject())
+                .or(() -> appUserRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(
+                        normalized.username(), normalized.email()))
+                .orElseGet(() -> createUser(normalized, SYSTEM_ADMINISTRATOR_ROLE_CODE));
 
-        Role defaultRole = roleRepository.findByCode(DEFAULT_ROLE_CODE)
-                .orElseThrow(() -> new IllegalStateException("Default role INVENTORY_VIEWER is not configured."));
-
-        AppUser user = new AppUser(username, email, passwordEncoder.encode(request.getPassword()));
-        user.addRole(defaultRole);
+        validateUniqueUsername(normalized.username(), user.getId());
+        validateUniqueEmail(normalized.email(), user.getId());
+        user.updateIdentity(normalized.username(), normalized.email(), normalized.issuer(), normalized.subject());
+        user.setActive(true);
+        Role administrator = requireRole(SYSTEM_ADMINISTRATOR_ROLE_CODE);
+        if (user.getRoles().stream().noneMatch(role -> SYSTEM_ADMINISTRATOR_ROLE_CODE.equals(role.getCode()))) {
+            user.addRole(administrator);
+        }
         return appUserRepository.save(user);
     }
 
-    private String trim(String value) {
+    @Transactional(readOnly = true)
+    public List<GrantedAuthority> authorities(AppUser user) {
+        return user.getRoles().stream()
+                .filter(role -> role.isActive() && role.getCode() != null)
+                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getCode()))
+                .map(GrantedAuthority.class::cast)
+                .toList();
+    }
+
+    private AppUser provision(OidcUserProfile profile, String roleCodeForNewUser) {
+        OidcUserProfile normalized = profile.normalized();
+        AppUser user = appUserRepository
+                .findByOidcIssuerAndOidcSubject(normalized.issuer(), normalized.subject())
+                .orElseGet(() -> createUser(normalized, roleCodeForNewUser));
+
+        if (!user.isActive()) {
+            throw new DisabledException("Account is inactive.");
+        }
+
+        validateUniqueUsername(normalized.username(), user.getId());
+        validateUniqueEmail(normalized.email(), user.getId());
+        user.updateIdentity(normalized.username(), normalized.email(), normalized.issuer(), normalized.subject());
+        return appUserRepository.save(user);
+    }
+
+    private AppUser createUser(OidcUserProfile profile, String roleCode) {
+        validateUniqueUsername(profile.username(), null);
+        validateUniqueEmail(profile.email(), null);
+        AppUser user = new AppUser(profile.username(), profile.email(), profile.issuer(), profile.subject());
+        user.addRole(requireRole(roleCode));
+        return user;
+    }
+
+    private Role requireRole(String code) {
+        return roleRepository.findByCode(code)
+                .filter(Role::isActive)
+                .orElseThrow(() -> new IllegalStateException("Role " + code + " is not configured."));
+    }
+
+    private void validateUniqueUsername(String username, Long id) {
+        boolean exists = id == null
+                ? appUserRepository.existsByUsernameIgnoreCase(username)
+                : appUserRepository.existsByUsernameIgnoreCaseAndIdNot(username, id);
+        if (exists) {
+            throw new OidcProvisioningException("Username already exists for another local user.");
+        }
+    }
+
+    private void validateUniqueEmail(String email, Long id) {
+        boolean exists = id == null
+                ? appUserRepository.existsByEmailIgnoreCase(email)
+                : appUserRepository.existsByEmailIgnoreCaseAndIdNot(email, id);
+        if (exists) {
+            throw new OidcProvisioningException("Email already exists for another local user.");
+        }
+    }
+
+    private Set<Role> requireRoles(Set<Long> roleIds) {
+        if (roleIds == null || roleIds.isEmpty()) {
+            throw new UserException("At least one role must be selected.");
+        }
+        List<Role> roles = roleRepository.findAllById(roleIds).stream()
+                .filter(Role::isActive)
+                .toList();
+        if (roles.size() != roleIds.size()) {
+            throw new UserException("At least one role must be selected.");
+        }
+        return new LinkedHashSet<>(roles);
+    }
+
+    @Transactional
+    public AppUser createLocalUser(UserRequest request) {
+        Set<Role> roles = requireRoles(request.getRoleIds());
+        AppUser user = new AppUser(
+                normalizeUsername(request.getUsername()),
+                normalizeEmail(request.getEmail()),
+                null,
+                null);
+        user.setActive(request.isActive());
+        roles.forEach(user::addRole);
+        return appUserRepository.save(user);
+    }
+
+    private String normalizeUsername(String value) {
         return value == null ? "" : value.trim();
+    }
+
+    private String normalizeEmail(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 }

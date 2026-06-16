@@ -21,6 +21,9 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     @EntityGraph(attributePaths = "roles")
     Optional<AppUser> findByUsernameIgnoreCaseOrEmailIgnoreCase(String username, String email);
 
+    @EntityGraph(attributePaths = "roles")
+    Optional<AppUser> findByOidcIssuerAndOidcSubject(String oidcIssuer, String oidcSubject);
+
     @Query("""
             select count(permission) > 0
             from AppUser user

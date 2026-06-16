@@ -1,7 +1,6 @@
 package com.wornux.api;
 
 import com.wornux.catalog.ProductException;
-import com.wornux.user.SignupException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.http.HttpStatus;
@@ -46,11 +45,6 @@ public class RestExceptionHandler {
     ResponseEntity<ApiResponse<Void>> product(ProductException exception) {
         HttpStatus status = productStatus(exception.getMessage());
         return failure(status, exception.getMessage(), List.of(error(exception.getMessage())));
-    }
-
-    @ExceptionHandler(SignupException.class)
-    ResponseEntity<ApiResponse<Void>> signup(SignupException exception) {
-        return failure(HttpStatus.CONFLICT, exception.getMessage(), List.of(error(exception.getMessage())));
     }
 
     @ExceptionHandler(RuntimeException.class)

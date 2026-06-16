@@ -34,7 +34,10 @@ import com.wornux.ui.views.UsersView;
 import jakarta.annotation.security.PermitAll;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 @Layout
 @PermitAll
@@ -206,8 +209,20 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
     }
 
     private String currentUsername() {
-        return authenticationContext.getAuthenticatedUser(UserDetails.class)
-                .map(UserDetails::getUsername)
-                .orElse("User");
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return "User";
+        }
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof OidcUser oidcUser) {
+            String username = oidcUser.getClaimAsString("preferred_username");
+            return username == null || username.isBlank() ? oidcUser.getName() : username;
+        }
+        if (principal instanceof UserDetails userDetails) {
+            return userDetails.getUsername();
+        }
+        return authentication.getName() == null || authentication.getName().isBlank()
+                ? "User"
+                : authentication.getName();
     }
 }

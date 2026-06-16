@@ -573,7 +573,7 @@
       "oauth2.jwt.authorization.grant.enabled" : "false",
       "standard.token.exchange.enabled" : "false",
       "frontchannel.logout.session.required" : "true",
-      "post.logout.redirect.uris" : "http://localhost:8080/logout",
+      "post.logout.redirect.uris" : "http://localhost:8080/login",
       "oauth2.device.authorization.grant.enabled" : "false",
       "backchannel.logout.revoke.offline.tokens" : "false",
       "realm_client" : "false",

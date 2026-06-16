@@ -9,7 +9,6 @@ import java.util.Set;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -22,15 +21,10 @@ public class UserService {
 
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
-    private final PasswordEncoder passwordEncoder;
 
-    public UserService(
-            AppUserRepository appUserRepository,
-            RoleRepository roleRepository,
-            PasswordEncoder passwordEncoder) {
+    public UserService(AppUserRepository appUserRepository, RoleRepository roleRepository) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
-        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional(readOnly = true)
@@ -56,7 +50,6 @@ public class UserService {
     @Transactional
     public AppUser create(@Valid UserRequest request) {
         requireManage();
-        validateCreatePassword(request);
         validateUniqueUsername(request.getUsername(), null);
         validateUniqueEmail(request.getEmail(), null);
         Set<Role> roles = requireActiveRoles(request.getRoleIds());
@@ -64,7 +57,8 @@ public class UserService {
         AppUser user = new AppUser(
                 normalizeUsername(request.getUsername()),
                 normalizeEmail(request.getEmail()),
-                passwordEncoder.encode(request.getPassword()));
+                null,
+                null);
         user.setActive(request.isActive());
         roles.forEach(user::addRole);
         return appUserRepository.save(user);
@@ -120,19 +114,6 @@ public class UserService {
     private boolean hasAuthority(Authentication authentication, String authority) {
         return authentication != null && authentication.getAuthorities().stream()
                 .anyMatch(grantedAuthority -> authority.equals(grantedAuthority.getAuthority()));
-    }
-
-    private void validateCreatePassword(UserRequest request) {
-        String password = request.getPassword() == null ? "" : request.getPassword();
-        if (password.isBlank()) {
-            throw new UserException("Password is required.");
-        }
-        if (password.length() < 8) {
-            throw new UserException("Password must be at least 8 characters.");
-        }
-        if (!password.equals(request.getConfirmPassword())) {
-            throw new UserException("Passwords do not match.");
-        }
     }
 
     private void validateUniqueUsername(String username, Long id) {

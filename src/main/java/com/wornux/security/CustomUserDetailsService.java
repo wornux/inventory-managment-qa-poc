@@ -33,7 +33,7 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .toList();
 
         return User.withUsername(appUser.getUsername())
-                .password(appUser.getPasswordHash())
+                .password("{noop}oauth2")
                 .authorities(authorities)
                 .disabled(!appUser.isActive())
                 .build();

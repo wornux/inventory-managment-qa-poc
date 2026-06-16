@@ -296,7 +296,7 @@ class StockMovementServiceTest {
     }
 
     private static AppUser user(String username) {
-        return new AppUser(username, username + "@example.com", "{noop}password");
+        return new AppUser(username, username + "@example.com", "https://issuer.example.test", username + "-subject");
     }
 
     private static StockMovement movement(

@@ -32,8 +32,11 @@ public class AppUser extends Auditable {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(name = "password_hash", nullable = false)
-    private String passwordHash;
+    @Column(name = "oidc_issuer")
+    private String oidcIssuer;
+
+    @Column(name = "oidc_subject")
+    private String oidcSubject;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -51,10 +54,11 @@ public class AppUser extends Auditable {
     protected AppUser() {
     }
 
-    public AppUser(String username, String email, String passwordHash) {
+    public AppUser(String username, String email, String oidcIssuer, String oidcSubject) {
         this.username = username;
         this.email = email;
-        this.passwordHash = passwordHash;
+        this.oidcIssuer = oidcIssuer;
+        this.oidcSubject = oidcSubject;
     }
 
     public Long getId() {
@@ -69,8 +73,12 @@ public class AppUser extends Auditable {
         return email;
     }
 
-    public String getPasswordHash() {
-        return passwordHash;
+    public String getOidcIssuer() {
+        return oidcIssuer;
+    }
+
+    public String getOidcSubject() {
+        return oidcSubject;
     }
 
     public boolean isActive() {
@@ -107,6 +115,13 @@ public class AppUser extends Auditable {
         this.active = active;
         this.roles.clear();
         this.roles.addAll(roles);
+    }
+
+    public void updateIdentity(String username, String email, String oidcIssuer, String oidcSubject) {
+        this.username = username;
+        this.email = email;
+        this.oidcIssuer = oidcIssuer;
+        this.oidcSubject = oidcSubject;
     }
 
     public void deactivate() {

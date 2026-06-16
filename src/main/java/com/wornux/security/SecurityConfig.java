@@ -3,18 +3,13 @@ package com.wornux.security;
 import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
 import com.wornux.api.security.ApiAccessDeniedHandler;
 import com.wornux.api.security.ApiAuthenticationEntryPoint;
-import com.wornux.api.security.JwtAuthenticationFilter;
-import com.wornux.ui.views.LoginView;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -32,7 +27,7 @@ public class SecurityConfig {
     @Order(1)
     SecurityFilterChain securityFilterChainApi(
             HttpSecurity http,
-            JwtAuthenticationFilter jwtAuthenticationFilter,
+            AppJwtAuthenticationConverter jwtAuthenticationConverter,
             ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
             ApiAccessDeniedHandler apiAccessDeniedHandler) throws Exception {
         http.securityMatcher(
@@ -49,30 +44,25 @@ public class SecurityConfig {
                         .accessDeniedHandler(apiAccessDeniedHandler))
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(OPEN_API_ENDPOINTS).permitAll()
-                        .requestMatchers("/api/auth/login", "/api/auth/signup").permitAll()
                         .anyRequest().authenticated())
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
         return http.build();
     }
 
     @Bean
     @Order(2)
-    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    SecurityFilterChain securityFilterChain(HttpSecurity http, AppOidcUserService oidcUserService) throws Exception {
 
         http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
-            configurer.loginView(LoginView.class);
+            configurer.oauth2LoginPage("/oauth2/authorization/keycloak", "{baseUrl}/login");
         });
 
         http.oauth2Login(oauth2 -> oauth2
                 .loginPage("/login")
                 .failureUrl("/login?error")
+                .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService))
         );
 
         return http.build();
-    }
-
-    @Bean
-    PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
     }
 }
