@@ -20,6 +20,7 @@ public class HomeView extends VerticalLayout {
                 new Paragraph("You are signed in."),
                 new Anchor("products", "Manage products"),
                 new Anchor("categories", "Manage categories"),
+                new Anchor("suppliers", "Manage suppliers"),
                 new Anchor("stock-movements", "Stock movements"),
                 new Anchor("users", "Manage users"));
     }

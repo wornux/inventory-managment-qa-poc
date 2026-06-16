@@ -12,7 +12,7 @@ This folder contains feature specifications for the Inventory Management applica
 | UC-004 | [Manage Stock Movements](use-case-004-manage-stock-movements.md) | Implemented | Warehouse Operator / Manager | Create and view append-only stock movement ledger |
 | UC-005 | [Manage Users](use-case-005-manage-users.md) | Implemented | System Administrator | CRUD and deactivate user accounts with role assignment |
 | UC-006 | [Manage Categories](use-case-006-manage-categories.md) | Implemented | Inventory Manager | CRUD and deactivate product categories |
-| UC-007 | [Manage Suppliers](use-case-007-manage-suppliers.md) | Pending | Inventory Manager | CRUD and deactivate supplier records |
+| UC-007 | [Manage Suppliers](use-case-007-manage-suppliers.md) | Implemented | Inventory Manager | CRUD and deactivate supplier records |
 | UC-008 | [Manage Roles](use-case-008-manage-roles.md) | Pending | System Administrator | Create and manage roles with permission assignment |
 | UC-009 | [Manage Permissions](use-case-009-manage-permissions.md) | Pending | System Administrator | Manage permission (resource-action) pairs |
 

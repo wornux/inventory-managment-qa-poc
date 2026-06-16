@@ -6,7 +6,7 @@
 
 **Goal:** As an inventory manager, I want to manage supplier information so that products can be sourced from the correct suppliers and contact information is maintained.
 
-**Status:** Pending
+**Status:** Implemented
 **Date:** 2025-01-01
 
 ---
@@ -165,18 +165,18 @@ User navigates to the Suppliers view from the inventory management menu.
 
 ## Tests
 
-- [ ] Main Flow: View and search suppliers covered
-- [ ] Main Flow: Create supplier covered
-- [ ] Main Flow: Edit supplier covered
-- [ ] Main Flow: Deactivate supplier covered
-- [ ] AF-1 (missing required fields) covered
-- [ ] AF-2 (invalid email) covered
-- [ ] AF-3 (invalid phone) covered
-- [ ] AF-4 (insufficient permissions) covered
-- [ ] AF-5 (supplier has products) covered
-- [ ] AF-6 (dirty state) covered
-- [ ] AF-7 (concurrent edit) covered
-- [ ] BR-01 through BR-09 covered
+- [x] Main Flow: View and search suppliers covered
+- [x] Main Flow: Create supplier covered
+- [x] Main Flow: Edit supplier covered
+- [x] Main Flow: Deactivate supplier covered
+- [x] AF-1 (missing required fields) covered
+- [x] AF-2 (invalid email) covered
+- [x] AF-3 (invalid phone) covered
+- [x] AF-4 (insufficient permissions) covered
+- [x] AF-5 (supplier has products) covered
+- [x] AF-6 (dirty state) covered
+- [x] AF-7 (concurrent edit) covered
+- [x] BR-01 through BR-09 covered
 
 ---
 
