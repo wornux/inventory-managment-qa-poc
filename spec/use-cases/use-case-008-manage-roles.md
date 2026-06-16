@@ -6,7 +6,7 @@
 
 **Goal:** As a system administrator, I want to manage roles and assign permissions so that users have appropriate access levels based on their responsibilities.
 
-**Status:** Pending
+**Status:** Implemented
 **Date:** 2025-01-01
 
 ---
@@ -187,20 +187,20 @@ User navigates to the Roles view from the main administration menu.
 
 ## Tests
 
-- [ ] Main Flow: View and search roles covered
-- [ ] Main Flow: Create role covered
-- [ ] Main Flow: Edit role covered
-- [ ] Main Flow: Deactivate role covered
-- [ ] AF-1 (duplicate code) covered
-- [ ] AF-2 (missing required fields) covered
-- [ ] AF-3 (attempt to edit system role) covered
-- [ ] AF-4 (insufficient permissions) covered
-- [ ] AF-5 (role has users) covered
-- [ ] AF-6 (no permissions selected) covered
-- [ ] AF-7 (dirty state) covered
-- [ ] AF-8 (concurrent edit) covered
-- [ ] AF-9 (permission no longer active) covered
-- [ ] BR-01 through BR-10 covered
+- [x] Main Flow: View and search roles covered
+- [x] Main Flow: Create role covered
+- [x] Main Flow: Edit role covered
+- [x] Main Flow: Deactivate role covered
+- [x] AF-1 (duplicate code) covered
+- [x] AF-2 (missing required fields) covered
+- [x] AF-3 (attempt to edit system role) covered
+- [x] AF-4 (insufficient permissions) covered
+- [x] AF-5 (role has users) covered
+- [x] AF-6 (no permissions selected) covered
+- [x] AF-7 (dirty state) covered
+- [x] AF-8 (concurrent edit) covered
+- [x] AF-9 (permission no longer active) covered
+- [x] BR-01 through BR-10 covered
 
 ---
 

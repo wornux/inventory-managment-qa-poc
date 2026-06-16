@@ -5,8 +5,14 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.JoinTable;
+import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "role")
@@ -30,6 +36,16 @@ public class Role {
     @Column(nullable = false)
     private boolean active = true;
 
+    @Version
+    private Long version;
+
+    @ManyToMany
+    @JoinTable(
+            name = "role_permission",
+            joinColumns = @JoinColumn(name = "role_id"),
+            inverseJoinColumns = @JoinColumn(name = "permission_id"))
+    private Set<Permission> permissions = new LinkedHashSet<>();
+
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
 
@@ -43,6 +59,13 @@ public class Role {
         this.code = code;
         this.name = name;
         this.description = description;
+    }
+
+    public Role(String code, String name, String description, boolean systemRole) {
+        this.code = code;
+        this.name = name;
+        this.description = description;
+        this.systemRole = systemRole;
     }
 
     public Long getId() {
@@ -69,11 +92,31 @@ public class Role {
         return active;
     }
 
+    public Long getVersion() {
+        return version;
+    }
+
+    public Set<Permission> getPermissions() {
+        return permissions;
+    }
+
     public Instant getCreatedAt() {
         return createdAt;
     }
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public void update(String name, String description, boolean active, Set<Permission> permissions) {
+        this.name = name;
+        this.description = description;
+        this.active = active;
+        this.permissions.clear();
+        this.permissions.addAll(permissions);
+    }
+
+    public void deactivate() {
+        active = false;
     }
 }
