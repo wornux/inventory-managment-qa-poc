@@ -11,6 +11,19 @@ vaadin:
   allowed-packages: com.vaadin,org.vaadin,com.flowingcode,com.wornux
 
 spring:
+  security:
+    oauth2:
+      client:
+        registration:
+          keycloak:
+            client-id: inventory-management
+            client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+            authorization-grant-type: authorization_code
+            scope: openid,profile
+        provider:
+          keycloak:
+            issuer-uri: http://localhost:7777/realms/wornux
+            user-name-attribute: preferred_username
   datasource:
     url: jdbc:postgresql://localhost:5432/stocks
     username: ${DB_USERNAME:postgres}
