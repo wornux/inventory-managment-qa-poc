@@ -17,15 +17,16 @@ services:
       - start-dev
       - --import-realm
     ports:
-      - 7777:7777
+      - "7777:7777"
+      - "9000:9000"
     volumes:
       - keycloak:/opt/keycloak/data/import/
     environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_HTTP_PORT: 7777
-      KC_HOSTNAME_URL: http://localhost:7777
-      KC_HOSTNAME_ADMIN_URL: http://localhost:7777
+      KC_HOSTNAME: http://localhost:7777
+      KC_HOSTNAME_ADMIN: http://localhost:7777
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
       KC_HOSTNAME_STRICT_BACKCHANNEL: true
       KC_HTTP_RELATIVE_PATH: /
       KC_HTTP_ENABLED: true

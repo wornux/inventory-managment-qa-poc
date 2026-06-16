@@ -10,6 +10,7 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -33,6 +34,9 @@ public class AppUser {
 
     @Column(nullable = false)
     private boolean active = true;
+
+    @Version
+    private Long version;
 
     @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private Instant createdAt;
@@ -88,11 +92,27 @@ public class AppUser {
         return updatedAt;
     }
 
+    public Long getVersion() {
+        return version;
+    }
+
     public Set<Role> getRoles() {
         return roles;
     }
 
     public void addRole(Role role) {
         roles.add(role);
+    }
+
+    public void update(String username, String email, boolean active, Set<Role> roles) {
+        this.username = username;
+        this.email = email;
+        this.active = active;
+        this.roles.clear();
+        this.roles.addAll(roles);
+    }
+
+    public void deactivate() {
+        active = false;
     }
 }

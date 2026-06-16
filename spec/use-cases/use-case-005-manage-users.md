@@ -6,7 +6,7 @@
 
 **Goal:** As a system administrator, I want to manage user accounts and role assignments so that access control is properly configured and maintained.
 
-**Status:** Pending
+**Status:** Implemented
 **Date:** 2025-01-01
 
 ---
@@ -203,22 +203,22 @@ User navigates to the Users view from the main administration menu.
 
 ## Tests
 
-- [ ] Main Flow: View and search users covered
-- [ ] Main Flow: Create user covered
-- [ ] Main Flow: Edit user covered
-- [ ] Main Flow: Deactivate user covered
-- [ ] AF-1 (duplicate username) covered
-- [ ] AF-2 (duplicate email) covered
-- [ ] AF-3 (invalid email format) covered
-- [ ] AF-4 (missing required fields) covered
-- [ ] AF-5 (weak password) covered
-- [ ] AF-6 (password mismatch) covered
-- [ ] AF-7 (no roles selected) covered
-- [ ] AF-8 (insufficient permissions) covered
-- [ ] AF-9 (cannot deactivate own account) covered
-- [ ] AF-10 (dirty state) covered
-- [ ] AF-11 (concurrent edit) covered
-- [ ] BR-01 through BR-10 covered
+- [x] Main Flow: View and search users covered
+- [x] Main Flow: Create user covered
+- [x] Main Flow: Edit user covered
+- [x] Main Flow: Deactivate user covered
+- [x] AF-1 (duplicate username) covered
+- [x] AF-2 (duplicate email) covered
+- [x] AF-3 (invalid email format) covered
+- [x] AF-4 (missing required fields) covered
+- [x] AF-5 (weak password) covered
+- [x] AF-6 (password mismatch) covered
+- [x] AF-7 (no roles selected) covered
+- [x] AF-8 (insufficient permissions) covered
+- [x] AF-9 (cannot deactivate own account) covered
+- [x] AF-10 (dirty state) covered
+- [x] AF-11 (concurrent edit) covered
+- [x] BR-01 through BR-10 covered
 
 ---
 
