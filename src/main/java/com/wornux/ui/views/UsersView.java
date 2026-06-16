@@ -33,14 +33,19 @@ import com.wornux.user.UserException;
 import com.wornux.user.UserFilter;
 import com.wornux.user.UserRequest;
 import com.wornux.user.UserService;
+
 import jakarta.annotation.security.PermitAll;
+
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+
 import org.springframework.security.access.AccessDeniedException;
+
+import com.vaadin.flow.component.ModalityMode;
 
 @Route("users")
 @PageTitle("Users")
@@ -176,7 +181,7 @@ public class UsersView extends Main {
 
     private void configureSidebar() {
         sidebar.addClassName("product-sidebar");
-        sidebar.setModal(false);
+        sidebar.setModality(ModalityMode.MODELESS);
         sidebar.setDraggable(false);
         sidebar.setResizable(false);
         sidebar.setCloseOnEsc(true);
