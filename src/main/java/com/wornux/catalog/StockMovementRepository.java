@@ -15,12 +15,12 @@ public interface StockMovementRepository extends JpaRepository<StockMovement, Lo
     @Query("""
             select movement
             from StockMovement movement
-            where movement.createdAt >= :createdFrom
-                and movement.createdAt < :createdTo
+            where movement.createdDate >= :createdFrom
+                and movement.createdDate < :createdTo
                 and (:productId is null or movement.product.id = :productId)
                 and (:movementType is null or movement.movementType = :movementType)
                 and (:username = '' or (movement.user is not null and lower(movement.user.username) = lower(:username)))
-            order by movement.createdAt desc, movement.id desc
+            order by movement.createdDate desc, movement.id desc
             """)
     List<StockMovement> search(
             @Param("createdFrom") Instant createdFrom,

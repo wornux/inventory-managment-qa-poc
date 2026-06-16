@@ -1,5 +1,6 @@
 package com.wornux.catalog;
 
+import com.wornux.audit.Auditable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -8,10 +9,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "supplier")
-public class Supplier {
+@Audited
+public class Supplier extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,12 +35,6 @@ public class Supplier {
 
     @Version
     private Long version;
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private Instant updatedAt;
 
     protected Supplier() {
     }
@@ -78,11 +75,11 @@ public class Supplier {
     }
 
     public Instant getCreatedAt() {
-        return createdAt;
+        return super.getCreatedAt();
     }
 
     public Instant getUpdatedAt() {
-        return updatedAt;
+        return super.getUpdatedAt();
     }
 
     public void update(String name, String contactName, String email, String phone, boolean active) {

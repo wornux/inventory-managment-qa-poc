@@ -1,5 +1,6 @@
 package com.wornux.catalog;
 
+import com.wornux.audit.Auditable;
 import com.wornux.user.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -13,10 +14,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "stock_movement")
-public class StockMovement {
+@Audited
+public class StockMovement extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -38,9 +41,6 @@ public class StockMovement {
     private Integer quantityDelta;
 
     private String reason;
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
 
     protected StockMovement() {
     }
@@ -78,6 +78,6 @@ public class StockMovement {
     }
 
     public Instant getCreatedAt() {
-        return createdAt;
+        return super.getCreatedAt();
     }
 }

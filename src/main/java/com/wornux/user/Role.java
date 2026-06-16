@@ -1,5 +1,6 @@
 package com.wornux.user;
 
+import com.wornux.audit.Auditable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -13,10 +14,12 @@ import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "role")
-public class Role {
+@Audited
+public class Role extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,12 +48,6 @@ public class Role {
             joinColumns = @JoinColumn(name = "role_id"),
             inverseJoinColumns = @JoinColumn(name = "permission_id"))
     private Set<Permission> permissions = new LinkedHashSet<>();
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private Instant updatedAt;
 
     protected Role() {
     }
@@ -101,11 +98,11 @@ public class Role {
     }
 
     public Instant getCreatedAt() {
-        return createdAt;
+        return super.getCreatedAt();
     }
 
     public Instant getUpdatedAt() {
-        return updatedAt;
+        return super.getUpdatedAt();
     }
 
     public void update(String name, String description, boolean active, Set<Permission> permissions) {

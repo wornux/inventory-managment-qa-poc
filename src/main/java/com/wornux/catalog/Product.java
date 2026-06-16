@@ -1,5 +1,6 @@
 package com.wornux.catalog;
 
+import com.wornux.audit.Auditable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -12,10 +13,12 @@ import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
+import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "product")
-public class Product {
+@Audited
+public class Product extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -51,12 +54,6 @@ public class Product {
 
     @Version
     private Long version;
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private Instant updatedAt;
 
     protected Product() {
     }
@@ -140,11 +137,11 @@ public class Product {
     }
 
     public Instant getCreatedAt() {
-        return createdAt;
+        return super.getCreatedAt();
     }
 
     public Instant getUpdatedAt() {
-        return updatedAt;
+        return super.getUpdatedAt();
     }
 
     public boolean isLowStock() {

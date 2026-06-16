@@ -1,5 +1,6 @@
 package com.wornux.user;
 
+import com.wornux.audit.Auditable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
@@ -7,10 +8,12 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "action")
-public class PermissionAction {
+@Audited
+public class PermissionAction extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -26,12 +29,6 @@ public class PermissionAction {
 
     @Column(nullable = false)
     private boolean active = true;
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private Instant updatedAt;
 
     protected PermissionAction() {
     }
@@ -57,11 +54,11 @@ public class PermissionAction {
     }
 
     public Instant getCreatedAt() {
-        return createdAt;
+        return super.getCreatedAt();
     }
 
     public Instant getUpdatedAt() {
-        return updatedAt;
+        return super.getUpdatedAt();
     }
 
     public void deactivate() {

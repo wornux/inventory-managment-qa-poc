@@ -1,5 +1,6 @@
 package com.wornux.user;
 
+import com.wornux.audit.Auditable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -14,10 +15,12 @@ import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import org.hibernate.envers.Audited;
 
 @Entity
 @Table(name = "app_user")
-public class AppUser {
+@Audited
+public class AppUser extends Auditable {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,12 +40,6 @@ public class AppUser {
 
     @Version
     private Long version;
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private Instant createdAt;
-
-    @Column(name = "updated_at", nullable = false, insertable = false, updatable = false)
-    private Instant updatedAt;
 
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(
@@ -85,11 +82,11 @@ public class AppUser {
     }
 
     public Instant getCreatedAt() {
-        return createdAt;
+        return super.getCreatedAt();
     }
 
     public Instant getUpdatedAt() {
-        return updatedAt;
+        return super.getUpdatedAt();
     }
 
     public Long getVersion() {
