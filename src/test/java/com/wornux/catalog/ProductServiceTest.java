@@ -16,6 +16,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
@@ -46,26 +47,15 @@ class ProductServiceTest {
     }
 
     @Test
-    void searchesNormalizeNullAndExplicitFiltersForListsAndPages() {
+    void searchesNormalizeNullAndExplicitFiltersForPages() {
         ProductFilter filter = new ProductFilter(" HAMMER ", 1L, 2L, true, true);
         var pageable = PageRequest.of(0, 10);
-        when(products.search("", null, null, null, false)).thenReturn(List.of());
-        when(products.search("hammer", 1L, 2L, true, true)).thenReturn(List.of(product(true)));
-        when(products.search("", null, null, false, false)).thenReturn(List.of());
-
-        assertThat(service.search((ProductFilter) null)).isEmpty();
-        assertThat(service.search(filter)).hasSize(1);
-        assertThat(service.search(new ProductFilter(null, null, null, false, false)))
-                .isEmpty();
-
         Page<Product> page = new PageImpl<>(List.of(product(true)));
-        when(products.searchPage("", null, null, null, false, pageable)).thenReturn(page);
+        when(products.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
         assertThat(service.search(null, pageable)).isSameAs(page);
-
-        when(products.searchPage("hammer", 1L, 2L, true, true, pageable)).thenReturn(page);
-
         assertThat(service.search(filter, pageable)).isSameAs(page);
+        verify(products, times(2)).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test

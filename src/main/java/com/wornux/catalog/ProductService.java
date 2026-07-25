@@ -2,12 +2,15 @@ package com.wornux.catalog;
 
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -36,30 +39,10 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
-    public List<Product> search(ProductFilter filter) {
-        requireRead();
-        ProductFilter safeFilter = filter == null ? new ProductFilter("", null, null, null, false) : filter;
-
-        return productRepository.search(
-                normalizeSearch(safeFilter.text()),
-                safeFilter.categoryId(),
-                safeFilter.supplierId(),
-                safeFilter.active(),
-                safeFilter.lowStockOnly());
-    }
-
-    @Transactional(readOnly = true)
     public Page<Product> search(ProductFilter filter, Pageable pageable) {
         requireRead();
-        ProductFilter safeFilter = filter == null ? new ProductFilter("", null, null, null, false) : filter;
 
-        return productRepository.searchPage(
-                normalizeSearch(safeFilter.text()),
-                safeFilter.categoryId(),
-                safeFilter.supplierId(),
-                safeFilter.active(),
-                safeFilter.lowStockOnly(),
-                pageable);
+        return productRepository.findAll(toSpecification(filter), pageable);
     }
 
     @Transactional(readOnly = true)
@@ -199,6 +182,39 @@ public class ProductService {
                 .filter(Supplier::isActive)
                 .orElseThrow(() -> new ProductException(
                         "Selected category/supplier is no longer available. Please refresh and try again."));
+    }
+
+    private Specification<Product> toSpecification(ProductFilter filter) {
+        ProductFilter safeFilter = filter == null ? new ProductFilter("", null, null, null, false) : filter;
+        String text = normalizeSearch(safeFilter.text());
+
+        return (root, query, criteriaBuilder) -> {
+            var predicates = new ArrayList<Predicate>();
+
+            if (!text.isEmpty()) {
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("sku")), "%" + text + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + text + "%")));
+            }
+
+            if (safeFilter.categoryId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("category").get("id"), safeFilter.categoryId()));
+            }
+
+            if (safeFilter.supplierId() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("supplier").get("id"), safeFilter.supplierId()));
+            }
+
+            if (safeFilter.active() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("active"), safeFilter.active()));
+            }
+
+            if (safeFilter.lowStockOnly()) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("quantityOnHand"), root.get("minimumStock")));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private String normalizeSearch(String value) {

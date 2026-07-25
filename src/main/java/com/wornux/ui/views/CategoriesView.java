@@ -9,6 +9,8 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridSortOrder;
+import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
@@ -20,17 +22,21 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.signals.Signal;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.wornux.catalog.Category;
 import com.wornux.catalog.CategoryException;
 import com.wornux.catalog.CategoryFilter;
 import com.wornux.catalog.CategoryRequest;
 import com.wornux.catalog.CategoryService;
 import jakarta.annotation.security.PermitAll;
+import java.util.List;
 import org.springframework.security.access.AccessDeniedException;
 
 @Route("categories")
@@ -48,6 +54,10 @@ public class CategoriesView extends Main {
     private final Grid<Category> grid = new Grid<>(Category.class, false);
     private final TextField search = new TextField();
     private final ComboBox<String> activeFilter = new ComboBox<>("Status");
+    private final ValueSignal<String> searchSignal = new ValueSignal<>("");
+    private final ValueSignal<String> activeStatusSignal = new ValueSignal<>("Active");
+    private final Signal<CategoryFilter> filterSignal =
+            Signal.computed(() -> new CategoryFilter(searchSignal.get(), activeFilterValue(activeStatusSignal.get())));
     private final Dialog sidebar = new Dialog();
     private final Dialog deactivateDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
@@ -64,19 +74,21 @@ public class CategoriesView extends Main {
     private final H1 deactivateTitle = new H1("Deactivate this category?");
     private final Span deactivateText = new Span();
     private Category selectedCategory;
+    private GridLazyDataView<Category> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
 
     public CategoriesView(CategoryService categoryService) {
         this.categoryService = categoryService;
+        setSizeFull();
         addClassName("products-view");
         configureFilters();
         configureGrid();
+        gridDataView = PageableGridBinding.bind(grid, filterSignal, categoryService::search);
         configureSidebar();
         configureDialogs();
 
         add(buildHeader(), buildToolbar(), grid);
-        refreshGrid();
     }
 
     private Component buildHeader() {
@@ -109,21 +121,20 @@ public class CategoriesView extends Main {
     private void configureFilters() {
         search.setPlaceholder("Search category name");
         search.setClearButtonVisible(true);
-        search.setValueChangeMode(ValueChangeMode.EAGER);
-        search.addValueChangeListener(event -> refreshGrid());
+        search.setValueChangeMode(ValueChangeMode.LAZY);
+        search.bindValue(searchSignal, searchSignal::set);
 
         activeFilter.setItems("Active", "Inactive", "All");
-        activeFilter.setValue("Active");
         activeFilter.setClearButtonVisible(false);
-        activeFilter.addValueChangeListener(event -> refreshGrid());
+        activeFilter.bindValue(activeStatusSignal, activeStatusSignal::set);
     }
 
     private void configureGrid() {
         grid.addClassName("products-grid");
         grid.setSizeFull();
-        grid.addColumn(categoryRenderer())
+        var categoryColumn = grid.addColumn(categoryRenderer())
                 .setHeader("Category")
-                .setSortable(true)
+                .setSortProperty("name", "id")
                 .setAutoWidth(true)
                 .setFlexGrow(2);
         grid.addColumn(new ComponentRenderer<>(this::activeBadge))
@@ -131,12 +142,12 @@ public class CategoriesView extends Main {
                 .setAutoWidth(true);
         grid.addColumn(category -> categoryService.productCount(category.getId()))
                 .setHeader("Product Count")
-                .setSortable(true)
                 .setAutoWidth(true);
         grid.addColumn(new ComponentRenderer<>(this::actions))
                 .setHeader("Actions")
                 .setAutoWidth(true);
         grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.sort(List.of(new GridSortOrder<>(categoryColumn, SortDirection.ASCENDING)));
     }
 
     private LitRenderer<Category> categoryRenderer() {
@@ -385,15 +396,15 @@ public class CategoriesView extends Main {
     }
 
     private void refreshGrid() {
-        grid.setItems(categoryService.search(new CategoryFilter(search.getValue(), activeFilterValue())));
+        gridDataView.refreshAll();
     }
 
-    private Boolean activeFilterValue() {
-        if ("Active".equals(activeFilter.getValue())) {
+    private Boolean activeFilterValue(String value) {
+        if ("Active".equals(value)) {
             return true;
         }
 
-        if ("Inactive".equals(activeFilter.getValue())) {
+        if ("Inactive".equals(value)) {
             return false;
         }
 

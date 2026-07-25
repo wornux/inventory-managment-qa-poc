@@ -33,7 +33,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -70,39 +69,6 @@ class StockMovementServiceTest {
     }
 
     @Test
-    void search_withNullFilter_usesSpecificationAndLedgerOrder() {
-        authenticate("viewer", "stock-movement:view");
-        List<StockMovement> expected = List.of();
-        when(stockMovementRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(expected);
-
-        List<StockMovement> result = service.search(null);
-
-        assertThat(result).isSameAs(expected);
-        assertThat(service.search(new StockMovementFilter(null, null, null, null, null)))
-                .isSameAs(expected);
-        verify(stockMovementRepository, times(2))
-                .findAll(
-                        any(Specification.class),
-                        eq(Sort.by(Sort.Order.desc("createdDate"), Sort.Order.desc("id"))));
-    }
-
-    @Test
-    void search_withFilter_usesSpecification() {
-        authenticate("manager", "stock-movement:create");
-        Instant createdFrom = Instant.parse("2026-01-01T00:00:00Z");
-        Instant createdTo = Instant.parse("2026-01-31T00:00:00Z");
-        StockMovementFilter filter =
-                new StockMovementFilter(createdFrom, createdTo, 9L, MovementType.SALE, " manager ");
-        List<StockMovement> expected = List.of(movement(product(10), user("manager"), MovementType.SALE, -2, null));
-        when(stockMovementRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(expected);
-
-        List<StockMovement> result = service.search(filter);
-
-        assertThat(result).isSameAs(expected);
-        verify(stockMovementRepository).findAll(any(Specification.class), any(Sort.class));
-    }
-
-    @Test
     void pagedSearch_usesTheSameFiltersAndPageable() {
         authenticate("manager", "stock-movement:view");
         Instant createdFrom = Instant.parse("2026-01-01T00:00:00Z");
@@ -114,14 +80,15 @@ class StockMovementServiceTest {
                 .thenReturn(expected);
 
         assertThat(service.search(filter, pageable)).isSameAs(expected);
-        verify(stockMovementRepository).findAll(any(Specification.class), eq(pageable));
+        assertThat(service.search(null, pageable)).isSameAs(expected);
+        verify(stockMovementRepository, times(2)).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test
     void search_withoutViewPermission_throwsAccessDeniedException() {
         authenticate("outsider", "product:view");
 
-        assertThatThrownBy(() -> service.search(null))
+        assertThatThrownBy(() -> service.search(null, PageRequest.of(0, 10)))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("Missing permission stock-movement:view");
 

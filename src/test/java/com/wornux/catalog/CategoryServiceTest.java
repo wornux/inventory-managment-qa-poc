@@ -12,6 +12,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class CategoryServiceTest {
@@ -34,20 +38,27 @@ class CategoryServiceTest {
     @Test
     void readsNormalizeFiltersAndDelegateCounts() {
         Category inactive = new Category("Archived", null);
-        when(categories.search("", null)).thenReturn(List.of());
-        when(categories.search("tools", true)).thenReturn(List.of(new Category("Tools", null)));
-        when(categories.search("", false)).thenReturn(List.of(inactive));
+        Category tools = new Category("Tools", null);
+        Sort order = Sort.by(Sort.Order.asc("name").ignoreCase());
+        when(categories.findAll(any(Specification.class), eq(order)))
+                .thenReturn(List.of(), List.of(tools), List.of(inactive));
 
         assertThat(service.search(null)).isEmpty();
-        assertThat(service.search(new CategoryFilter("  TOOLS ", true))).hasSize(1);
+        assertThat(service.search(new CategoryFilter("  TOOLS ", true))).containsExactly(tools);
         assertThat(service.search(new CategoryFilter(null, false))).containsExactly(inactive);
+
+        var pageable = PageRequest.of(1, 10);
+        var page = new PageImpl<>(List.of(tools), pageable, 11);
+        when(categories.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+
+        assertThat(service.search(new CategoryFilter("tools", true), pageable)).isSameAs(page);
 
         when(products.countByCategoryId(2L)).thenReturn(4L);
         when(products.countByCategoryIdAndActiveTrue(2L)).thenReturn(3L);
 
         assertThat(service.productCount(2L)).isEqualTo(4);
         assertThat(service.activeProductCount(2L)).isEqualTo(3);
-        verify(authorization, times(5)).check(AppPermission.CATEGORY_VIEW);
+        verify(authorization, times(6)).check(AppPermission.CATEGORY_VIEW);
     }
 
     @Test

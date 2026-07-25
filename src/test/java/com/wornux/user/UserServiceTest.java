@@ -3,6 +3,7 @@ package com.wornux.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -19,6 +20,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -60,14 +64,13 @@ class UserServiceTest {
     @Test
     void reads_normalizeFiltersAuthorizeAndReportMissingUsers() {
         UserService service = service();
-        when(appUserRepository.search("query", true)).thenReturn(List.of());
+        var pageable = PageRequest.of(0, 10);
+        var emptyPage = new PageImpl<AppUser>(List.of(), pageable, 0);
+        when(appUserRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(emptyPage);
 
-        assertThat(service.search(new UserFilter(" QUERY ", true))).isEmpty();
-
-        when(appUserRepository.search("", null)).thenReturn(List.of());
-
-        assertThat(service.search(null)).isEmpty();
-        assertThat(service.search(new UserFilter(null, null))).isEmpty();
+        assertThat(service.search(new UserFilter(" QUERY ", true), pageable)).isEmpty();
+        assertThat(service.search(null, pageable)).isEmpty();
+        assertThat(service.search(new UserFilter(null, null), pageable)).isEmpty();
 
         when(appUserRepository.findWithRolesById(1L)).thenReturn(Optional.empty());
 

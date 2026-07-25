@@ -12,6 +12,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class SupplierServiceTest {
@@ -35,13 +39,19 @@ class SupplierServiceTest {
     void readOperationsNormalizeAndPreserveRepositoryResults() {
         Supplier supplier = new Supplier("Acme", null, null, null);
         Supplier inactive = new Supplier("Archived", null, null, null);
-        when(suppliers.search("", null)).thenReturn(List.of());
-        when(suppliers.search("acme", true)).thenReturn(List.of(supplier));
-        when(suppliers.search("", false)).thenReturn(List.of(inactive));
+        Sort order = Sort.by(Sort.Order.asc("name").ignoreCase());
+        when(suppliers.findAll(any(Specification.class), eq(order)))
+                .thenReturn(List.of(), List.of(supplier), List.of(inactive));
 
         assertThat(service.search(null)).isEmpty();
         assertThat(service.search(new SupplierFilter(" ACME ", true))).containsExactly(supplier);
         assertThat(service.search(new SupplierFilter(null, false))).containsExactly(inactive);
+
+        var pageable = PageRequest.of(1, 10);
+        var page = new PageImpl<>(List.of(supplier), pageable, 11);
+        when(suppliers.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
+
+        assertThat(service.search(new SupplierFilter("acme", true), pageable)).isSameAs(page);
 
         when(suppliers.findById(1L)).thenReturn(Optional.of(supplier));
 

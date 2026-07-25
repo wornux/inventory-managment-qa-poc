@@ -5,10 +5,11 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface AppUserRepository extends JpaRepository<AppUser, Long> {
+public interface AppUserRepository extends JpaRepository<AppUser, Long>, JpaSpecificationExecutor<AppUser> {
 
     long countByRolesId(Long roleId);
 
@@ -45,16 +46,4 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     @EntityGraph(attributePaths = "roles")
     Optional<AppUser> findWithRolesById(Long id);
-
-    @EntityGraph(attributePaths = "roles")
-    @Query("""
-            select distinct user
-            from AppUser user
-            left join user.roles role
-            where (:text = '' or lower(user.username) like lower(concat('%', :text, '%'))
-                    or lower(user.email) like lower(concat('%', :text, '%')))
-                and (:active is null or user.active = :active)
-            order by user.username
-            """)
-    List<AppUser> search(@Param("text") String text, @Param("active") Boolean active);
 }

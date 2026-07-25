@@ -11,6 +11,8 @@ import com.vaadin.flow.component.combobox.MultiSelectComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridSortOrder;
+import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
@@ -22,11 +24,14 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.signals.Signal;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.wornux.user.AppUser;
 import com.wornux.user.Role;
 import com.wornux.user.UserException;
@@ -62,6 +67,10 @@ public class UsersView extends Main {
     private final Grid<AppUser> grid = new Grid<>(AppUser.class, false);
     private final TextField search = new TextField();
     private final ComboBox<String> activeFilter = new ComboBox<>("Status");
+    private final ValueSignal<String> searchSignal = new ValueSignal<>("");
+    private final ValueSignal<String> activeStatusSignal = new ValueSignal<>("Active");
+    private final Signal<UserFilter> filterSignal =
+            Signal.computed(() -> new UserFilter(searchSignal.get(), activeFilterValue(activeStatusSignal.get())));
     private final Dialog sidebar = new Dialog();
     private final Dialog deactivateDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
@@ -79,20 +88,22 @@ public class UsersView extends Main {
     private final Button edit = new Button("Edit");
     private List<Role> availableRoles = new ArrayList<>();
     private AppUser selectedUser;
+    private GridLazyDataView<AppUser> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
 
     public UsersView(UserService userService) {
         this.userService = userService;
+        setSizeFull();
         addClassName("products-view");
         availableRoles = userService.activeRoles();
         configureFilters();
         configureGrid();
+        gridDataView = PageableGridBinding.bind(grid, filterSignal, userService::search);
         configureSidebar();
         configureDialogs();
 
         add(buildHeader(), buildToolbar(), grid);
-        refreshGrid();
     }
 
     private Component buildHeader() {
@@ -125,21 +136,25 @@ public class UsersView extends Main {
     private void configureFilters() {
         search.setPlaceholder("Search username or email");
         search.setClearButtonVisible(true);
-        search.setValueChangeMode(ValueChangeMode.EAGER);
-        search.addValueChangeListener(event -> refreshGrid());
+        search.setValueChangeMode(ValueChangeMode.LAZY);
+        search.bindValue(searchSignal, searchSignal::set);
 
         activeFilter.setItems("Active", "Inactive", "All");
-        activeFilter.setValue("Active");
         activeFilter.setClearButtonVisible(false);
-        activeFilter.addValueChangeListener(event -> refreshGrid());
+        activeFilter.bindValue(activeStatusSignal, activeStatusSignal::set);
     }
 
     private void configureGrid() {
         grid.addClassName("products-grid");
         grid.setSizeFull();
-        grid.addColumn(userRenderer()).setHeader("User").setAutoWidth(true).setFlexGrow(2);
+        var userColumn = grid.addColumn(userRenderer())
+                .setHeader("User")
+                .setSortProperty("username", "id")
+                .setAutoWidth(true)
+                .setFlexGrow(2);
         grid.addColumn(user -> formatInstant(user.getCreatedAt()))
                 .setHeader("Created At")
+                .setSortProperty("createdDate", "id")
                 .setAutoWidth(true);
         grid.addColumn(new ComponentRenderer<>(this::activeBadge))
                 .setHeader("Active")
@@ -149,6 +164,7 @@ public class UsersView extends Main {
                 .setHeader("Actions")
                 .setAutoWidth(true);
         grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.sort(List.of(new GridSortOrder<>(userColumn, SortDirection.ASCENDING)));
     }
 
     private LitRenderer<AppUser> userRenderer() {
@@ -406,15 +422,15 @@ public class UsersView extends Main {
     }
 
     private void refreshGrid() {
-        grid.setItems(userService.search(new UserFilter(search.getValue(), activeFilterValue())));
+        gridDataView.refreshAll();
     }
 
-    private Boolean activeFilterValue() {
-        if ("Active".equals(activeFilter.getValue())) {
+    private Boolean activeFilterValue(String value) {
+        if ("Active".equals(value)) {
             return true;
         }
 
-        if ("Inactive".equals(activeFilter.getValue())) {
+        if ("Inactive".equals(value)) {
             return false;
         }
 

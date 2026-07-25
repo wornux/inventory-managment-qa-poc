@@ -2,13 +2,18 @@ package com.wornux.user;
 
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -33,11 +38,10 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public List<AppUser> search(UserFilter filter) {
+    public Page<AppUser> search(UserFilter filter, Pageable pageable) {
         requireRead();
-        UserFilter safeFilter = filter == null ? new UserFilter("", null) : filter;
 
-        return appUserRepository.search(normalizeSearch(safeFilter.text()), safeFilter.active());
+        return appUserRepository.findAll(toSpecification(filter), pageable);
     }
 
     @Transactional(readOnly = true)
@@ -175,6 +179,27 @@ public class UserService {
         String current = authentication.getName();
 
         return user.getUsername().equalsIgnoreCase(current) || user.getEmail().equalsIgnoreCase(current);
+    }
+
+    private Specification<AppUser> toSpecification(UserFilter filter) {
+        UserFilter safeFilter = filter == null ? new UserFilter("", null) : filter;
+        String text = normalizeSearch(safeFilter.text());
+
+        return (root, query, criteriaBuilder) -> {
+            var predicates = new ArrayList<Predicate>();
+
+            if (!text.isEmpty()) {
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("username")), "%" + text + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("email")), "%" + text + "%")));
+            }
+
+            if (safeFilter.active() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("active"), safeFilter.active()));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private String normalizeSearch(String value) {

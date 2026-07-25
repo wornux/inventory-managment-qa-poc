@@ -9,6 +9,8 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridSortOrder;
+import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
@@ -21,11 +23,14 @@ import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.signals.Signal;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.wornux.catalog.MovementType;
 import com.wornux.catalog.Product;
 import com.wornux.catalog.StockMovement;
@@ -62,6 +67,17 @@ public class StockMovementsView extends Main {
     private final ComboBox<Product> productFilter = new ComboBox<>("Product");
     private final ComboBox<MovementType> typeFilter = new ComboBox<>("Type");
     private final ComboBox<String> userFilter = new ComboBox<>("User");
+    private final ValueSignal<LocalDate> fromDateSignal = new ValueSignal<>(null);
+    private final ValueSignal<LocalDate> toDateSignal = new ValueSignal<>(null);
+    private final ValueSignal<Product> productFilterSignal = new ValueSignal<>(null);
+    private final ValueSignal<MovementType> typeFilterSignal = new ValueSignal<>(null);
+    private final ValueSignal<String> userFilterSignal = new ValueSignal<>(null);
+    private final Signal<StockMovementFilter> filterSignal = Signal.computed(() -> new StockMovementFilter(
+            startOfDay(fromDateSignal.get()),
+            exclusiveEndOfDay(toDateSignal.get()),
+            productFilterSignal.get() == null ? null : productFilterSignal.get().getId(),
+            typeFilterSignal.get(),
+            userFilterSignal.get()));
     private final Dialog sidebar = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
     private final BeanValidationBinder<StockMovementRequest> binder =
@@ -80,21 +96,23 @@ public class StockMovementsView extends Main {
     private final Button close = new Button("Close");
     private List<Product> products = new ArrayList<>();
     private List<String> usernames = new ArrayList<>();
+    private GridLazyDataView<StockMovement> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
 
     public StockMovementsView(StockMovementService stockMovementService) {
         this.stockMovementService = stockMovementService;
+        setSizeFull();
         addClassNames("products-view", "movements-view");
         products = stockMovementService.activeProducts();
         usernames = stockMovementService.movementUsernames();
         configureFilters();
         configureGrid();
+        gridDataView = PageableGridBinding.bind(grid, filterSignal, stockMovementService::search);
         configureSidebar();
         configureDialogs();
 
         add(buildHeader(), buildToolbar(), grid);
-        refreshGrid();
     }
 
     private Component buildHeader() {
@@ -125,51 +143,57 @@ public class StockMovementsView extends Main {
 
     private void configureFilters() {
         fromDate.setClearButtonVisible(true);
-        fromDate.addValueChangeListener(event -> refreshGrid());
+        fromDate.bindValue(fromDateSignal, fromDateSignal::set);
         toDate.setClearButtonVisible(true);
-        toDate.addValueChangeListener(event -> refreshGrid());
+        toDate.bindValue(toDateSignal, toDateSignal::set);
 
         productFilter.setItems(products);
         productFilter.setItemLabelGenerator(this::productLabel);
         productFilter.setClearButtonVisible(true);
-        productFilter.addValueChangeListener(event -> refreshGrid());
+        productFilter.bindValue(productFilterSignal, productFilterSignal::set);
 
         typeFilter.setItems(MovementType.values());
         typeFilter.setItemLabelGenerator(MovementType::displayName);
         typeFilter.setClearButtonVisible(true);
-        typeFilter.addValueChangeListener(event -> refreshGrid());
+        typeFilter.bindValue(typeFilterSignal, typeFilterSignal::set);
 
         userFilter.setItems(usernames);
         userFilter.setClearButtonVisible(true);
-        userFilter.addValueChangeListener(event -> refreshGrid());
+        userFilter.bindValue(userFilterSignal, userFilterSignal::set);
     }
 
     private void configureGrid() {
         grid.addClassName("products-grid");
         grid.setSizeFull();
-        grid.addColumn(movement -> formatInstant(movement.getCreatedAt()))
+        var createdColumn = grid.addColumn(movement -> formatInstant(movement.getCreatedAt()))
                 .setHeader("Created At")
-                .setAutoWidth(true)
-                .setSortable(true);
+                .setSortProperty("createdDate", "id")
+                .setAutoWidth(true);
         grid.addColumn(productRenderer())
                 .setHeader("Product")
+                .setSortProperty("product.sku", "id")
                 .setAutoWidth(true)
                 .setFlexGrow(2);
         grid.addColumn(new ComponentRenderer<>(this::movementTypeBadge))
                 .setHeader("Movement Type")
+                .setSortProperty("movementType", "id")
                 .setAutoWidth(true);
         grid.addColumn(new ComponentRenderer<>(this::quantityDeltaLabel))
                 .setHeader("Quantity Delta")
+                .setSortProperty("quantityDelta", "id")
                 .setAutoWidth(true);
         grid.addColumn(movement -> movement.getUser() == null
                         ? "System"
                         : movement.getUser().getUsername())
                 .setHeader("User")
+                .setSortProperty("user.username", "id")
                 .setAutoWidth(true);
         grid.addColumn(movement -> movement.getReason() == null ? "None" : movement.getReason())
                 .setHeader("Reason")
+                .setSortProperty("reason", "id")
                 .setFlexGrow(2);
         grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.sort(List.of(new GridSortOrder<>(createdColumn, SortDirection.DESCENDING)));
     }
 
     private LitRenderer<StockMovement> productRenderer() {
@@ -417,14 +441,7 @@ public class StockMovementsView extends Main {
     }
 
     private void refreshGrid() {
-        grid.setItems(stockMovementService.search(new StockMovementFilter(
-                startOfDay(fromDate.getValue()),
-                exclusiveEndOfDay(toDate.getValue()),
-                productFilter.getValue() == null
-                        ? null
-                        : productFilter.getValue().getId(),
-                typeFilter.getValue(),
-                userFilter.getValue())));
+        gridDataView.refreshAll();
     }
 
     private Instant startOfDay(LocalDate value) {

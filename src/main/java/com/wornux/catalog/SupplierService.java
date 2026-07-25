@@ -2,10 +2,16 @@ package com.wornux.catalog;
 
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -14,6 +20,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class SupplierService {
 
+    private static final Sort SUPPLIER_ORDER = Sort.by(Sort.Order.asc("name").ignoreCase());
     private final SupplierRepository supplierRepository;
     private final ProductRepository productRepository;
     private final AuthorizationService authorizationService;
@@ -30,9 +37,15 @@ public class SupplierService {
     @Transactional(readOnly = true)
     public List<Supplier> search(SupplierFilter filter) {
         requireRead();
-        SupplierFilter safeFilter = filter == null ? new SupplierFilter("", null) : filter;
 
-        return supplierRepository.search(normalizeSearch(safeFilter.text()), safeFilter.active());
+        return supplierRepository.findAll(toSpecification(filter), SUPPLIER_ORDER);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<Supplier> search(SupplierFilter filter, Pageable pageable) {
+        requireRead();
+
+        return supplierRepository.findAll(toSpecification(filter), pageable);
     }
 
     @Transactional(readOnly = true)
@@ -117,6 +130,27 @@ public class SupplierService {
 
     private void requireRead() {
         authorizationService.check(AppPermission.SUPPLIER_VIEW);
+    }
+
+    private Specification<Supplier> toSpecification(SupplierFilter filter) {
+        SupplierFilter safeFilter = filter == null ? new SupplierFilter("", null) : filter;
+        String text = normalizeSearch(safeFilter.text());
+
+        return (root, query, criteriaBuilder) -> {
+            var predicates = new ArrayList<Predicate>();
+
+            if (!text.isEmpty()) {
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + text + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("contactName")), "%" + text + "%")));
+            }
+
+            if (safeFilter.active() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("active"), safeFilter.active()));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private String normalizeSearch(String value) {

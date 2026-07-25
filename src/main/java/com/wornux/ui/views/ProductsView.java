@@ -9,6 +9,8 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridSortOrder;
+import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
@@ -22,11 +24,14 @@ import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.signals.Signal;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.wornux.catalog.Category;
 import com.wornux.catalog.Product;
 import com.wornux.catalog.ProductException;
@@ -58,6 +63,21 @@ public class ProductsView extends Main {
     private final ComboBox<Supplier> supplierFilter = new ComboBox<>("Supplier");
     private final ComboBox<String> activeFilter = new ComboBox<>("Status");
     private final Checkbox lowStockFilter = new Checkbox("Low stock");
+    private final ValueSignal<String> searchSignal = new ValueSignal<>("");
+    private final ValueSignal<Category> categoryFilterSignal = new ValueSignal<>(null);
+    private final ValueSignal<Supplier> supplierFilterSignal = new ValueSignal<>(null);
+    private final ValueSignal<String> activeStatusSignal = new ValueSignal<>("Active");
+    private final ValueSignal<Boolean> lowStockSignal = new ValueSignal<>(false);
+    private final Signal<ProductFilter> filterSignal = Signal.computed(() -> new ProductFilter(
+            searchSignal.get(),
+            categoryFilterSignal.get() == null
+                    ? null
+                    : categoryFilterSignal.get().getId(),
+            supplierFilterSignal.get() == null
+                    ? null
+                    : supplierFilterSignal.get().getId(),
+            activeFilterValue(activeStatusSignal.get()),
+            lowStockSignal.get()));
     private final Dialog sidebar = new Dialog();
     private final Dialog deleteDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
@@ -79,21 +99,23 @@ public class ProductsView extends Main {
     private List<Category> categories = new ArrayList<>();
     private List<Supplier> suppliers = new ArrayList<>();
     private Product selectedProduct;
+    private GridLazyDataView<Product> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
 
     public ProductsView(ProductService productService) {
         this.productService = productService;
+        setSizeFull();
         addClassName("products-view");
         categories = productService.activeCategories();
         suppliers = productService.activeSuppliers();
         configureFilters();
         configureGrid();
+        gridDataView = PageableGridBinding.bind(grid, filterSignal, productService::search);
         configureSidebar();
         configureDialogs();
 
         add(buildHeader(), buildToolbar(), grid);
-        refreshGrid();
     }
 
     private Component buildHeader() {
@@ -126,46 +148,45 @@ public class ProductsView extends Main {
     private void configureFilters() {
         search.setPlaceholder("Search SKU or name");
         search.setClearButtonVisible(true);
-        search.setValueChangeMode(ValueChangeMode.EAGER);
-        search.addValueChangeListener(event -> refreshGrid());
+        search.setValueChangeMode(ValueChangeMode.LAZY);
+        search.bindValue(searchSignal, searchSignal::set);
 
         categoryFilter.setItems(categories);
         categoryFilter.setItemLabelGenerator(Category::getName);
         categoryFilter.setClearButtonVisible(true);
-        categoryFilter.addValueChangeListener(event -> refreshGrid());
+        categoryFilter.bindValue(categoryFilterSignal, categoryFilterSignal::set);
 
         supplierFilter.setItems(suppliers);
         supplierFilter.setItemLabelGenerator(Supplier::getName);
         supplierFilter.setClearButtonVisible(true);
-        supplierFilter.addValueChangeListener(event -> refreshGrid());
+        supplierFilter.bindValue(supplierFilterSignal, supplierFilterSignal::set);
 
         activeFilter.setItems("Active", "Inactive", "All");
-        activeFilter.setValue("Active");
         activeFilter.setClearButtonVisible(false);
-        activeFilter.addValueChangeListener(event -> refreshGrid());
+        activeFilter.bindValue(activeStatusSignal, activeStatusSignal::set);
 
-        lowStockFilter.addValueChangeListener(event -> refreshGrid());
+        lowStockFilter.bindValue(lowStockSignal, lowStockSignal::set);
     }
 
     private void configureGrid() {
         grid.addClassName("products-grid");
         grid.setSizeFull();
-        grid.addColumn(productRenderer())
+        var productColumn = grid.addColumn(productRenderer())
                 .setHeader("Product")
-                .setSortable(true)
+                .setSortProperty("sku", "id")
                 .setAutoWidth(true)
                 .setFlexGrow(2);
         grid.addColumn(product -> product.getCategory().getName())
                 .setHeader("Category")
-                .setSortable(true);
+                .setSortProperty("category.name", "id");
         grid.addColumn(product -> product.getSupplier() == null
                         ? "None"
                         : product.getSupplier().getName())
                 .setHeader("Supplier")
-                .setSortable(true);
-        grid.addColumn(Product::getUnitPrice).setHeader("Unit Price").setSortable(true);
-        grid.addColumn(Product::getQuantityOnHand).setHeader("Quantity").setSortable(true);
-        grid.addColumn(Product::getMinimumStock).setHeader("Minimum").setSortable(true);
+                .setSortProperty("supplier.name", "id");
+        grid.addColumn(Product::getUnitPrice).setHeader("Unit Price").setSortProperty("unitPrice", "id");
+        grid.addColumn(Product::getQuantityOnHand).setHeader("Quantity").setSortProperty("quantityOnHand", "id");
+        grid.addColumn(Product::getMinimumStock).setHeader("Minimum").setSortProperty("minimumStock", "id");
         grid.addColumn(new ComponentRenderer<>(this::stockStatusBadge))
                 .setHeader("Stock Status")
                 .setAutoWidth(true);
@@ -176,6 +197,7 @@ public class ProductsView extends Main {
                 .setHeader("Actions")
                 .setAutoWidth(true);
         grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.sort(List.of(new GridSortOrder<>(productColumn, SortDirection.ASCENDING)));
     }
 
     private LitRenderer<Product> productRenderer() {
@@ -477,24 +499,15 @@ public class ProductsView extends Main {
     }
 
     private void refreshGrid() {
-        grid.setItems(productService.search(new ProductFilter(
-                search.getValue(),
-                categoryFilter.getValue() == null
-                        ? null
-                        : categoryFilter.getValue().getId(),
-                supplierFilter.getValue() == null
-                        ? null
-                        : supplierFilter.getValue().getId(),
-                activeFilterValue(),
-                lowStockFilter.getValue())));
+        gridDataView.refreshAll();
     }
 
-    private Boolean activeFilterValue() {
-        if ("Active".equals(activeFilter.getValue())) {
+    private Boolean activeFilterValue(String value) {
+        if ("Active".equals(value)) {
             return true;
         }
 
-        if ("Inactive".equals(activeFilter.getValue())) {
+        if ("Inactive".equals(value)) {
             return false;
         }
 

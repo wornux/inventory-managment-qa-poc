@@ -9,6 +9,8 @@ import com.vaadin.flow.component.combobox.ComboBox;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
+import com.vaadin.flow.component.grid.GridSortOrder;
+import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
@@ -20,17 +22,21 @@ import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
+import com.vaadin.flow.data.provider.SortDirection;
 import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.signals.Signal;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.wornux.catalog.Supplier;
 import com.wornux.catalog.SupplierException;
 import com.wornux.catalog.SupplierFilter;
 import com.wornux.catalog.SupplierRequest;
 import com.wornux.catalog.SupplierService;
 import jakarta.annotation.security.PermitAll;
+import java.util.List;
 import org.springframework.security.access.AccessDeniedException;
 
 @Route("suppliers")
@@ -48,6 +54,10 @@ public class SuppliersView extends Main {
     private final Grid<Supplier> grid = new Grid<>(Supplier.class, false);
     private final TextField search = new TextField();
     private final ComboBox<String> activeFilter = new ComboBox<>("Status");
+    private final ValueSignal<String> searchSignal = new ValueSignal<>("");
+    private final ValueSignal<String> activeStatusSignal = new ValueSignal<>("Active");
+    private final Signal<SupplierFilter> filterSignal =
+            Signal.computed(() -> new SupplierFilter(searchSignal.get(), activeFilterValue(activeStatusSignal.get())));
     private final Dialog sidebar = new Dialog();
     private final Dialog deactivateDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
@@ -66,19 +76,21 @@ public class SuppliersView extends Main {
     private final H1 deactivateTitle = new H1("Deactivate this supplier?");
     private final Span deactivateText = new Span();
     private Supplier selectedSupplier;
+    private GridLazyDataView<Supplier> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
 
     public SuppliersView(SupplierService supplierService) {
         this.supplierService = supplierService;
+        setSizeFull();
         addClassName("products-view");
         configureFilters();
         configureGrid();
+        gridDataView = PageableGridBinding.bind(grid, filterSignal, supplierService::search);
         configureSidebar();
         configureDialogs();
 
         add(buildHeader(), buildToolbar(), grid);
-        refreshGrid();
     }
 
     private Component buildHeader() {
@@ -111,25 +123,25 @@ public class SuppliersView extends Main {
     private void configureFilters() {
         search.setPlaceholder("Search supplier or contact");
         search.setClearButtonVisible(true);
-        search.setValueChangeMode(ValueChangeMode.EAGER);
-        search.addValueChangeListener(event -> refreshGrid());
+        search.setValueChangeMode(ValueChangeMode.LAZY);
+        search.bindValue(searchSignal, searchSignal::set);
 
         activeFilter.setItems("Active", "Inactive", "All");
-        activeFilter.setValue("Active");
         activeFilter.setClearButtonVisible(false);
-        activeFilter.addValueChangeListener(event -> refreshGrid());
+        activeFilter.bindValue(activeStatusSignal, activeStatusSignal::set);
     }
 
     private void configureGrid() {
         grid.addClassName("products-grid");
         grid.setSizeFull();
-        grid.addColumn(supplierRenderer())
+        var supplierColumn = grid.addColumn(supplierRenderer())
                 .setHeader("Supplier")
-                .setSortable(true)
+                .setSortProperty("name", "id")
                 .setAutoWidth(true)
                 .setFlexGrow(2);
         grid.addColumn(contactRenderer())
                 .setHeader("Contact")
+                .setSortProperty("contactName", "email", "id")
                 .setAutoWidth(true)
                 .setFlexGrow(2);
         grid.addColumn(new ComponentRenderer<>(this::activeBadge))
@@ -137,12 +149,12 @@ public class SuppliersView extends Main {
                 .setAutoWidth(true);
         grid.addColumn(supplier -> supplierService.productCount(supplier.getId()))
                 .setHeader("Product Count")
-                .setSortable(true)
                 .setAutoWidth(true);
         grid.addColumn(new ComponentRenderer<>(this::actions))
                 .setHeader("Actions")
                 .setAutoWidth(true);
         grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.sort(List.of(new GridSortOrder<>(supplierColumn, SortDirection.ASCENDING)));
     }
 
     private LitRenderer<Supplier> supplierRenderer() {
@@ -414,15 +426,15 @@ public class SuppliersView extends Main {
     }
 
     private void refreshGrid() {
-        grid.setItems(supplierService.search(new SupplierFilter(search.getValue(), activeFilterValue())));
+        gridDataView.refreshAll();
     }
 
-    private Boolean activeFilterValue() {
-        if ("Active".equals(activeFilter.getValue())) {
+    private Boolean activeFilterValue(String value) {
+        if ("Active".equals(value)) {
             return true;
         }
 
-        if ("Inactive".equals(activeFilter.getValue())) {
+        if ("Inactive".equals(value)) {
             return false;
         }
 
