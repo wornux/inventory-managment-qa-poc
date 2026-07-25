@@ -7,7 +7,6 @@ import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.details.Details;
-import com.vaadin.flow.component.details.DetailsVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.SvgIcon;
@@ -217,7 +216,10 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
             identity.add(email);
         }
 
-        var summary = new Div(avatar, identity);
+        var chevron = new SvgIcon("/icons/chevron.svg");
+        chevron.addClassName("profile-drawer-card__chevron");
+
+        var summary = new Div(avatar, identity, chevron);
         summary.addClassName("profile-drawer-card__summary");
 
         var logout = new Button("Sign out", VaadinIcon.SIGN_OUT.create(), event -> authenticationContext.logout());
@@ -225,7 +227,6 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         logout.addClassName("profile-drawer-card__logout");
 
         var details = new Details(summary, logout);
-        details.addThemeVariants(DetailsVariant.REVERSE);
         details.addClassName("profile-drawer-card");
 
         return details;
@@ -241,7 +242,8 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         Object principal = authentication.getPrincipal();
 
         if (principal instanceof OidcUser oidcUser) {
-            String username = firstNonBlank(oidcUser.getClaimAsString("preferred_username"), oidcUser.getName(), "User");
+            String username =
+                    firstNonBlank(oidcUser.getClaimAsString("preferred_username"), oidcUser.getName(), "User");
             String displayName = firstNonBlank(oidcUser.getClaimAsString("name"), username);
 
             return new UserProfile(displayName, firstNonBlank(oidcUser.getEmail(), ""));

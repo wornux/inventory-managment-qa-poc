@@ -155,7 +155,9 @@ body {
 vaadin-details.profile-drawer-card {
   background: var(--aura-surface-color);
   box-sizing: border-box;
+  display: flex;
   flex: none;
+  flex-direction: column-reverse;
   margin-top: auto;
   padding: var(--vaadin-padding-s) var(--vaadin-padding-s) var(--vaadin-padding-xs);
   position: relative;
@@ -172,18 +174,18 @@ vaadin-details.profile-drawer-card::before {
   top: 0;
 }
 
-vaadin-details.profile-drawer-card::part(summary) {
+vaadin-details.profile-drawer-card > vaadin-details-summary {
   border-radius: var(--vaadin-radius-m);
   padding: var(--vaadin-padding-s);
   transition: background-color 150ms ease;
 }
 
-vaadin-details.profile-drawer-card::part(summary):hover {
+vaadin-details.profile-drawer-card > vaadin-details-summary:hover {
   background: var(--vaadin-background-container-strong);
 }
 
-vaadin-details.profile-drawer-card::part(toggle) {
-  color: var(--vaadin-text-color-secondary);
+vaadin-details.profile-drawer-card > vaadin-details-summary::part(toggle) {
+  display: none;
 }
 
 vaadin-details.profile-drawer-card::part(content) {
@@ -194,7 +196,7 @@ vaadin-details.profile-drawer-card::part(content) {
   align-items: center;
   display: grid;
   gap: var(--vaadin-gap-s);
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   min-width: 0;
   width: 100%;
 }
@@ -227,6 +229,17 @@ vaadin-details.profile-drawer-card::part(content) {
 .profile-drawer-card__email {
   color: var(--vaadin-text-color-secondary);
   font-size: var(--aura-font-size-xs);
+}
+
+.profile-drawer-card__chevron {
+  color: var(--vaadin-text-color-secondary);
+  height: 1.18rem;
+  transition: transform 180ms cubic-bezier(0.25, 1, 0.5, 1);
+  width: 1.18rem;
+}
+
+vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
+  transform: rotate(180deg);
 }
 
 .profile-drawer-card__logout {
@@ -688,7 +701,8 @@ vaadin-details.profile-drawer-card::part(content) {
 @media (prefers-reduced-motion: reduce) {
 
   .main-layout-brand-mark,
-  .main-layout-brand-controls {
+  .main-layout-brand-controls,
+  .profile-drawer-card__chevron {
     transition: none;
   }
 }
