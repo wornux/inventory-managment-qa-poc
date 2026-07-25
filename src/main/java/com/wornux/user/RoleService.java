@@ -2,7 +2,9 @@ package com.wornux.user;
 
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
+import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
@@ -12,6 +14,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -20,6 +24,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class RoleService {
 
+    private static final Sort ROLE_ORDER = Sort.by("code");
     private final RoleRepository roleRepository;
     private final AppUserRepository appUserRepository;
     private final AuthorizationService authorizationService;
@@ -36,9 +41,8 @@ public class RoleService {
     @Transactional(readOnly = true)
     public List<Role> search(RoleFilter filter) {
         authorizationService.check(AppPermission.ROLE_VIEW);
-        RoleFilter safeFilter = filter == null ? new RoleFilter("", null, null) : filter;
 
-        return roleRepository.search(normalizeSearch(safeFilter.text()), safeFilter.systemRole(), safeFilter.active());
+        return roleRepository.findAll(toSpecification(filter), ROLE_ORDER);
     }
 
     @Transactional(readOnly = true)
@@ -169,6 +173,31 @@ public class RoleService {
         }
 
         return new LinkedHashSet<>(requested);
+    }
+
+    private Specification<Role> toSpecification(RoleFilter filter) {
+        RoleFilter safeFilter = filter == null ? new RoleFilter("", null, null) : filter;
+        String text = normalizeSearch(safeFilter.text());
+
+        return (root, query, criteriaBuilder) -> {
+            var predicates = new ArrayList<Predicate>();
+
+            if (!text.isEmpty()) {
+                predicates.add(criteriaBuilder.or(
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("code")), "%" + text + "%"),
+                        criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + text + "%")));
+            }
+
+            if (safeFilter.systemRole() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("systemRole"), safeFilter.systemRole()));
+            }
+
+            if (safeFilter.active() != null) {
+                predicates.add(criteriaBuilder.equal(root.get("active"), safeFilter.active()));
+            }
+
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private String normalizeSearch(String value) {

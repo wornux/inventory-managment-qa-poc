@@ -22,6 +22,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -106,12 +108,9 @@ class RoleServiceTest {
     @Test
     void reads_coverFiltersCountsMembersAndMissingRole() {
         RoleService service = directService();
-        when(roleRepository.search("query", true, false)).thenReturn(List.of());
+        when(roleRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of());
 
         assertThat(service.search(new RoleFilter(" QUERY ", true, false))).isEmpty();
-
-        when(roleRepository.search("", null, null)).thenReturn(List.of());
-
         assertThat(service.search(null)).isEmpty();
         assertThat(service.search(new RoleFilter(null, null, null))).isEmpty();
 

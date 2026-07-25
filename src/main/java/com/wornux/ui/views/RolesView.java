@@ -30,6 +30,8 @@ import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
+import com.vaadin.flow.signals.Signal;
+import com.vaadin.flow.signals.local.ValueSignal;
 import com.wornux.security.permission.AppPermission;
 import com.wornux.security.permission.AppResource;
 import com.wornux.user.AppUser;
@@ -65,6 +67,11 @@ public class RolesView extends Div {
     private final TextField roleSearch = new TextField();
     private final ComboBox<String> typeFilter = new ComboBox<>();
     private final ComboBox<String> activeFilter = new ComboBox<>();
+    private final ValueSignal<String> searchSignal = new ValueSignal<>("");
+    private final ValueSignal<String> typeSignal = new ValueSignal<>("All types");
+    private final ValueSignal<String> activeStatusSignal = new ValueSignal<>("Active");
+    private final Signal<RoleFilter> filterSignal = Signal.computed(() -> new RoleFilter(
+            searchSignal.get(), typeFilterValue(typeSignal.get()), activeFilterValue(activeStatusSignal.get())));
     private final Grid<Role> roleGrid = new Grid<>(Role.class, false);
     private final VerticalLayout roleHeader = new VerticalLayout();
     private final Div tabContent = new Div();
@@ -91,15 +98,19 @@ public class RolesView extends Div {
 
     public RolesView(RoleService roleService) {
         this.roleService = roleService;
+        setSizeFull();
         addClassName("role-management-view");
         availablePermissions = roleService.assignablePermissions();
         configureFilters();
         configureRoleList();
+        Signal.effect(roleGrid, () -> {
+            filterSignal.get();
+            refreshRoleList();
+        });
         configureTabs();
         configureSidebar();
         configureDirtyDialog();
         add(createHeader(), createWorkspace());
-        refreshRoleList();
     }
 
     private Component createHeader() {
@@ -163,19 +174,17 @@ public class RolesView extends Div {
         roleSearch.setClearButtonVisible(true);
         roleSearch.setValueChangeMode(ValueChangeMode.LAZY);
         roleSearch.setWidthFull();
-        roleSearch.addValueChangeListener(event -> refreshRoleList());
+        roleSearch.bindValue(searchSignal, searchSignal::set);
 
         typeFilter.setAriaLabel("Filter by role type");
         typeFilter.setItems("All types", "System", "Custom");
-        typeFilter.setValue("All types");
         typeFilter.setWidthFull();
-        typeFilter.addValueChangeListener(event -> refreshRoleList());
+        typeFilter.bindValue(typeSignal, typeSignal::set);
 
         activeFilter.setAriaLabel("Filter by role status");
         activeFilter.setItems("Active", "Inactive", "All statuses");
-        activeFilter.setValue("Active");
         activeFilter.setWidthFull();
-        activeFilter.addValueChangeListener(event -> refreshRoleList());
+        activeFilter.bindValue(activeStatusSignal, activeStatusSignal::set);
     }
 
     private void configureRoleList() {
@@ -196,12 +205,10 @@ public class RolesView extends Div {
                     <span class="role-management-role-entry-icon" aria-hidden="true"></span>
                     <span class="role-management-role-entry-copy">
                         <span class="role-management-role-entry-name">${item.name}</span>
-                        <span class="role-management-role-entry-code">${item.code}</span>
                     </span>
                 </button>
                 """)
                 .withProperty("name", Role::getName)
-                .withProperty("code", Role::getCode)
                 .withProperty("selected", role -> Objects.equals(role.getId(), selectedRoleId) ? "is-selected" : "")
                 .withProperty("pressed", role -> Objects.equals(role.getId(), selectedRoleId))
                 .withFunction("selectRole", this::selectRole);
@@ -226,8 +233,7 @@ public class RolesView extends Div {
     }
 
     private void refreshRoleList() {
-        visibleRoles =
-                roleService.search(new RoleFilter(roleSearch.getValue(), typeFilterValue(), activeFilterValue()));
+        visibleRoles = roleService.search(filterSignal.peek());
         roleMemberCounts =
                 roleService.userCounts(visibleRoles.stream().map(Role::getId).toList());
         selectedRoleId = visibleRoles.stream()
@@ -243,7 +249,7 @@ public class RolesView extends Div {
 
     private void selectRole(Role role) {
         selectedRoleId = role.getId();
-        roleGrid.setItems(visibleRoles);
+        roleGrid.getDataProvider().refreshAll();
         renderSelectedRole();
     }
 
@@ -649,24 +655,24 @@ public class RolesView extends Div {
         sidebar.close();
     }
 
-    private Boolean typeFilterValue() {
-        if ("System".equals(typeFilter.getValue())) {
+    private Boolean typeFilterValue(String value) {
+        if ("System".equals(value)) {
             return true;
         }
 
-        if ("Custom".equals(typeFilter.getValue())) {
+        if ("Custom".equals(value)) {
             return false;
         }
 
         return null;
     }
 
-    private Boolean activeFilterValue() {
-        if ("Active".equals(activeFilter.getValue())) {
+    private Boolean activeFilterValue(String value) {
+        if ("Active".equals(value)) {
             return true;
         }
 
-        if ("Inactive".equals(activeFilter.getValue())) {
+        if ("Inactive".equals(value)) {
             return false;
         }
 

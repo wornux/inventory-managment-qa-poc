@@ -3,26 +3,13 @@ package com.wornux.user;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-public interface RoleRepository extends JpaRepository<Role, Long> {
+public interface RoleRepository extends JpaRepository<Role, Long>, JpaSpecificationExecutor<Role> {
 
     Optional<Role> findByCode(String code);
 
     boolean existsByCodeIgnoreCase(String code);
 
     List<Role> findByActiveTrueOrderByNameAsc();
-
-    @Query("""
-            select role
-            from Role role
-            where (:text = '' or lower(role.code) like lower(concat('%', :text, '%'))
-                    or lower(role.name) like lower(concat('%', :text, '%')))
-                and (:systemRole is null or role.systemRole = :systemRole)
-                and (:active is null or role.active = :active)
-            order by role.code
-            """)
-    List<Role> search(
-            @Param("text") String text, @Param("systemRole") Boolean systemRole, @Param("active") Boolean active);
 }
