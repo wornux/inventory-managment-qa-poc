@@ -1,14 +1,13 @@
 package com.wornux.catalog;
 
+import com.wornux.security.authorization.AuthorizationService;
+import com.wornux.security.permission.AppPermission;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -17,24 +16,23 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class ProductService {
 
-    private static final String VIEWER = "ROLE_INVENTORY_VIEWER";
-    private static final String MANAGER = "ROLE_INVENTORY_MANAGER";
-    private static final String ADMINISTRATOR = "ROLE_SYSTEM_ADMINISTRATOR";
-
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final SupplierRepository supplierRepository;
     private final StockMovementRepository stockMovementRepository;
+    private final AuthorizationService authorizationService;
 
     public ProductService(
             ProductRepository productRepository,
             CategoryRepository categoryRepository,
             SupplierRepository supplierRepository,
-            StockMovementRepository stockMovementRepository) {
+            StockMovementRepository stockMovementRepository,
+            AuthorizationService authorizationService) {
         this.productRepository = productRepository;
         this.categoryRepository = categoryRepository;
         this.supplierRepository = supplierRepository;
         this.stockMovementRepository = stockMovementRepository;
+        this.authorizationService = authorizationService;
     }
 
     @Transactional(readOnly = true)
@@ -71,7 +69,7 @@ public class ProductService {
 
     @Transactional
     public Product create(@Valid ProductRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.PRODUCT_CREATE);
         validateUniqueSku(request.getSku(), null);
         validateUniqueActiveName(request.getName(), null);
         Category category = requireCategory(request.getCategoryId());
@@ -91,7 +89,7 @@ public class ProductService {
 
     @Transactional
     public Product update(Long id, @Valid ProductRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.PRODUCT_UPDATE);
         Product product = productRepository.findWithCategoryAndSupplierById(id)
                 .orElseThrow(() -> new ProductException("Product was not found."));
         if (!Objects.equals(product.getVersion(), request.getVersion())) {
@@ -114,7 +112,7 @@ public class ProductService {
 
     @Transactional
     public void delete(Long id) {
-        requireManage();
+        authorizationService.check(AppPermission.PRODUCT_DELETE);
         Product product = productRepository.findWithCategoryAndSupplierById(id)
                 .orElseThrow(() -> new ProductException("Product was not found."));
         if (stockMovementRepository.existsByProductId(id)) {
@@ -137,28 +135,20 @@ public class ProductService {
         return supplierRepository.findByActiveTrueOrderByNameAsc();
     }
 
-    public boolean canManageProducts() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return hasAuthority(authentication, MANAGER) || hasAuthority(authentication, ADMINISTRATOR);
+    public boolean canCreateProducts() {
+        return authorizationService.can(AppPermission.PRODUCT_CREATE);
+    }
+
+    public boolean canUpdateProducts() {
+        return authorizationService.can(AppPermission.PRODUCT_UPDATE);
+    }
+
+    public boolean canDeleteProducts() {
+        return authorizationService.can(AppPermission.PRODUCT_DELETE);
     }
 
     private void requireRead() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!hasAuthority(authentication, VIEWER) && !hasAuthority(authentication, MANAGER)
-                && !hasAuthority(authentication, ADMINISTRATOR)) {
-            throw new AccessDeniedException("PRODUCT:READ permission is required.");
-        }
-    }
-
-    private void requireManage() {
-        if (!canManageProducts()) {
-            throw new AccessDeniedException("PRODUCT:CREATE/UPDATE/DELETE permission is required.");
-        }
-    }
-
-    private boolean hasAuthority(Authentication authentication, String authority) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(grantedAuthority -> authority.equals(grantedAuthority.getAuthority()));
+        authorizationService.check(AppPermission.PRODUCT_VIEW);
     }
 
     private void validateUniqueSku(String sku, Long id) {

@@ -20,7 +20,7 @@
 
 ## Preconditions
 
-- User is logged in and has PRODUCT:READ permission
+- User is logged in and has PRODUCT:VIEW permission
 - User has PRODUCT:CREATE permission to create, PRODUCT:UPDATE to edit, PRODUCT:DELETE to delete
 - Products table exists in the database
 
@@ -201,5 +201,5 @@ User navigates to the Products view from the main navigation menu.
 
 | Page | Access |
 |------|--------|
-| Product List | Authenticated (PRODUCT:READ) |
+| Product List | Authenticated (PRODUCT:VIEW) |
 | Create/Edit/View Product | Authenticated (PRODUCT:CREATE/UPDATE) |

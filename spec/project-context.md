@@ -14,13 +14,13 @@ Build a comprehensive inventory management web application that enables organiza
 
 **Inventory Viewer:** Read-only user with visibility into all inventory data, useful for reporting and analysis roles. Cannot modify any data.
 
-**System Administrator:** Technical admin who manages user accounts, roles, permissions, resources, and actions. Can perform all administrative functions.
+**System Administrator:** Technical admin who manages user accounts, global roles, and their fixed application permission assignments. Can perform all administrative functions.
 
 ## 3. Constraints
 
 - Platform: Web application using Vaadin Flow (server-side Java UI) and Spring Boot
 - Database: PostgreSQL with Flyway migrations configured from the start
-- Architecture: Single-tenant application, no multi-tenant modeling
+- Architecture: Single-context application with global user-role assignments; no tenant, namespace, or assignment-level modeling
 - Deployment: Docker containers for local development and testing
 - Authentication: Spring Security with database-backed user accounts and role-based access control
 - Data Integrity: Append-only stock movement ledger; stock adjustments are immutable

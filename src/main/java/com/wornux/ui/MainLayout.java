@@ -21,10 +21,10 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.spring.security.AuthenticationContext;
+import com.wornux.security.permission.AppPermission;
 import com.wornux.ui.security.UiAccessService;
 import com.wornux.ui.views.CategoriesView;
 import com.wornux.ui.views.ForbiddenView;
-import com.wornux.ui.views.PermissionsView;
 import com.wornux.ui.views.ProductsView;
 import com.wornux.ui.views.RolesView;
 import com.wornux.ui.views.StockMovementsView;
@@ -42,16 +42,15 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 @PermitAll
 public class MainLayout extends AppLayout implements BeforeEnterObserver {
 
-    private static final Map<Class<? extends Component>, String> ROUTE_RESOURCES = new LinkedHashMap<>();
+    private static final Map<Class<? extends Component>, AppPermission> ROUTE_PERMISSIONS = new LinkedHashMap<>();
 
     static {
-        ROUTE_RESOURCES.put(ProductsView.class, "PRODUCT");
-        ROUTE_RESOURCES.put(CategoriesView.class, "CATEGORY");
-        ROUTE_RESOURCES.put(SuppliersView.class, "SUPPLIER");
-        ROUTE_RESOURCES.put(StockMovementsView.class, "STOCK_MOVEMENT");
-        ROUTE_RESOURCES.put(UsersView.class, "USER");
-        ROUTE_RESOURCES.put(RolesView.class, "ROLE");
-        ROUTE_RESOURCES.put(PermissionsView.class, "PERMISSION");
+        ROUTE_PERMISSIONS.put(ProductsView.class, AppPermission.PRODUCT_VIEW);
+        ROUTE_PERMISSIONS.put(CategoriesView.class, AppPermission.CATEGORY_VIEW);
+        ROUTE_PERMISSIONS.put(SuppliersView.class, AppPermission.SUPPLIER_VIEW);
+        ROUTE_PERMISSIONS.put(StockMovementsView.class, AppPermission.STOCK_MOVEMENT_VIEW);
+        ROUTE_PERMISSIONS.put(UsersView.class, AppPermission.USER_VIEW);
+        ROUTE_PERMISSIONS.put(RolesView.class, AppPermission.ROLE_VIEW);
     }
 
     private final transient AuthenticationContext authenticationContext;
@@ -69,8 +68,8 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
 
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
-        String resourceCode = ROUTE_RESOURCES.get(event.getNavigationTarget());
-        if (resourceCode != null && !accessService.canRead(resourceCode)) {
+        AppPermission permission = ROUTE_PERMISSIONS.get(event.getNavigationTarget());
+        if (permission != null && !accessService.canRead(permission)) {
             event.rerouteTo(ForbiddenView.class);
         }
     }
@@ -133,20 +132,19 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
 
         var inventory = section("Inventory");
         boolean hasInventory = false;
-        hasInventory |= addIfAllowed(inventory, "Products", "products", VaadinIcon.PACKAGE, "PRODUCT");
-        hasInventory |= addIfAllowed(inventory, "Categories", "categories", VaadinIcon.TAGS, "CATEGORY");
-        hasInventory |= addIfAllowed(inventory, "Suppliers", "suppliers", VaadinIcon.TRUCK, "SUPPLIER");
+        hasInventory |= addIfAllowed(inventory, "Products", "products", VaadinIcon.PACKAGE, AppPermission.PRODUCT_VIEW);
+        hasInventory |= addIfAllowed(inventory, "Categories", "categories", VaadinIcon.TAGS, AppPermission.CATEGORY_VIEW);
+        hasInventory |= addIfAllowed(inventory, "Suppliers", "suppliers", VaadinIcon.TRUCK, AppPermission.SUPPLIER_VIEW);
         hasInventory |= addIfAllowed(
-                inventory, "Stock Movements", "stock-movements", VaadinIcon.EXCHANGE, "STOCK_MOVEMENT");
+                inventory, "Stock Movements", "stock-movements", VaadinIcon.EXCHANGE, AppPermission.STOCK_MOVEMENT_VIEW);
         if (hasInventory) {
             wrapper.add(inventory);
         }
 
         var administration = section("Administration");
         boolean hasAdministration = false;
-        hasAdministration |= addIfAllowed(administration, "Users", "users", VaadinIcon.USERS, "USER");
-        hasAdministration |= addIfAllowed(administration, "Roles", "roles", VaadinIcon.KEY, "ROLE");
-        hasAdministration |= addIfAllowed(administration, "Permissions", "permissions", VaadinIcon.LOCK, "PERMISSION");
+        hasAdministration |= addIfAllowed(administration, "Users", "users", VaadinIcon.USERS, AppPermission.USER_VIEW);
+        hasAdministration |= addIfAllowed(administration, "Roles", "roles", VaadinIcon.KEY, AppPermission.ROLE_VIEW);
         if (hasAdministration) {
             wrapper.add(administration);
         }
@@ -171,8 +169,8 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
             String label,
             String path,
             VaadinIcon icon,
-            String resourceCode) {
-        if (accessService.canRead(resourceCode)) {
+            AppPermission permission) {
+        if (accessService.canRead(permission)) {
             nav.addItem(navItem(label, path, icon));
             return true;
         }

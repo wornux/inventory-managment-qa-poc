@@ -31,7 +31,7 @@ public class HomeView extends Main {
 
         add(hero, pendingCard("Catalog", "Products, categories, and suppliers are available from the drawer."),
                 pendingCard("Operations", "Stock movement activity will surface here after dashboard metrics are defined."),
-                pendingCard("Administration", "User, role, and permission management appears for authorized administrators."));
+                pendingCard("Administration", "User and role management appears for authorized administrators."));
     }
 
     private Div pendingCard(String title, String text) {

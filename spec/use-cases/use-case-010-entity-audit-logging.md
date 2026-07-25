@@ -100,7 +100,7 @@ Developer implements UC-010 and the application starts with validated JPA schema
 | BR-03 | Revision metadata must include modifier user and IP address. |
 | BR-04 | Missing authenticated user must resolve to `ANONYMOUS`. |
 | BR-05 | Live audited entities must use `createdBy`, `createdDate`, `lastModifiedBy`, and `lastModifiedDate`. |
-| BR-06 | All domain entities must be audited: users, roles, permissions, resources, actions, categories, suppliers, products, and stock movements. |
+| BR-06 | All persisted domain entities must be audited: users, roles, categories, suppliers, products, and stock movements. Fixed permission enums are not persisted entities. |
 | BR-07 | Audited relationship tables must be created where Envers tracks many-to-many assignments. |
 
 ---

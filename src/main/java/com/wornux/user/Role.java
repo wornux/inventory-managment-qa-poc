@@ -1,20 +1,21 @@
 package com.wornux.user;
 
 import com.wornux.audit.Auditable;
+import com.wornux.security.permission.AppPermission;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.JoinTable;
-import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.envers.Audited;
+import org.hibernate.type.SqlTypes;
 
 @Entity
 @Table(name = "role")
@@ -42,20 +43,15 @@ public class Role extends Auditable {
     @Version
     private Long version;
 
-    @ManyToMany
-    @JoinTable(
-            name = "role_permission",
-            joinColumns = @JoinColumn(name = "role_id"),
-            inverseJoinColumns = @JoinColumn(name = "permission_id"))
-    private Set<Permission> permissions = new LinkedHashSet<>();
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(nullable = false, columnDefinition = "text[]")
+    private String[] permissions = new String[0];
 
     protected Role() {
     }
 
     public Role(String code, String name, String description) {
-        this.code = code;
-        this.name = name;
-        this.description = description;
+        this(code, name, description, true);
     }
 
     public Role(String code, String name, String description, boolean systemRole) {
@@ -93,8 +89,13 @@ public class Role extends Auditable {
         return version;
     }
 
-    public Set<Permission> getPermissions() {
-        return permissions;
+    public Set<AppPermission> getPermissions() {
+        var result = new LinkedHashSet<AppPermission>();
+        Arrays.stream(permissions)
+                .map(AppPermission::fromCode)
+                .flatMap(java.util.Optional::stream)
+                .forEach(result::add);
+        return result;
     }
 
     public Instant getCreatedAt() {
@@ -105,12 +106,11 @@ public class Role extends Auditable {
         return super.getUpdatedAt();
     }
 
-    public void update(String name, String description, boolean active, Set<Permission> permissions) {
+    public void update(String name, String description, boolean active, Set<AppPermission> permissions) {
         this.name = name;
         this.description = description;
         this.active = active;
-        this.permissions.clear();
-        this.permissions.addAll(permissions);
+        this.permissions = permissions.stream().map(AppPermission::code).toArray(String[]::new);
     }
 
     public void deactivate() {

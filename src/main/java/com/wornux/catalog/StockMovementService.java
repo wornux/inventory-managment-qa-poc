@@ -1,5 +1,7 @@
 package com.wornux.catalog;
 
+import com.wornux.security.authorization.AuthorizationService;
+import com.wornux.security.permission.AppPermission;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
 import jakarta.validation.Valid;
@@ -7,7 +9,6 @@ import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.dao.DataAccessException;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -20,22 +21,20 @@ public class StockMovementService {
 
     private static final Instant LEDGER_START = java.time.Instant.parse("1970-01-01T00:00:00Z");
     private static final Instant LEDGER_END = java.time.Instant.parse("9999-12-31T00:00:00Z");
-    private static final String VIEWER = "ROLE_INVENTORY_VIEWER";
-    private static final String OPERATOR = "ROLE_WAREHOUSE_OPERATOR";
-    private static final String MANAGER = "ROLE_INVENTORY_MANAGER";
-    private static final String ADMINISTRATOR = "ROLE_SYSTEM_ADMINISTRATOR";
-
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
     private final AppUserRepository appUserRepository;
+    private final AuthorizationService authorizationService;
 
     public StockMovementService(
             StockMovementRepository stockMovementRepository,
             ProductRepository productRepository,
-            AppUserRepository appUserRepository) {
+            AppUserRepository appUserRepository,
+            AuthorizationService authorizationService) {
         this.stockMovementRepository = stockMovementRepository;
         this.productRepository = productRepository;
         this.appUserRepository = appUserRepository;
+        this.authorizationService = authorizationService;
     }
 
     @Transactional(readOnly = true)
@@ -93,31 +92,15 @@ public class StockMovementService {
     }
 
     public boolean canCreateMovements() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return hasAuthority(authentication, OPERATOR)
-                || hasAuthority(authentication, MANAGER)
-                || hasAuthority(authentication, ADMINISTRATOR);
+        return authorizationService.can(AppPermission.STOCK_MOVEMENT_CREATE);
     }
 
     private void requireRead() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!hasAuthority(authentication, VIEWER)
-                && !hasAuthority(authentication, OPERATOR)
-                && !hasAuthority(authentication, MANAGER)
-                && !hasAuthority(authentication, ADMINISTRATOR)) {
-            throw new AccessDeniedException("STOCK_MOVEMENT:READ permission is required.");
-        }
+        authorizationService.check(AppPermission.STOCK_MOVEMENT_VIEW);
     }
 
     private void requireCreate() {
-        if (!canCreateMovements()) {
-            throw new AccessDeniedException("STOCK_MOVEMENT:CREATE permission is required.");
-        }
-    }
-
-    private boolean hasAuthority(Authentication authentication, String authority) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(grantedAuthority -> authority.equals(grantedAuthority.getAuthority()));
+        authorizationService.check(AppPermission.STOCK_MOVEMENT_CREATE);
     }
 
     private void validateQuantityDelta(MovementType movementType, Integer quantityDelta) {

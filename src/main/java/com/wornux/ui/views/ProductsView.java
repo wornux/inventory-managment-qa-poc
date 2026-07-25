@@ -112,7 +112,7 @@ public class ProductsView extends Main {
 
         Button newProduct = new Button("New Product", event -> openCreate());
         newProduct.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newProduct.setVisible(productService.canManageProducts());
+        newProduct.setVisible(productService.canCreateProducts());
 
         toolbar.add(search, categoryFilter, supplierFilter, activeFilter, lowStockFilter, newProduct);
         toolbar.setFlexGrow(1, search);
@@ -192,11 +192,13 @@ public class ProductsView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(product));
         layout.add(view);
-        if (productService.canManageProducts()) {
-            Button edit = new Button("Edit", event -> openEdit(product));
+        if (productService.canUpdateProducts()) {
+            layout.add(new Button("Edit", event -> openEdit(product)));
+        }
+        if (productService.canDeleteProducts()) {
             Button delete = new Button("Delete", event -> confirmDelete(product));
             delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
-            layout.add(edit, delete);
+            layout.add(delete);
         }
         return layout;
     }

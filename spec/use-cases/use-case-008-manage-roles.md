@@ -1,6 +1,6 @@
 # UC-008: Manage Roles
 
-> System administrators view, create, edit, and deactivate roles with permission assignments.
+> System administrators view, create, edit, and deactivate global roles with typed permission assignments.
 
 ---
 
@@ -20,10 +20,10 @@
 
 ## Preconditions
 
-- User is logged in and has ROLE:READ permission
+- User is logged in and has ROLE:VIEW permission
 - User has ROLE:CREATE, ROLE:UPDATE, ROLE:DELETE, and ROLE:ASSIGN permissions for full management
-- Permissions exist in the database
-- Roles table exists in the database
+- Valid permissions exist in the compile-time `AppPermission` catalog
+- Roles store permission codes in the database; there are no permission records or assignment levels
 
 ---
 
@@ -52,7 +52,7 @@ User navigates to the Roles view from the main administration menu.
 10. User clicks "Save".
 11. System validates the form (see Business Rules).
 12. System checks for duplicate role code.
-13. System creates the role record with system_role=false and assigns the selected permissions.
+13. System creates the global role with `system_role=false` and stores the selected permission codes.
 14. System closes the sidebar form, refreshes the grid, and displays success notification.
 
 ### Main Flow: Edit Role
@@ -150,14 +150,14 @@ User navigates to the Roles view from the main administration menu.
 3. User reviews and resubmits if desired.
 4. Returns to Main Flow step 17.
 
-### AF-9: Permission No Longer Active
+### AF-9: Actor Attempts to Grant an Unowned Permission
 
-**Branches from:** Main Flow step 17 (Edit)
-**Condition:** A permission that was assigned to the role has been deactivated since the form was opened
+**Branches from:** Main Flow step 11 or 18
+**Condition:** The administrator selects a permission they do not possess
 
-1. System displays warning message: "One or more permissions are no longer active and have been deselected."
-2. User can reselect them or leave them deselected and save.
-3. Returns to Main Flow step 17.
+1. System rejects the save with: "You cannot assign permissions that you do not have."
+2. No role changes are persisted.
+3. User removes the unavailable permission or asks a higher-privileged administrator to make the change.
 
 ---
 
@@ -182,6 +182,10 @@ User navigates to the Roles view from the main administration menu.
 | BR-08 | New users cannot be assigned to deactivated roles |
 | BR-09 | Search filters by role code and name (case-insensitive partial match) |
 | BR-10 | Grid displays count of users assigned to each role and count of permissions |
+| BR-11 | Permission values must come from `AppPermission`; resources, actions, and permissions are not runtime CRUD records |
+| BR-12 | An administrator cannot grant a permission they do not possess |
+| BR-13 | All user-role assignments are global; role namespaces and assignment levels are not used |
+| BR-14 | Deactivated roles and users stop contributing permissions immediately, including in existing sessions |
 
 ---
 
@@ -199,8 +203,8 @@ User navigates to the Roles view from the main administration menu.
 - [x] AF-6 (no permissions selected) covered
 - [x] AF-7 (dirty state) covered
 - [x] AF-8 (concurrent edit) covered
-- [x] AF-9 (permission no longer active) covered
-- [x] BR-01 through BR-10 covered
+- [x] AF-9 (attempt to grant unowned permission) covered
+- [x] BR-01 through BR-14 covered
 
 ---
 
@@ -208,7 +212,7 @@ User navigates to the Roles view from the main administration menu.
 
 - **Role List Page:** Grid with search, filters, and action buttons.
 - **Sidebar Form:** Create/edit/view form displayed in a dismissible right-side panel.
-- **Permission Selection:** Multi-select dropdown or checkbox tree for permission selection.
+- **Permission Selection:** Multi-select dropdown populated from the fixed `AppPermission` catalog.
 - **Confirmation Dialogs:** Deactivate confirmation and dirty-state warning.
 - **Notifications:** Success and error messages displayed at top of view.
 - **System Role Badge:** Visual indicator (e.g., "System" or "Custom") using LitRenderer.
@@ -217,5 +221,5 @@ User navigates to the Roles view from the main administration menu.
 
 | Page | Access |
 |------|--------|
-| Role List | Authenticated (ROLE:READ) |
+| Role List | Authenticated (ROLE:VIEW) |
 | Create/Edit/View Role | Authenticated (ROLE:CREATE/UPDATE/ASSIGN) |

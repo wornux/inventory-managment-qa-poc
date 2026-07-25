@@ -17,10 +17,7 @@ Create a Spring Boot + Vaadin Flow application for inventory management. The app
 The main entities are:
 
 - Users
-- Roles
-- Resources
-- Actions
-- Permissions
+- Roles with fixed permission codes
 - Categories
 - Suppliers
 - Products
@@ -31,7 +28,7 @@ The application must include:
 - Login page.
 - Signup page.
 - User authentication.
-- Role and permission management.
+- Role management with fixed permission assignments.
 - CRUD screens for inventory entities.
 - PostgreSQL database.
 - Flyway migrations from the start.
@@ -302,11 +299,9 @@ Required business constraints:
 - A user must have a unique username.
 - A user must have a unique email.
 - A role must have a unique stable code.
-- A resource must have a unique stable code.
-- An action must have a unique stable code.
-- A permission must be a unique combination of resource and action.
-- A user cannot receive the same role twice.
-- A role cannot receive the same permission twice.
+- Permission codes must come from the compile-time `AppPermission` catalog.
+- A user cannot receive the same global role twice.
+- A role cannot contain the same permission code twice.
 - A category name must be unique.
 - A product SKU must be unique.
 - Product price cannot be negative.
@@ -319,7 +314,7 @@ Required business constraints:
 - Manual adjustments, damage, and loss movements must include a reason.
 - Stock movements should be append-only from the business perspective.
 - Mistakes in stock movements should be corrected by a new compensating movement, not by editing history.
-- Users, roles, products, suppliers, categories, resources, actions, and permissions should generally be deactivated instead of physically deleted when they have historical usage.
+- Users, roles, products, suppliers, and categories should generally be deactivated instead of physically deleted when they have historical usage.
 
 ## PostgreSQL and Flyway Requirements
 
@@ -688,7 +683,9 @@ create index idx_stock_movement_created_at on stock_movement(created_at);
 create index idx_stock_movement_type on stock_movement(movement_type);
 ```
 
-## V2__seed_security_data.sql
+## V2__seed_security_data.sql (Historical)
+
+The following normalized schema was the initial implementation. `V12__simplify_rbac_permissions.sql` migrates these rows into `role.permissions` and removes the runtime resource/action/permission tables.
 
 ```sql
 insert into role (code, name, description, system_role)
@@ -855,7 +852,7 @@ commit transaction
 ## Delete Policy
 
 <p>
-Use physical delete carefully. Business records that have historical references should generally be deactivated instead of deleted. This is especially important for users, products, categories, suppliers, roles, permissions, and stock movements.
+Use physical delete carefully. Business records that have historical references should generally be deactivated instead of deleted. This is especially important for users, products, categories, suppliers, roles, and stock movements.
 </p>
 
 Recommended behavior:
@@ -865,7 +862,6 @@ Recommended behavior:
 - Suppliers: delete only if unused; otherwise deactivate.
 - Users: deactivate instead of delete.
 - Roles: deactivate custom roles if no longer used.
-- Permissions: deactivate instead of delete if assigned historically.
 - Stock movements: append-only; do not allow normal delete from the UI.
 
 ## Package Organization
@@ -878,9 +874,9 @@ com.example.inventory
 ├── config
 │   └── SecurityConfig.java
 ├── security
-│   ├── AuthenticatedUser.java
 │   ├── CustomUserDetailsService.java
-│   └── PermissionChecker.java
+│   ├── authorization/AuthorizationService.java
+│   └── permission/{AppResource,AppAction,AppPermission}.java
 ├── user
 │   ├── AppUser.java
 │   ├── AppUserRepository.java
@@ -934,7 +930,6 @@ Required views:
 - `StockMovementView`
 - `UserView`
 - `RoleView`
-- `PermissionView`
 
 ## Product View Requirements
 
@@ -1135,22 +1130,25 @@ Important:
 
 ## Permission Model
 
-<p>
-Use normalized RBAC. Do not store permissions as JSON arrays inside roles. A permission is defined as a unique pair of resource and action.
-</p>
+Use single-level RBAC adapted from the Socratic Tutor implementation:
+
+- `AppResource`, `AppAction`, and `AppPermission` define the valid compile-time catalog.
+- Roles persist permission codes in a PostgreSQL `text[]`; this is not JSON.
+- Users may hold multiple global roles through `user_role`.
+- There are no role namespaces, tenant/class contexts, or assignment levels.
+- Active role permissions become Spring Security authorities at authentication for interoperability.
+- Services and Vaadin navigation authorize through the same `AuthorizationService`, which checks current database state so revocations affect existing sessions.
+- An administrator cannot grant a permission they do not possess.
 
 Examples:
 
 ```text
-PRODUCT:CREATE
-PRODUCT:READ
-PRODUCT:UPDATE
-PRODUCT:DELETE
-STOCK_MOVEMENT:CREATE
-STOCK_MOVEMENT:READ
-USER:CREATE
-ROLE:ASSIGN
-REPORT:EXPORT
+product:create
+product:view
+stock-movement:create
+stock-movement:view
+user:create
+role:assign
 ```
 
 Authorization rule:

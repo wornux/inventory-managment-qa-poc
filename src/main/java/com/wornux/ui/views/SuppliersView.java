@@ -97,7 +97,7 @@ public class SuppliersView extends Main {
 
         Button newSupplier = new Button("New Supplier", event -> openCreate());
         newSupplier.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newSupplier.setVisible(supplierService.canManageSuppliers());
+        newSupplier.setVisible(supplierService.canCreateSuppliers());
 
         toolbar.add(search, activeFilter, newSupplier);
         toolbar.setFlexGrow(1, search);
@@ -163,12 +163,13 @@ public class SuppliersView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(supplier));
         layout.add(view);
-        if (supplierService.canManageSuppliers()) {
-            Button editSupplier = new Button("Edit", event -> openEdit(supplier));
+        if (supplierService.canUpdateSuppliers()) {
+            layout.add(new Button("Edit", event -> openEdit(supplier)));
+        }
+        if (supplierService.canDeleteSuppliers() && supplier.isActive()) {
             Button deactivate = new Button("Deactivate", event -> confirmDeactivate(supplier));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
-            deactivate.setVisible(supplier.isActive());
-            layout.add(editSupplier, deactivate);
+            layout.add(deactivate);
         }
         return layout;
     }
@@ -290,7 +291,7 @@ public class SuppliersView extends Main {
         save.setVisible(false);
         cancel.setVisible(false);
         close.setVisible(true);
-        edit.setVisible(supplierService.canManageSuppliers());
+        edit.setVisible(supplierService.canUpdateSuppliers());
         dirty = false;
         sidebar.open();
     }

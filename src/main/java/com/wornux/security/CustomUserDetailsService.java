@@ -2,9 +2,7 @@ package com.wornux.security;
 
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
-import java.util.List;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import com.wornux.user.AppUserService;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -15,9 +13,11 @@ import org.springframework.stereotype.Service;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final AppUserRepository appUserRepository;
+    private final AppUserService appUserService;
 
-    public CustomUserDetailsService(AppUserRepository appUserRepository) {
+    public CustomUserDetailsService(AppUserRepository appUserRepository, AppUserService appUserService) {
         this.appUserRepository = appUserRepository;
+        this.appUserService = appUserService;
     }
 
     @Override
@@ -26,15 +26,9 @@ public class CustomUserDetailsService implements UserDetailsService {
                 .findByUsernameIgnoreCaseOrEmailIgnoreCase(usernameOrEmail, usernameOrEmail)
                 .orElseThrow(() -> new UsernameNotFoundException("Invalid username/email or password."));
 
-        List<GrantedAuthority> authorities = appUser.getRoles().stream()
-                .filter(role -> role.isActive() && role.getCode() != null)
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getCode()))
-                .map(GrantedAuthority.class::cast)
-                .toList();
-
         return User.withUsername(appUser.getUsername())
                 .password("{noop}oauth2")
-                .authorities(authorities)
+                .authorities(appUserService.authorities(appUser))
                 .disabled(!appUser.isActive())
                 .build();
     }

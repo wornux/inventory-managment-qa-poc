@@ -8,18 +8,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.wornux.security.authorization.AuthorizationService;
+import com.wornux.security.permission.AppPermission;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
+import com.wornux.user.Role;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -43,8 +47,16 @@ class StockMovementServiceTest {
     @Mock
     private AppUserRepository appUserRepository;
 
-    @InjectMocks
     private StockMovementService service;
+
+    @BeforeEach
+    void setUp() {
+        service = new StockMovementService(
+                stockMovementRepository,
+                productRepository,
+                appUserRepository,
+                new AuthorizationService(appUserRepository));
+    }
 
     @AfterEach
     void clearSecurityContext() {
@@ -53,7 +65,7 @@ class StockMovementServiceTest {
 
     @Test
     void search_withNullFilter_usesLedgerDefaultsAndEmptyUsername() {
-        authenticate("viewer", "ROLE_INVENTORY_VIEWER");
+        authenticate("viewer", "stock-movement:view");
         List<StockMovement> expected = List.of();
         when(stockMovementRepository.search(LEDGER_START, LEDGER_END, null, null, ""))
                 .thenReturn(expected);
@@ -66,7 +78,7 @@ class StockMovementServiceTest {
 
     @Test
     void search_withFilter_trimsUsernameAndPassesFilterValues() {
-        authenticate("manager", "ROLE_INVENTORY_MANAGER");
+        authenticate("manager", "stock-movement:create");
         Instant createdFrom = Instant.parse("2026-01-01T00:00:00Z");
         Instant createdTo = Instant.parse("2026-01-31T00:00:00Z");
         StockMovementFilter filter = new StockMovementFilter(createdFrom, createdTo, 9L, MovementType.SALE, " manager ");
@@ -81,19 +93,19 @@ class StockMovementServiceTest {
     }
 
     @Test
-    void search_withoutReadRole_throwsAccessDeniedException() {
-        authenticate("outsider", "ROLE_SALES_ASSISTANT");
+    void search_withoutViewPermission_throwsAccessDeniedException() {
+        authenticate("outsider", "product:view");
 
         assertThatThrownBy(() -> service.search(null))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("STOCK_MOVEMENT:READ permission is required.");
+                .hasMessage("Missing permission stock-movement:view");
 
         verifyNoInteractions(stockMovementRepository);
     }
 
     @Test
-    void activeProducts_withReadRole_returnsActiveProducts() {
-        authenticate("viewer", "ROLE_INVENTORY_VIEWER");
+    void activeProducts_withViewPermission_returnsActiveProducts() {
+        authenticate("viewer", "stock-movement:view");
         List<Product> expected = List.of(product(4), product(7));
         when(productRepository.findByActiveTrueOrderBySkuAsc()).thenReturn(expected);
 
@@ -104,8 +116,8 @@ class StockMovementServiceTest {
     }
 
     @Test
-    void movementUsernames_withReadRole_returnsDistinctUsernames() {
-        authenticate("operator", "ROLE_WAREHOUSE_OPERATOR");
+    void movementUsernames_withViewPermission_returnsDistinctUsernames() {
+        authenticate("operator", "stock-movement:create");
         List<String> expected = List.of("admin", "operator");
         when(stockMovementRepository.findDistinctUsernames()).thenReturn(expected);
 
@@ -116,20 +128,20 @@ class StockMovementServiceTest {
     }
 
     @Test
-    void canCreateMovements_allowsOperatorManagerAndAdmin() {
-        authenticate("operator", "ROLE_WAREHOUSE_OPERATOR");
+    void canCreateMovements_allowsCreatePermission() {
+        authenticate("operator", "stock-movement:create");
         assertThat(service.canCreateMovements()).isTrue();
 
-        authenticate("manager", "ROLE_INVENTORY_MANAGER");
+        authenticate("manager", "stock-movement:create");
         assertThat(service.canCreateMovements()).isTrue();
 
-        authenticate("admin", "ROLE_SYSTEM_ADMINISTRATOR");
+        authenticate("admin", "stock-movement:create");
         assertThat(service.canCreateMovements()).isTrue();
     }
 
     @Test
-    void canCreateMovements_rejectsViewerAndAnonymous() {
-        authenticate("viewer", "ROLE_INVENTORY_VIEWER");
+    void canCreateMovements_rejectsViewPermissionAndAnonymous() {
+        authenticate("viewer", "stock-movement:view");
         assertThat(service.canCreateMovements()).isFalse();
 
         SecurityContextHolder.clearContext();
@@ -138,7 +150,7 @@ class StockMovementServiceTest {
 
     @Test
     void record_withPurchase_updatesProductStockAndSavesMovement() {
-        authenticate("manager", "ROLE_INVENTORY_MANAGER");
+        authenticate("manager", "stock-movement:create");
         Product product = product(5);
         AppUser user = user("manager");
         when(productRepository.findWithCategoryAndSupplierById(12L)).thenReturn(Optional.of(product));
@@ -160,7 +172,7 @@ class StockMovementServiceTest {
 
     @Test
     void record_withSale_updatesProductStockAndSavesNegativeMovement() {
-        authenticate("operator", "ROLE_WAREHOUSE_OPERATOR");
+        authenticate("operator", "stock-movement:create");
         Product product = product(5);
         AppUser user = user("operator");
         ArgumentCaptor<StockMovement> movementCaptor = ArgumentCaptor.forClass(StockMovement.class);
@@ -180,32 +192,32 @@ class StockMovementServiceTest {
     }
 
     @Test
-    void record_withViewerRole_throwsCreateAccessDenied() {
-        authenticate("viewer", "ROLE_INVENTORY_VIEWER");
+    void record_withViewPermission_throwsCreateAccessDenied() {
+        authenticate("viewer", "stock-movement:view");
         StockMovementRequest invalidRequest = request(1L, MovementType.PURCHASE, 1, null);
 
         assertThatThrownBy(() -> service.recordStockMovement(invalidRequest))
                 .isInstanceOf(AccessDeniedException.class)
-                .hasMessage("STOCK_MOVEMENT:CREATE permission is required.");
+                .hasMessage("Missing permission stock-movement:create");
 
-        verifyNoInteractions(productRepository, stockMovementRepository, appUserRepository);
+        verifyNoInteractions(productRepository, stockMovementRepository);
     }
 
     @Test
     void record_withZeroQuantity_throwsStockMovementException() {
-        authenticate("manager", "ROLE_INVENTORY_MANAGER");
+        authenticate("manager", "stock-movement:create");
         StockMovementRequest invalidRequest = request(1L, MovementType.PURCHASE, 0, null);
 
         assertThatThrownBy(() -> service.recordStockMovement(invalidRequest))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Quantity delta must not be zero.");
 
-        verifyNoInteractions(productRepository, stockMovementRepository, appUserRepository);
+        verifyNoInteractions(productRepository, stockMovementRepository);
     }
 
     @Test
     void record_withWrongPositiveNegativeSign_throwsStockMovementException() {
-        authenticate("manager", "ROLE_INVENTORY_MANAGER");
+        authenticate("manager", "stock-movement:create");
         StockMovementRequest invalidPurchase = request(1L, MovementType.PURCHASE, -1, null);
         StockMovementRequest invalidSale = request(1L, MovementType.SALE, 1, null);
 
@@ -216,24 +228,24 @@ class StockMovementServiceTest {
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Quantity delta must be negative for this movement type.");
 
-        verifyNoInteractions(productRepository, stockMovementRepository, appUserRepository);
+        verifyNoInteractions(productRepository, stockMovementRepository);
     }
 
     @Test
     void record_withReasonRequiredAndBlankReason_throwsStockMovementException() {
-        authenticate("manager", "ROLE_INVENTORY_MANAGER");
+        authenticate("manager", "stock-movement:create");
         StockMovementRequest invalidRequest = request(1L, MovementType.DAMAGED, -1, "  ");
 
         assertThatThrownBy(() -> service.recordStockMovement(invalidRequest))
                 .isInstanceOf(StockMovementException.class)
                 .hasMessage("Reason is required for this movement type.");
 
-        verifyNoInteractions(productRepository, stockMovementRepository, appUserRepository);
+        verifyNoInteractions(productRepository, stockMovementRepository);
     }
 
     @Test
     void record_withInactiveOrMissingProduct_throwsProductUnavailableException() {
-        authenticate("manager", "ROLE_INVENTORY_MANAGER");
+        authenticate("manager", "stock-movement:create");
         Product inactiveProduct = product(5);
         inactiveProduct.deactivate();
         when(productRepository.findWithCategoryAndSupplierById(21L)).thenReturn(Optional.empty());
@@ -249,12 +261,12 @@ class StockMovementServiceTest {
                 .hasMessage("Product is no longer available.");
 
         verify(productRepository, never()).save(any(Product.class));
-        verifyNoInteractions(stockMovementRepository, appUserRepository);
+        verifyNoInteractions(stockMovementRepository);
     }
 
     @Test
     void record_whenRepositorySaveFails_wrapsDataAccessException() {
-        authenticate("manager", "ROLE_INVENTORY_MANAGER");
+        authenticate("manager", "stock-movement:create");
         Product product = product(5);
         AppUser user = user("manager");
         DataIntegrityViolationException failure = new DataIntegrityViolationException("bad data");
@@ -274,12 +286,20 @@ class StockMovementServiceTest {
         verify(stockMovementRepository).save(any(StockMovement.class));
     }
 
-    private static void authenticate(String username, String... authorities) {
-        var grantedAuthorities = Arrays.stream(authorities)
-                .map(SimpleGrantedAuthority::new)
-                .toList();
-        var authentication = new UsernamePasswordAuthenticationToken(username, "password", grantedAuthorities);
-        SecurityContextHolder.getContext().setAuthentication(authentication);
+    private void authenticate(String username, String... authorities) {
+        var permissions = Arrays.stream(authorities)
+                .map(AppPermission::fromCode)
+                .flatMap(Optional::stream)
+                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+        Role role = new Role("TEST", "Test", null, false);
+        role.update(role.getName(), role.getDescription(), true, permissions);
+        AppUser user = user(username);
+        user.addRole(role);
+        when(appUserRepository.findForAuthorization(username)).thenReturn(Optional.of(user));
+
+        var grantedAuthorities = Arrays.stream(authorities).map(SimpleGrantedAuthority::new).toList();
+        SecurityContextHolder.getContext().setAuthentication(
+                new UsernamePasswordAuthenticationToken(username, "password", grantedAuthorities));
     }
 
     private static Product product(int quantityOnHand) {

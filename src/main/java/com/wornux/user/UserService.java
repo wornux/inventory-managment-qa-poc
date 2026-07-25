@@ -1,12 +1,13 @@
 package com.wornux.user;
 
+import com.wornux.security.authorization.AuthorizationService;
+import com.wornux.security.permission.AppPermission;
 import jakarta.validation.Valid;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -17,14 +18,17 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class UserService {
 
-    private static final String ADMINISTRATOR = "ROLE_SYSTEM_ADMINISTRATOR";
-
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
+    private final AuthorizationService authorizationService;
 
-    public UserService(AppUserRepository appUserRepository, RoleRepository roleRepository) {
+    public UserService(
+            AppUserRepository appUserRepository,
+            RoleRepository roleRepository,
+            AuthorizationService authorizationService) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
+        this.authorizationService = authorizationService;
     }
 
     @Transactional(readOnly = true)
@@ -49,7 +53,8 @@ public class UserService {
 
     @Transactional
     public AppUser create(@Valid UserRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.USER_CREATE);
+        authorizationService.check(AppPermission.USER_ASSIGN);
         validateUniqueUsername(request.getUsername(), null);
         validateUniqueEmail(request.getEmail(), null);
         Set<Role> roles = requireActiveRoles(request.getRoleIds());
@@ -66,7 +71,8 @@ public class UserService {
 
     @Transactional
     public AppUser update(Long id, @Valid UserRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.USER_UPDATE);
+        authorizationService.check(AppPermission.USER_ASSIGN);
         AppUser user = appUserRepository.findWithRolesById(id)
                 .orElseThrow(() -> new UserException("User was not found."));
         if (!Objects.equals(user.getVersion(), request.getVersion())) {
@@ -84,7 +90,7 @@ public class UserService {
 
     @Transactional
     public void deactivate(Long id) {
-        requireManage();
+        authorizationService.check(AppPermission.USER_DELETE);
         AppUser user = appUserRepository.findWithRolesById(id)
                 .orElseThrow(() -> new UserException("User was not found."));
         if (isCurrentUser(user)) {
@@ -94,26 +100,20 @@ public class UserService {
         appUserRepository.save(user);
     }
 
-    public boolean canManageUsers() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return hasAuthority(authentication, ADMINISTRATOR);
+    public boolean canCreateUsers() {
+        return authorizationService.canAll(Set.of(AppPermission.USER_CREATE, AppPermission.USER_ASSIGN));
+    }
+
+    public boolean canUpdateUsers() {
+        return authorizationService.canAll(Set.of(AppPermission.USER_UPDATE, AppPermission.USER_ASSIGN));
+    }
+
+    public boolean canDeleteUsers() {
+        return authorizationService.can(AppPermission.USER_DELETE);
     }
 
     private void requireRead() {
-        if (!canManageUsers()) {
-            throw new AccessDeniedException("USER:READ permission is required.");
-        }
-    }
-
-    private void requireManage() {
-        if (!canManageUsers()) {
-            throw new AccessDeniedException("USER:CREATE/UPDATE/DELETE/ASSIGN permission is required.");
-        }
-    }
-
-    private boolean hasAuthority(Authentication authentication, String authority) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(grantedAuthority -> authority.equals(grantedAuthority.getAuthority()));
+        authorizationService.check(AppPermission.USER_VIEW);
     }
 
     private void validateUniqueUsername(String username, Long id) {
@@ -143,6 +143,12 @@ public class UserService {
                 .toList();
         if (roles.size() != roleIds.size()) {
             throw new UserException("At least one role must be selected.");
+        }
+        Set<AppPermission> permissions = roles.stream()
+                .flatMap(role -> role.getPermissions().stream())
+                .collect(java.util.stream.Collectors.toSet());
+        if (!authorizationService.canAll(permissions)) {
+            throw new UserException("You cannot assign a role containing permissions that you do not have.");
         }
         return new LinkedHashSet<>(roles);
     }

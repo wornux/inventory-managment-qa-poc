@@ -113,7 +113,7 @@ public class UsersView extends Main {
 
         Button newUser = new Button("New User", event -> openCreate());
         newUser.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newUser.setVisible(userService.canManageUsers());
+        newUser.setVisible(userService.canCreateUsers());
 
         toolbar.add(search, activeFilter, newUser);
         toolbar.setFlexGrow(1, search);
@@ -165,12 +165,13 @@ public class UsersView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(user));
         layout.add(view);
-        if (userService.canManageUsers()) {
-            Button editUser = new Button("Edit", event -> openEdit(user));
+        if (userService.canUpdateUsers()) {
+            layout.add(new Button("Edit", event -> openEdit(user)));
+        }
+        if (userService.canDeleteUsers() && user.isActive()) {
             Button deactivate = new Button("Deactivate", event -> confirmDeactivate(user));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
-            deactivate.setVisible(user.isActive());
-            layout.add(editUser, deactivate);
+            layout.add(deactivate);
         }
         return layout;
     }
@@ -296,7 +297,7 @@ public class UsersView extends Main {
         save.setVisible(false);
         cancel.setVisible(false);
         close.setVisible(true);
-        edit.setVisible(userService.canManageUsers());
+        edit.setVisible(userService.canUpdateUsers());
         dirty = false;
         sidebar.open();
     }

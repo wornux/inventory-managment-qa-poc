@@ -24,26 +24,12 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
     @EntityGraph(attributePaths = "roles")
     Optional<AppUser> findByOidcIssuerAndOidcSubject(String oidcIssuer, String oidcSubject);
 
+    @EntityGraph(attributePaths = "roles")
     @Query("""
-            select count(permission) > 0
-            from AppUser user
-            join user.roles role
-            join role.permissions permission
-            join permission.resource resource
-            join permission.action action
-            where (lower(user.username) = lower(:principal) or lower(user.email) = lower(:principal))
-                and user.active = true
-                and role.active = true
-                and permission.active = true
-                and resource.active = true
-                and action.active = true
-                and resource.code = :resourceCode
-                and action.code = :actionCode
+            select user from AppUser user
+            where lower(user.username) = lower(:principal) or lower(user.email) = lower(:principal)
             """)
-    boolean hasActivePermission(
-            @Param("principal") String principal,
-            @Param("resourceCode") String resourceCode,
-            @Param("actionCode") String actionCode);
+    Optional<AppUser> findForAuthorization(@Param("principal") String principal);
 
     @EntityGraph(attributePaths = "roles")
     Optional<AppUser> findWithRolesById(Long id);

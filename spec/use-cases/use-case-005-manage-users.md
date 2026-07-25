@@ -20,7 +20,7 @@
 
 ## Preconditions
 
-- User is logged in and has USER:READ permission
+- User is logged in and has USER:VIEW permission
 - User has USER:CREATE, USER:UPDATE, USER:DELETE, and USER:ASSIGN permissions for full management
 - Roles exist in the database
 - Users table exists in the database
@@ -198,6 +198,7 @@ User navigates to the Users view from the main administration menu.
 | BR-08 | An admin cannot deactivate their own account |
 | BR-09 | Search filters by username and email (case-insensitive partial match) |
 | BR-10 | Active/Inactive filter shows current status of all users |
+| BR-11 | An administrator cannot assign a role containing permissions they do not possess |
 
 ---
 
@@ -218,7 +219,7 @@ User navigates to the Users view from the main administration menu.
 - [x] AF-9 (cannot deactivate own account) covered
 - [x] AF-10 (dirty state) covered
 - [x] AF-11 (concurrent edit) covered
-- [x] BR-01 through BR-10 covered
+- [x] BR-01 through BR-11 covered
 
 ---
 
@@ -233,5 +234,5 @@ User navigates to the Users view from the main administration menu.
 
 | Page | Access |
 |------|--------|
-| User List | Authenticated (USER:READ) |
+| User List | Authenticated (USER:VIEW) |
 | Create/Edit/View User | Authenticated (USER:CREATE/UPDATE/ASSIGN) |

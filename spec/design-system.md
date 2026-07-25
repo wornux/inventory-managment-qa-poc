@@ -259,7 +259,7 @@ For LitRenderer and StatusBadge components:
 - **Header:** Application title/logo, user menu (username, logout)
 - **Sidebar Navigation:** Collapsible on mobile
   - Inventory section: Products, Categories, Suppliers, Stock Movements
-  - Admin section: Users, Roles, Permissions (visible only to admins)
+  - Admin section: Users and Roles (visible only with matching VIEW permissions)
   - Hierarchical with collapsible groups
 
 - **Mobile behavior:** Hamburger menu, full-width sidebar on toggle

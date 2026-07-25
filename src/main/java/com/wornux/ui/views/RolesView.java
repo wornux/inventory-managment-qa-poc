@@ -26,7 +26,7 @@ import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.Route;
-import com.wornux.user.Permission;
+import com.wornux.security.permission.AppPermission;
 import com.wornux.user.Role;
 import com.wornux.user.RoleException;
 import com.wornux.user.RoleFilter;
@@ -34,7 +34,6 @@ import com.wornux.user.RoleRequest;
 import com.wornux.user.RoleService;
 import jakarta.annotation.security.PermitAll;
 import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import org.springframework.security.access.AccessDeniedException;
 
@@ -61,7 +60,7 @@ public class RolesView extends Main {
     private final TextField name = new TextField("Name");
     private final TextArea description = new TextArea("Description");
     private final Checkbox active = new Checkbox("Active");
-    private final MultiSelectComboBox<Permission> permissions = new MultiSelectComboBox<>("Permissions");
+    private final MultiSelectComboBox<AppPermission> permissions = new MultiSelectComboBox<>("Permissions");
     private final H1 sidebarTitle = new H1();
     private final Button save = new Button("Save");
     private final Button cancel = new Button("Cancel");
@@ -69,7 +68,7 @@ public class RolesView extends Main {
     private final Button edit = new Button("Edit");
     private final H1 deactivateTitle = new H1("Deactivate this role?");
     private final Span deactivateText = new Span();
-    private List<Permission> availablePermissions = new ArrayList<>();
+    private List<AppPermission> availablePermissions = new ArrayList<>();
     private Role selectedRole;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
@@ -105,7 +104,7 @@ public class RolesView extends Main {
 
         Button newRole = new Button("New Role", event -> openCreate());
         newRole.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newRole.setVisible(roleService.canManageRoles());
+        newRole.setVisible(roleService.canCreateRoles());
 
         toolbar.add(search, typeFilter, activeFilter, newRole);
         toolbar.setFlexGrow(1, search);
@@ -169,12 +168,13 @@ public class RolesView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(role));
         layout.add(view);
-        if (roleService.canManageRoles() && !role.isSystemRole()) {
-            Button editRole = new Button("Edit", event -> openEdit(role));
+        if (!role.isSystemRole() && roleService.canUpdateRoles()) {
+            layout.add(new Button("Edit", event -> openEdit(role)));
+        }
+        if (!role.isSystemRole() && role.isActive() && roleService.canDeleteRoles()) {
             Button deactivate = new Button("Deactivate", event -> confirmDeactivate(role));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
-            deactivate.setVisible(role.isActive());
-            layout.add(editRole, deactivate);
+            layout.add(deactivate);
         }
         return layout;
     }
@@ -228,7 +228,7 @@ public class RolesView extends Main {
         description.setValueChangeMode(ValueChangeMode.EAGER);
         active.setValue(true);
         permissions.setItems(availablePermissions);
-        permissions.setItemLabelGenerator(Permission::getLabel);
+        permissions.setItemLabelGenerator(AppPermission::label);
         permissions.setRequiredIndicatorVisible(true);
         binder.addValueChangeListener(event -> dirty = true);
     }
@@ -240,9 +240,7 @@ public class RolesView extends Main {
         binder.bind(active, RoleRequest::isActive, RoleRequest::setActive);
         binder.forField(permissions)
                 .withValidator(value -> value != null && !value.isEmpty(), "At least one permission must be selected.")
-                .bind(this::permissionsFromRequest, (request, value) -> request.setPermissionIds(value.stream()
-                        .map(Permission::getId)
-                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))));
+                .bind(RoleRequest::getPermissions, RoleRequest::setPermissions);
     }
 
     private void configureDialogs() {
@@ -310,7 +308,7 @@ public class RolesView extends Main {
         save.setVisible(false);
         cancel.setVisible(false);
         close.setVisible(true);
-        edit.setVisible(roleService.canManageRoles() && !selectedRole.isSystemRole());
+        edit.setVisible(roleService.canUpdateRoles() && !selectedRole.isSystemRole());
         dirty = false;
         sidebar.open();
     }
@@ -320,7 +318,7 @@ public class RolesView extends Main {
         formData.setName(request.getName());
         formData.setDescription(request.getDescription());
         formData.setActive(request.isActive());
-        formData.setPermissionIds(request.getPermissionIds());
+        formData.setPermissions(request.getPermissions());
         formData.setVersion(request.getVersion());
         binder.readBean(formData);
         code.setInvalid(false);
@@ -336,16 +334,7 @@ public class RolesView extends Main {
         request.setDescription(role.getDescription());
         request.setActive(role.isActive());
         request.setVersion(role.getVersion());
-        var activePermissionIds = role.getPermissions().stream()
-                .filter(permission -> permission.isActive()
-                        && permission.getResource().isActive()
-                        && permission.getAction().isActive())
-                .map(Permission::getId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-        if (activePermissionIds.size() != role.getPermissions().size()) {
-            showWarning("One or more permissions are no longer active and have been deselected.");
-        }
-        request.setPermissionIds(activePermissionIds);
+        request.setPermissions(role.getPermissions());
         return request;
     }
 
@@ -412,12 +401,6 @@ public class RolesView extends Main {
         permissions.setReadOnly(readOnly);
     }
 
-    private java.util.Set<Permission> permissionsFromRequest(RoleRequest request) {
-        return availablePermissions.stream()
-                .filter(permission -> request.getPermissionIds().contains(permission.getId()))
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
-    }
-
     private void refreshGrid() {
         grid.setItems(roleService.search(new RoleFilter(search.getValue(), typeFilterValue(), activeFilterValue())));
     }
@@ -445,11 +428,6 @@ public class RolesView extends Main {
     private void showSuccess(String message) {
         Notification notification = Notification.show(message, 3000, Notification.Position.TOP_END);
         notification.addThemeVariants(NotificationVariant.LUMO_SUCCESS);
-    }
-
-    private void showWarning(String message) {
-        Notification notification = Notification.show(message, 5000, Notification.Position.TOP_CENTER);
-        notification.addThemeVariants(NotificationVariant.LUMO_WARNING);
     }
 
     private void showError(String message) {

@@ -1,5 +1,6 @@
 package com.wornux.user;
 
+import com.wornux.security.permission.AppPermission;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.LinkedHashSet;
@@ -17,9 +18,7 @@ public class RoleRequest {
     private String description;
 
     private boolean active = true;
-
-    private Set<Long> permissionIds = new LinkedHashSet<>();
-
+    private Set<AppPermission> permissions = new LinkedHashSet<>();
     private Long version;
 
     public String getCode() {
@@ -54,12 +53,12 @@ public class RoleRequest {
         this.active = active;
     }
 
-    public Set<Long> getPermissionIds() {
-        return permissionIds;
+    public Set<AppPermission> getPermissions() {
+        return permissions;
     }
 
-    public void setPermissionIds(Set<Long> permissionIds) {
-        this.permissionIds = permissionIds == null ? new LinkedHashSet<>() : new LinkedHashSet<>(permissionIds);
+    public void setPermissions(Set<AppPermission> permissions) {
+        this.permissions = permissions == null ? new LinkedHashSet<>() : new LinkedHashSet<>(permissions);
     }
 
     public Long getVersion() {

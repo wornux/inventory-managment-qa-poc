@@ -29,9 +29,9 @@ src/main/java/com/example/inventory/
   ├── config/
   │   └── SecurityConfig.java                      — Spring Security configuration
   ├── security/
-  │   ├── AuthenticatedUser.java                   — Current authenticated user context
-  │   ├── CustomUserDetailsService.java            — Load user from database for Spring Security
-  │   └── PermissionChecker.java                   — Check user permissions at service layer
+  │   ├── CustomUserDetailsService.java            — Load users and role permissions for Spring Security
+  │   ├── authorization/AuthorizationService.java  — Shared permission checks for services and UI
+  │   └── permission/                              — Fixed AppResource, AppAction, and AppPermission enums
   ├── user/
   │   ├── AppUser.java                             — User entity
   │   ├── AppUserRepository.java                   — Database access (Spring Data)
@@ -44,22 +44,6 @@ src/main/java/com/example/inventory/
   │   ├── RoleService.java                         — Business logic
   │   ├── RoleDto.java                             — Data transfer object
   │   └── RoleView.java                            — Vaadin UI view
-  ├── permission/
-  │   ├── Permission.java                          — Permission entity
-  │   ├── PermissionRepository.java                — Database access
-  │   ├── PermissionService.java                   — Business logic
-  │   ├── PermissionDto.java                       — Data transfer object
-  │   └── PermissionView.java                      — Vaadin UI view
-  ├── resource/
-  │   ├── Resource.java                            — Resource entity
-  │   ├── ResourceRepository.java                  — Database access
-  │   ├── ResourceService.java                     — Business logic
-  │   └── ResourceDto.java                         — Data transfer object
-  ├── action/
-  │   ├── Action.java                              — Action entity
-  │   ├── ActionRepository.java                    — Database access
-  │   ├── ActionService.java                       — Business logic
-  │   └── ActionDto.java                           — Data transfer object
   ├── inventory/
   │   ├── category/
   │   │   ├── Category.java                        — Category entity
@@ -104,9 +88,10 @@ src/main/resources/
   ├── application-dev.yml                          — Development profile
   ├── application-prod.yml                         — Production profile
   ├── db/migration/
-  │   ├── V1__create_inventory_schema.sql          — Initial schema creation
-  │   ├── V2__seed_security_data.sql               — Security data (roles, resources, actions, permissions)
-  │   └── V3__seed_inventory_demo_data.sql         — Demo inventory data
+  │   ├── prod/V1__create_security_schema.sql      — Initial users, roles, and global assignments
+  │   ├── prod/V7__create_permissions_and_role_assignments.sql — Historical normalized RBAC schema
+  │   ├── prod/V12__simplify_rbac_permissions.sql  — Migrates roles to typed permission-code arrays
+  │   └── dev/V10__seed_dev_dummy_data.sql         — Development demo data
   └── META-INF/resources/
       └── styles.css                               — Custom Vaadin Aura theme styles
 ```
@@ -138,11 +123,11 @@ src/main/resources/
 
 ### Authorization
 
-- **Model:** Role-Based Access Control (RBAC) with normalized permissions
-- **Permission structure:** (Resource, Action) pairs
-- **Role assignment:** Users → Roles → Permissions
-- **Authorization checks:** Service layer (before business logic execution)
-- **UI reflection:** Hide/disable buttons and actions based on permission checks
+- **Model:** Single-level RBAC adapted from Socratic Tutor without contexts or assignment levels
+- **Permission structure:** Fixed `AppPermission` values composed from typed `AppResource` and `AppAction` enums
+- **Role assignment:** Users → global Roles; roles store permission codes in PostgreSQL `text[]`
+- **Authorization checks:** `AuthorizationService` resolves the current user's active global roles from the database on every protected operation
+- **UI reflection:** Navigation and controls use the same typed checks as business services
 
 ### Public Routes
 
@@ -153,8 +138,8 @@ src/main/resources/
 
 ### Protected Routes
 
-- All inventory views (`/products`, `/categories`, `/suppliers`, `/stock-movements`, etc.) — Require authentication + RESOURCE:READ permission
-- All admin views (`/users`, `/roles`, `/permissions`, etc.) — Require authentication + appropriate admin permissions
+- All inventory views (`/products`, `/categories`, `/suppliers`, `/stock-movements`, etc.) — Require authentication + the matching VIEW permission
+- Admin views (`/users`, `/roles`) — Require authentication + the matching VIEW permission
 
 ---
 
@@ -325,7 +310,7 @@ server:
 - **Database queries:** Use indexes on foreign keys, active flags, dates
 - **Lazy loading:** Careful use of `@Lazy` and fetch strategies
 - **Pagination:** Grid supports pagination for large datasets
-- **Caching:** Consider caching for resources and actions (read-only data)
+- **RBAC:** Checks read current role state so deactivation and permission changes affect existing sessions immediately
 
 ---
 

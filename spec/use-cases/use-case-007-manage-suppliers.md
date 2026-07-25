@@ -20,7 +20,7 @@
 
 ## Preconditions
 
-- User is logged in and has SUPPLIER:READ permission
+- User is logged in and has SUPPLIER:VIEW permission
 - User has SUPPLIER:CREATE, SUPPLIER:UPDATE, SUPPLIER:DELETE permissions for full management
 - Suppliers table exists in the database
 
@@ -192,5 +192,5 @@ User navigates to the Suppliers view from the inventory management menu.
 
 | Page | Access |
 |------|--------|
-| Supplier List | Authenticated (SUPPLIER:READ) |
+| Supplier List | Authenticated (SUPPLIER:VIEW) |
 | Create/Edit/View Supplier | Authenticated (SUPPLIER:CREATE/UPDATE) |

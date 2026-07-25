@@ -23,8 +23,8 @@
 ## Preconditions
 
 - User is authenticated.
-- Protected application views exist for home, products, categories, suppliers, stock movements, users, roles, and permissions.
-- Role and permission data exists for protected resources and READ actions.
+- Protected application views exist for home, products, categories, suppliers, stock movements, users, and roles.
+- Role permission codes use the fixed `AppPermission` catalog and its `VIEW` actions.
 - Public login and signup routes remain available without the authenticated application layout.
 
 ---
@@ -42,7 +42,7 @@ User navigates to the home route or any protected application route.
 3. System applies the main layout to protected views through route layout configuration.
 4. System displays an Aura-style drawer with brand area, sectioned navigation groups, icons, active route highlighting, and current user context.
 5. System checks the user's permissions for each protected resource before displaying the matching navigation item.
-6. System displays only navigation items for resources where the user has the required READ permission.
+6. System displays only navigation items for resources where the user has the required VIEW permission.
 7. User selects a visible navigation item in the drawer.
 8. System navigates to the selected view and updates the active navigation state.
 9. User navigates to the home route.
@@ -73,7 +73,7 @@ User navigates to the home route or any protected application route.
 ### AF-3: Navigation Item Hidden By Permission
 
 **Branches from:** Main Flow step 5
-**Condition:** User lacks the READ permission for a protected resource represented in the drawer.
+**Condition:** User lacks the VIEW permission for a protected resource represented in the drawer.
 
 1. System omits the restricted navigation item from the drawer.
 2. User continues navigating with the remaining permitted items.
@@ -82,7 +82,7 @@ User navigates to the home route or any protected application route.
 ### AF-4: No Business Navigation Items Available
 
 **Branches from:** Main Flow step 6
-**Condition:** User is authenticated but has no READ permissions for business or administration resources.
+**Condition:** User is authenticated but has no VIEW permissions for business or administration resources.
 
 1. System displays the home navigation item and user context.
 2. System displays an empty or limited-navigation state in the drawer.
@@ -115,7 +115,7 @@ User navigates to the home route or any protected application route.
 | BR-01 | `MainLayout` must be implemented as `public class MainLayout extends AppLayout`. |
 | BR-02 | Protected Vaadin Flow views must be configured to render inside `MainLayout`; public login and signup views must not use the main layout. |
 | BR-03 | Drawer navigation must follow the provided Vaadin Aura example direction: left drawer, brand area, grouped navigation, icons, active item styling, subtle borders, and polished spacing. |
-| BR-04 | Navigation items for Products, Categories, Suppliers, Stock Movements, Users, Roles, and Permissions must be visible only when the authenticated user has the matching resource READ permission. |
+| BR-04 | Navigation items for Products, Categories, Suppliers, Stock Movements, Users, and Roles must be visible only when the authenticated user has the matching resource VIEW permission. |
 | BR-05 | Direct URL access must be authorized separately from drawer visibility; hiding a drawer item is not sufficient security. |
 | BR-06 | Forbidden access must have a user-facing view or message for authenticated users who try to open a route without permission. |
 | BR-07 | The home view must no longer be a raw list of anchors; it should become a polished pending/dashboard-style landing page. |
@@ -135,7 +135,7 @@ User navigates to the home route or any protected application route.
 ## UI Surface
 
 - **Main Application Layout:** Aura-style app shell with left drawer navigation, brand/header area, grouped navigation items, active route state, and user context.
-- **Permission-Aware Drawer:** Navigation items are filtered by the authenticated user's resource READ permissions.
+- **Permission-Aware Drawer:** Navigation items are filtered by the authenticated user's resource VIEW permissions.
 - **Forbidden Access Surface:** Authenticated users without route permission see a clear forbidden message instead of the target view.
 - **Home View:** Refactored landing page that can show pending/dashboard placeholder content until real dashboard metrics are implemented.
 - **Responsive Drawer:** Drawer remains usable on desktop and narrow screens.
@@ -143,11 +143,10 @@ User navigates to the home route or any protected application route.
 | Page | Access |
 |------|--------|
 | Home | Authenticated |
-| Products | Authenticated (PRODUCT:READ) |
-| Categories | Authenticated (CATEGORY:READ) |
-| Suppliers | Authenticated (SUPPLIER:READ) |
-| Stock Movements | Authenticated (STOCK_MOVEMENT:READ) |
-| Users | Authenticated (USER:READ) |
-| Roles | Authenticated (ROLE:READ) |
-| Permissions | Authenticated (PERMISSION:READ) |
+| Products | Authenticated (PRODUCT:VIEW) |
+| Categories | Authenticated (CATEGORY:VIEW) |
+| Suppliers | Authenticated (SUPPLIER:VIEW) |
+| Stock Movements | Authenticated (STOCK_MOVEMENT:VIEW) |
+| Users | Authenticated (USER:VIEW) |
+| Roles | Authenticated (ROLE:VIEW) |
 | Forbidden Access | Authenticated |

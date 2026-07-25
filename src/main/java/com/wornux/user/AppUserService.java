@@ -52,8 +52,11 @@ public class AppUserService {
     @Transactional(readOnly = true)
     public List<GrantedAuthority> authorities(AppUser user) {
         return user.getRoles().stream()
-                .filter(role -> role.isActive() && role.getCode() != null)
-                .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getCode()))
+                .filter(Role::isActive)
+                .flatMap(role -> role.getPermissions().stream())
+                .map(com.wornux.security.permission.AppPermission::code)
+                .distinct()
+                .map(SimpleGrantedAuthority::new)
                 .map(GrantedAuthority.class::cast)
                 .toList();
     }

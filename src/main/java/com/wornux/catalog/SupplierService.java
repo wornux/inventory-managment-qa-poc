@@ -1,12 +1,11 @@
 package com.wornux.catalog;
 
+import com.wornux.security.authorization.AuthorizationService;
+import com.wornux.security.permission.AppPermission;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -15,16 +14,17 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class SupplierService {
 
-    private static final String VIEWER = "ROLE_INVENTORY_VIEWER";
-    private static final String MANAGER = "ROLE_INVENTORY_MANAGER";
-    private static final String ADMINISTRATOR = "ROLE_SYSTEM_ADMINISTRATOR";
-
     private final SupplierRepository supplierRepository;
     private final ProductRepository productRepository;
+    private final AuthorizationService authorizationService;
 
-    public SupplierService(SupplierRepository supplierRepository, ProductRepository productRepository) {
+    public SupplierService(
+            SupplierRepository supplierRepository,
+            ProductRepository productRepository,
+            AuthorizationService authorizationService) {
         this.supplierRepository = supplierRepository;
         this.productRepository = productRepository;
+        this.authorizationService = authorizationService;
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +55,7 @@ public class SupplierService {
 
     @Transactional
     public Supplier create(@Valid SupplierRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.SUPPLIER_CREATE);
         Supplier supplier = new Supplier(
                 normalizeName(request.getName()),
                 trimToNull(request.getContactName()),
@@ -72,7 +72,7 @@ public class SupplierService {
 
     @Transactional
     public Supplier update(Long id, @Valid SupplierRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.SUPPLIER_UPDATE);
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new SupplierException("Supplier was not found."));
         if (!Objects.equals(supplier.getVersion(), request.getVersion())) {
@@ -89,35 +89,27 @@ public class SupplierService {
 
     @Transactional
     public void deactivate(Long id) {
-        requireManage();
+        authorizationService.check(AppPermission.SUPPLIER_DELETE);
         Supplier supplier = supplierRepository.findById(id)
                 .orElseThrow(() -> new SupplierException("Supplier was not found."));
         supplier.deactivate();
         supplierRepository.save(supplier);
     }
 
-    public boolean canManageSuppliers() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return hasAuthority(authentication, MANAGER) || hasAuthority(authentication, ADMINISTRATOR);
+    public boolean canCreateSuppliers() {
+        return authorizationService.can(AppPermission.SUPPLIER_CREATE);
+    }
+
+    public boolean canUpdateSuppliers() {
+        return authorizationService.can(AppPermission.SUPPLIER_UPDATE);
+    }
+
+    public boolean canDeleteSuppliers() {
+        return authorizationService.can(AppPermission.SUPPLIER_DELETE);
     }
 
     private void requireRead() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!hasAuthority(authentication, VIEWER) && !hasAuthority(authentication, MANAGER)
-                && !hasAuthority(authentication, ADMINISTRATOR)) {
-            throw new AccessDeniedException("SUPPLIER:READ permission is required.");
-        }
-    }
-
-    private void requireManage() {
-        if (!canManageSuppliers()) {
-            throw new AccessDeniedException("SUPPLIER:CREATE/UPDATE/DELETE permission is required.");
-        }
-    }
-
-    private boolean hasAuthority(Authentication authentication, String authority) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(grantedAuthority -> authority.equals(grantedAuthority.getAuthority()));
+        authorizationService.check(AppPermission.SUPPLIER_VIEW);
     }
 
     private String normalizeSearch(String value) {

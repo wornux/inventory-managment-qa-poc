@@ -1,14 +1,14 @@
 package com.wornux.user;
 
+import com.wornux.security.authorization.AuthorizationService;
+import com.wornux.security.permission.AppPermission;
 import jakarta.validation.Valid;
+import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -17,71 +17,69 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class RoleService {
 
-    private static final String ADMINISTRATOR = "ROLE_SYSTEM_ADMINISTRATOR";
-
     private final RoleRepository roleRepository;
-    private final PermissionRepository permissionRepository;
     private final AppUserRepository appUserRepository;
+    private final AuthorizationService authorizationService;
 
     public RoleService(
             RoleRepository roleRepository,
-            PermissionRepository permissionRepository,
-            AppUserRepository appUserRepository) {
+            AppUserRepository appUserRepository,
+            AuthorizationService authorizationService) {
         this.roleRepository = roleRepository;
-        this.permissionRepository = permissionRepository;
         this.appUserRepository = appUserRepository;
+        this.authorizationService = authorizationService;
     }
 
     @Transactional(readOnly = true)
     public List<Role> search(RoleFilter filter) {
-        requireRead();
+        authorizationService.check(AppPermission.ROLE_VIEW);
         RoleFilter safeFilter = filter == null ? new RoleFilter("", null, null) : filter;
         return roleRepository.search(normalizeSearch(safeFilter.text()), safeFilter.systemRole(), safeFilter.active());
     }
 
     @Transactional(readOnly = true)
     public Role get(Long id) {
-        requireRead();
-        return roleRepository.findWithPermissionsById(id)
-                .orElseThrow(() -> new RoleException("Role was not found."));
+        authorizationService.check(AppPermission.ROLE_VIEW);
+        return roleRepository.findById(id).orElseThrow(() -> new RoleException("Role was not found."));
     }
 
     @Transactional(readOnly = true)
-    public List<Permission> assignablePermissions() {
-        requireRead();
-        return permissionRepository.findAssignablePermissions();
+    public List<AppPermission> assignablePermissions() {
+        authorizationService.check(AppPermission.ROLE_VIEW);
+        return Arrays.asList(AppPermission.values());
     }
 
     @Transactional(readOnly = true)
     public long userCount(Long roleId) {
-        requireRead();
+        authorizationService.check(AppPermission.ROLE_VIEW);
         return appUserRepository.countByRolesId(roleId);
     }
 
     @Transactional(readOnly = true)
     public long permissionCount(Long roleId) {
-        requireRead();
         return get(roleId).getPermissions().size();
     }
 
     @Transactional
     public Role create(@Valid RoleRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.ROLE_CREATE);
+        authorizationService.check(AppPermission.ROLE_ASSIGN);
         validateUniqueCode(request.getCode());
+        Set<AppPermission> permissions = requireAssignablePermissions(request.getPermissions());
         Role role = new Role(
                 normalizeCode(request.getCode()),
                 normalizeName(request.getName()),
                 trimToNull(request.getDescription()),
                 false);
-        role.update(role.getName(), role.getDescription(), request.isActive(), requireActivePermissions(request.getPermissionIds()));
+        role.update(role.getName(), role.getDescription(), request.isActive(), permissions);
         return roleRepository.save(role);
     }
 
     @Transactional
     public Role update(Long id, @Valid RoleRequest request) {
-        requireManage();
-        Role role = roleRepository.findWithPermissionsById(id)
-                .orElseThrow(() -> new RoleException("Role was not found."));
+        authorizationService.check(AppPermission.ROLE_UPDATE);
+        authorizationService.check(AppPermission.ROLE_ASSIGN);
+        Role role = roleRepository.findById(id).orElseThrow(() -> new RoleException("Role was not found."));
         validateCustomRole(role);
         if (!Objects.equals(role.getVersion(), request.getVersion())) {
             throw new RoleException("Role was updated by another administrator. Refresh the form and try again.");
@@ -93,40 +91,29 @@ public class RoleService {
                 normalizeName(request.getName()),
                 trimToNull(request.getDescription()),
                 request.isActive(),
-                requireActivePermissions(request.getPermissionIds()));
+                requireAssignablePermissions(request.getPermissions()));
         return roleRepository.save(role);
     }
 
     @Transactional
     public void deactivate(Long id) {
-        requireManage();
-        Role role = roleRepository.findWithPermissionsById(id)
-                .orElseThrow(() -> new RoleException("Role was not found."));
+        authorizationService.check(AppPermission.ROLE_DELETE);
+        Role role = roleRepository.findById(id).orElseThrow(() -> new RoleException("Role was not found."));
         validateCustomRole(role);
         role.deactivate();
         roleRepository.save(role);
     }
 
-    public boolean canManageRoles() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return hasAuthority(authentication, ADMINISTRATOR);
+    public boolean canCreateRoles() {
+        return authorizationService.canAll(Set.of(AppPermission.ROLE_CREATE, AppPermission.ROLE_ASSIGN));
     }
 
-    private void requireRead() {
-        if (!canManageRoles()) {
-            throw new AccessDeniedException("ROLE:READ permission is required.");
-        }
+    public boolean canUpdateRoles() {
+        return authorizationService.canAll(Set.of(AppPermission.ROLE_UPDATE, AppPermission.ROLE_ASSIGN));
     }
 
-    private void requireManage() {
-        if (!canManageRoles()) {
-            throw new AccessDeniedException("ROLE:CREATE/UPDATE/DELETE/ASSIGN permission is required.");
-        }
-    }
-
-    private boolean hasAuthority(Authentication authentication, String authority) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(grantedAuthority -> authority.equals(grantedAuthority.getAuthority()));
+    public boolean canDeleteRoles() {
+        return authorizationService.can(AppPermission.ROLE_DELETE);
     }
 
     private void validateUniqueCode(String code) {
@@ -141,19 +128,14 @@ public class RoleService {
         }
     }
 
-    private Set<Permission> requireActivePermissions(Set<Long> permissionIds) {
-        if (permissionIds == null || permissionIds.isEmpty()) {
+    private Set<AppPermission> requireAssignablePermissions(Set<AppPermission> requested) {
+        if (requested == null || requested.isEmpty()) {
             throw new RoleException("At least one permission must be selected.");
         }
-        List<Permission> permissions = permissionRepository.findAllById(permissionIds).stream()
-                .filter(permission -> permission.isActive()
-                        && permission.getResource().isActive()
-                        && permission.getAction().isActive())
-                .toList();
-        if (permissions.size() != permissionIds.size()) {
-            throw new RoleException("One or more permissions are no longer active and have been deselected.");
+        if (!authorizationService.canAll(requested)) {
+            throw new RoleException("You cannot assign permissions that you do not have.");
         }
-        return new LinkedHashSet<>(permissions);
+        return new LinkedHashSet<>(requested);
     }
 
     private String normalizeSearch(String value) {

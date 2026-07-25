@@ -20,7 +20,7 @@
 
 ## Preconditions
 
-- User is logged in and has STOCK_MOVEMENT:READ permission
+- User is logged in and has STOCK_MOVEMENT:VIEW permission
 - User has STOCK_MOVEMENT:CREATE permission to record new movements
 - Products exist in the database
 - User account exists for movement attribution
@@ -189,5 +189,5 @@ User navigates to the Stock Movements view from the main navigation menu or clic
 
 | Page | Access |
 |------|--------|
-| Stock Movement Ledger | Authenticated (STOCK_MOVEMENT:READ) |
+| Stock Movement Ledger | Authenticated (STOCK_MOVEMENT:VIEW) |
 | Create Movement | Authenticated (STOCK_MOVEMENT:CREATE) |

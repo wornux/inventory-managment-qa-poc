@@ -95,7 +95,7 @@ public class CategoriesView extends Main {
 
         Button newCategory = new Button("New Category", event -> openCreate());
         newCategory.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        newCategory.setVisible(categoryService.canManageCategories());
+        newCategory.setVisible(categoryService.canCreateCategories());
 
         toolbar.add(search, activeFilter, newCategory);
         toolbar.setFlexGrow(1, search);
@@ -149,12 +149,13 @@ public class CategoriesView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(category));
         layout.add(view);
-        if (categoryService.canManageCategories()) {
-            Button editCategory = new Button("Edit", event -> openEdit(category));
+        if (categoryService.canUpdateCategories()) {
+            layout.add(new Button("Edit", event -> openEdit(category)));
+        }
+        if (categoryService.canDeleteCategories() && category.isActive()) {
             Button deactivate = new Button("Deactivate", event -> confirmDeactivate(category));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
-            deactivate.setVisible(category.isActive());
-            layout.add(editCategory, deactivate);
+            layout.add(deactivate);
         }
         return layout;
     }
@@ -272,7 +273,7 @@ public class CategoriesView extends Main {
         save.setVisible(false);
         cancel.setVisible(false);
         close.setVisible(true);
-        edit.setVisible(categoryService.canManageCategories());
+        edit.setVisible(categoryService.canUpdateCategories());
         dirty = false;
         sidebar.open();
     }

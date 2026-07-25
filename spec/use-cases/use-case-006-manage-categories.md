@@ -20,7 +20,7 @@
 
 ## Preconditions
 
-- User is logged in and has CATEGORY:READ permission
+- User is logged in and has CATEGORY:VIEW permission
 - User has CATEGORY:CREATE, CATEGORY:UPDATE, CATEGORY:DELETE permissions for full management
 - Categories table exists in the database
 
@@ -180,5 +180,5 @@ User navigates to the Categories view from the inventory management menu.
 
 | Page | Access |
 |------|--------|
-| Category List | Authenticated (CATEGORY:READ) |
+| Category List | Authenticated (CATEGORY:VIEW) |
 | Create/Edit/View Category | Authenticated (CATEGORY:CREATE/UPDATE) |

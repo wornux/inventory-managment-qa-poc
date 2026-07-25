@@ -1,12 +1,11 @@
 package com.wornux.catalog;
 
+import com.wornux.security.authorization.AuthorizationService;
+import com.wornux.security.permission.AppPermission;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
-import org.springframework.security.access.AccessDeniedException;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -15,16 +14,17 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class CategoryService {
 
-    private static final String VIEWER = "ROLE_INVENTORY_VIEWER";
-    private static final String MANAGER = "ROLE_INVENTORY_MANAGER";
-    private static final String ADMINISTRATOR = "ROLE_SYSTEM_ADMINISTRATOR";
-
     private final CategoryRepository categoryRepository;
     private final ProductRepository productRepository;
+    private final AuthorizationService authorizationService;
 
-    public CategoryService(CategoryRepository categoryRepository, ProductRepository productRepository) {
+    public CategoryService(
+            CategoryRepository categoryRepository,
+            ProductRepository productRepository,
+            AuthorizationService authorizationService) {
         this.categoryRepository = categoryRepository;
         this.productRepository = productRepository;
+        this.authorizationService = authorizationService;
     }
 
     @Transactional(readOnly = true)
@@ -55,7 +55,7 @@ public class CategoryService {
 
     @Transactional
     public Category create(@Valid CategoryRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.CATEGORY_CREATE);
         validateUniqueName(request.getName(), null);
         Category category = new Category(normalizeName(request.getName()), trimToNull(request.getDescription()));
         category.update(category.getName(), category.getDescription(), request.isActive());
@@ -64,7 +64,7 @@ public class CategoryService {
 
     @Transactional
     public Category update(Long id, @Valid CategoryRequest request) {
-        requireManage();
+        authorizationService.check(AppPermission.CATEGORY_UPDATE);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryException("Category was not found."));
         if (!Objects.equals(category.getVersion(), request.getVersion())) {
@@ -77,35 +77,27 @@ public class CategoryService {
 
     @Transactional
     public void deactivate(Long id) {
-        requireManage();
+        authorizationService.check(AppPermission.CATEGORY_DELETE);
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new CategoryException("Category was not found."));
         category.deactivate();
         categoryRepository.save(category);
     }
 
-    public boolean canManageCategories() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        return hasAuthority(authentication, MANAGER) || hasAuthority(authentication, ADMINISTRATOR);
+    public boolean canCreateCategories() {
+        return authorizationService.can(AppPermission.CATEGORY_CREATE);
+    }
+
+    public boolean canUpdateCategories() {
+        return authorizationService.can(AppPermission.CATEGORY_UPDATE);
+    }
+
+    public boolean canDeleteCategories() {
+        return authorizationService.can(AppPermission.CATEGORY_DELETE);
     }
 
     private void requireRead() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (!hasAuthority(authentication, VIEWER) && !hasAuthority(authentication, MANAGER)
-                && !hasAuthority(authentication, ADMINISTRATOR)) {
-            throw new AccessDeniedException("CATEGORY:READ permission is required.");
-        }
-    }
-
-    private void requireManage() {
-        if (!canManageCategories()) {
-            throw new AccessDeniedException("CATEGORY:CREATE/UPDATE/DELETE permission is required.");
-        }
-    }
-
-    private boolean hasAuthority(Authentication authentication, String authority) {
-        return authentication != null && authentication.getAuthorities().stream()
-                .anyMatch(grantedAuthority -> authority.equals(grantedAuthority.getAuthority()));
+        authorizationService.check(AppPermission.CATEGORY_VIEW);
     }
 
     private void validateUniqueName(String name, Long id) {
