@@ -3,7 +3,9 @@ package com.wornux.catalog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -19,6 +21,7 @@ import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +32,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -74,6 +78,8 @@ class StockMovementServiceTest {
 
         assertThat(result).isSameAs(expected);
         verify(stockMovementRepository).search(LEDGER_START, LEDGER_END, null, null, "");
+        assertThat(service.search(new StockMovementFilter(null, null, null, null, null))).isSameAs(expected);
+        verify(stockMovementRepository, times(2)).search(LEDGER_START, LEDGER_END, null, null, "");
     }
 
     @Test
@@ -171,6 +177,15 @@ class StockMovementServiceTest {
     }
 
     @Test
+    void record_reasonRequiredTypeAcceptsMeaningfulReason() {
+        authenticate("manager", "stock-movement:create");
+        when(productRepository.findWithCategoryAndSupplierById(12L)).thenReturn(Optional.of(product(5)));
+        when(stockMovementRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        assertThat(service.recordStockMovement(request(12L, MovementType.ADJUSTMENT_IN, 1, "count correction")).getReason())
+                .isEqualTo("count correction");
+    }
+
+    @Test
     void record_withSale_updatesProductStockAndSavesNegativeMovement() {
         authenticate("operator", "stock-movement:create");
         Product product = product(5);
@@ -213,6 +228,39 @@ class StockMovementServiceTest {
                 .hasMessage("Quantity delta must not be zero.");
 
         verifyNoInteractions(productRepository, stockMovementRepository);
+    }
+
+    @Test
+    void record_withNullQuantity_usesSameNonZeroRule() {
+        authenticate("manager", "stock-movement:create");
+        assertThatThrownBy(() -> service.recordStockMovement(request(1L, MovementType.PURCHASE, null, null)))
+                .isInstanceOf(StockMovementException.class).hasMessage("Quantity delta must not be zero.");
+    }
+
+    @Test
+    void record_cannotReduceInventoryBelowZero() {
+        authenticate("manager", "stock-movement:create");
+        when(productRepository.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(product(2)));
+        assertThatThrownBy(() -> service.recordStockMovement(request(1L, MovementType.SALE, -3, null)))
+                .isInstanceOf(StockMovementException.class).hasMessage("Insufficient stock. Current stock: 2, requested: 3.");
+        verify(productRepository, never()).save(any());
+    }
+
+    @Test
+    void record_withoutAuthenticatedOrPersistedUserStillRecordsSystemMovement() {
+        authenticate("operator", "stock-movement:create");
+        when(productRepository.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(product(2)));
+        when(stockMovementRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        assertThat(service.recordStockMovement(request(1L, MovementType.PURCHASE, 1, null)).getUser()).isNull();
+
+        SecurityContextHolder.clearContext();
+        AuthorizationService authorization = mock(AuthorizationService.class);
+        StockMovementService permissive = new StockMovementService(stockMovementRepository, productRepository, appUserRepository, authorization);
+        assertThat(permissive.recordStockMovement(request(1L, MovementType.PURCHASE, 1, null)).getUser()).isNull();
+
+        var unnamedAuthentication = mock(Authentication.class);
+        SecurityContextHolder.getContext().setAuthentication(unnamedAuthentication);
+        assertThat(permissive.recordStockMovement(request(1L, MovementType.PURCHASE, 1, null)).getUser()).isNull();
     }
 
     @Test
@@ -290,7 +338,7 @@ class StockMovementServiceTest {
         var permissions = Arrays.stream(authorities)
                 .map(AppPermission::fromCode)
                 .flatMap(Optional::stream)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         Role role = new Role("TEST", "Test", null, false);
         role.update(role.getName(), role.getDescription(), true, permissions);
         AppUser user = user(username);

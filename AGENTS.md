@@ -21,6 +21,7 @@
 
 - Read the affected flow from entry point to persistence before editing. Search every caller of shared code and fix the narrowest source of truth.
 - Match existing conventions before introducing a pattern, helper, DTO, exception type, or dependency. Prefer direct code while there is only one implementation.
+- Do not use fully qualified class names in Java code; import the type instead. Qualify a type only when unavoidable because two imported types share the same simple name and neither type is under our control, or when both names are intentional, strong domain names such as `Client` or `Product` and renaming either would make the domain less clear.
 - Keep authorization checks in the service layer so UI and REST callers enforce the same rule. Do not rely on hidden or disabled controls for security.
 - Keep API entities behind request/response DTOs. Preserve the existing `ApiResponse` envelope and centralized exception handling.
 - Validate untrusted input at the boundary and enforce business invariants in the service or domain model. Do not infer HTTP status from exception message text in new code.

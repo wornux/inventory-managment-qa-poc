@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -146,7 +147,7 @@ public class UserService {
         }
         Set<AppPermission> permissions = roles.stream()
                 .flatMap(role -> role.getPermissions().stream())
-                .collect(java.util.stream.Collectors.toSet());
+                .collect(Collectors.toSet());
         if (!authorizationService.canAll(permissions)) {
             throw new UserException("You cannot assign a role containing permissions that you do not have.");
         }

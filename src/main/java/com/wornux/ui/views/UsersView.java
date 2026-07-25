@@ -41,6 +41,8 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import org.springframework.security.access.AccessDeniedException;
 
@@ -237,7 +239,7 @@ public class UsersView extends Main {
                 .withValidator(value -> value != null && !value.isEmpty(), "At least one role must be selected.")
                 .bind(this::rolesFromRequest, (request, value) -> request.setRoleIds(value.stream()
                         .map(Role::getId)
-                        .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new))));
+                        .collect(Collectors.toCollection(LinkedHashSet::new))));
     }
 
     private void configureDialogs() {
@@ -320,7 +322,7 @@ public class UsersView extends Main {
         request.setActive(user.isActive());
         request.setRoleIds(user.getRoles().stream()
                 .map(Role::getId)
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new)));
+                .collect(Collectors.toCollection(LinkedHashSet::new)));
         request.setVersion(user.getVersion());
         return request;
     }
@@ -380,10 +382,10 @@ public class UsersView extends Main {
         roles.setReadOnly(readOnly);
     }
 
-    private java.util.Set<Role> rolesFromRequest(UserRequest request) {
+    private Set<Role> rolesFromRequest(UserRequest request) {
         return availableRoles.stream()
                 .filter(role -> request.getRoleIds().contains(role.getId()))
-                .collect(java.util.stream.Collectors.toCollection(LinkedHashSet::new));
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
     private void refreshGrid() {
@@ -400,11 +402,11 @@ public class UsersView extends Main {
         return null;
     }
 
-    private String roleSummary(java.util.Set<Role> roles) {
+    private String roleSummary(Set<Role> roles) {
         return roles.stream()
                 .map(Role::getName)
                 .sorted()
-                .collect(java.util.stream.Collectors.joining(", "));
+                .collect(Collectors.joining(", "));
     }
 
     private String formatInstant(Instant value) {

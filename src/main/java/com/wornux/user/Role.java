@@ -12,6 +12,7 @@ import jakarta.persistence.Version;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.Optional;
 import java.util.Set;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.envers.Audited;
@@ -93,7 +94,7 @@ public class Role extends Auditable {
         var result = new LinkedHashSet<AppPermission>();
         Arrays.stream(permissions)
                 .map(AppPermission::fromCode)
-                .flatMap(java.util.Optional::stream)
+                .flatMap(Optional::stream)
                 .forEach(result::add);
         return result;
     }

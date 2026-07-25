@@ -19,8 +19,8 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class StockMovementService {
 
-    private static final Instant LEDGER_START = java.time.Instant.parse("1970-01-01T00:00:00Z");
-    private static final Instant LEDGER_END = java.time.Instant.parse("9999-12-31T00:00:00Z");
+    private static final Instant LEDGER_START = Instant.parse("1970-01-01T00:00:00Z");
+    private static final Instant LEDGER_END = Instant.parse("9999-12-31T00:00:00Z");
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
     private final AppUserRepository appUserRepository;

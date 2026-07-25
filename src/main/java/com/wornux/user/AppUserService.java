@@ -1,5 +1,6 @@
 package com.wornux.user;
 
+import com.wornux.security.permission.AppPermission;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
@@ -54,7 +55,7 @@ public class AppUserService {
         return user.getRoles().stream()
                 .filter(Role::isActive)
                 .flatMap(role -> role.getPermissions().stream())
-                .map(com.wornux.security.permission.AppPermission::code)
+                .map(AppPermission::code)
                 .distinct()
                 .map(SimpleGrantedAuthority::new)
                 .map(GrantedAuthority.class::cast)
