@@ -1,6 +1,12 @@
 {
   "id" : "b7d956b9-cf4c-47c6-a762-4d102a39b8b4",
   "realm" : "wornux",
+  "displayName" : "Inventory Management",
+  "displayNameHtml" : "Inventory Management",
+  "loginTheme" : "wornux",
+  "internationalizationEnabled" : true,
+  "defaultLocale" : "en",
+  "supportedLocales" : [ "en", "es" ],
   "notBefore" : 0,
   "defaultSignatureAlgorithm" : "RS256",
   "revokeRefreshToken" : false,
@@ -1441,7 +1447,6 @@
       }
     } ]
   },
-  "internationalizationEnabled" : false,
   "authenticationFlows" : [ {
     "id" : "176112bc-c362-4cf7-abc5-e37450f0c70d",
     "alias" : "Account verification options",

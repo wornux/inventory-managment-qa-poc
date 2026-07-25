@@ -1,0 +1,306 @@
+/*
+ * Extends the application's calm operational UI into authentication:
+ * warm orange actions, charcoal type, pale inventory-floor surfaces,
+ * and the same warehouse mark. Keycloak owns the form and its states.
+ */
+
+:root {
+  --wornux-accent: #ff8904;
+  --wornux-accent-hover: #e87600;
+  --wornux-ink: #161b1d;
+  --wornux-muted: #53606f;
+  --wornux-surface: #ffffff;
+  --wornux-border: #c8ced3;
+  --wornux-focus: #9a4f00;
+  --wornux-error: #9d1c1c;
+}
+
+html.login-pf,
+html.login-pf body {
+  min-height: 100%;
+}
+
+html.login-pf body {
+  align-items: center;
+  background:
+    radial-gradient(circle at 12% 12%, rgba(46, 125, 50, 0.16), transparent 34rem),
+    linear-gradient(135deg, #f7f8f4 0%, #eef4f8 100%);
+  color: var(--wornux-ink);
+  display: flex;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  padding: 2rem;
+}
+
+.login-pf-page {
+  margin: auto;
+  padding: 0;
+  width: min(100%, 430px);
+}
+
+#kc-header {
+  margin: 0 0 1rem;
+  text-align: center;
+}
+
+#kc-header-wrapper {
+  align-items: center;
+  color: var(--wornux-ink);
+  display: inline-flex;
+  font-size: 1rem;
+  font-weight: 700;
+  gap: 0.625rem;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  padding: 0;
+  text-transform: none;
+}
+
+#kc-header-wrapper::before {
+  background: url("../img/logo.svg") center / contain no-repeat;
+  content: "";
+  display: block;
+  height: 2rem;
+  width: 2rem;
+}
+
+.login-pf-page .card-pf {
+  background: var(--wornux-surface);
+  border: 0;
+  border-radius: 12px;
+  box-shadow: 0 18px 50px rgba(33, 43, 54, 0.14);
+  margin: 0;
+  max-width: none;
+  padding: 2rem;
+  position: relative;
+}
+
+.login-pf-header {
+  margin: 0 0 1.5rem;
+  padding: 0;
+}
+
+#kc-page-title {
+  color: var(--wornux-ink);
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  margin: 0;
+  text-align: left;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.pf-c-form__label,
+.pf-c-form__label-text {
+  color: var(--wornux-ink);
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 0.45rem;
+}
+
+.pf-c-form-control {
+  background: var(--wornux-surface);
+  border: 1px solid var(--wornux-border);
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--wornux-ink);
+  font-size: 1rem;
+  height: 2.75rem;
+  padding: 0.625rem 0.75rem;
+}
+
+.pf-c-form-control:hover {
+  border-color: #8a949d;
+}
+
+.pf-c-form-control[aria-invalid="true"] {
+  background-color: #fffafa;
+  background-repeat: no-repeat;
+  border-color: #c53b35;
+  border-bottom-color: #c53b35;
+  padding-right: 2.25rem;
+}
+
+.pf-c-form__helper-text.pf-m-error {
+  display: block;
+  line-height: 1.4;
+  margin-top: 0.5rem;
+}
+
+.pf-c-form-control:focus,
+.pf-c-button:focus-visible,
+a:focus-visible,
+#kc-current-locale-link:focus-visible {
+  outline: 3px solid rgba(154, 79, 0, 0.3);
+  outline-offset: 2px;
+}
+
+.pf-c-input-group .pf-c-form-control {
+  flex: 1;
+  height: 2.75rem;
+  min-width: 0;
+  border-radius: 6px 0 0 6px;
+}
+
+.pf-c-input-group .pf-c-button {
+  background: #f4f4f0;
+  border: 1px solid var(--wornux-border);
+  border-left: 0;
+  border-radius: 0 6px 6px 0;
+  color: var(--wornux-muted);
+  height: 2.75rem;
+  margin: 0;
+  min-width: 2.75rem;
+}
+
+.pf-c-input-group .pf-c-button::after {
+  display: none;
+}
+
+#kc-form-options {
+  color: var(--wornux-muted);
+  font-size: 0.875rem;
+}
+
+#kc-form-buttons {
+  margin-bottom: 0;
+  margin-top: 1.5rem;
+}
+
+#kc-login,
+.pf-c-button.pf-m-primary {
+  background: var(--wornux-accent);
+  border: 0;
+  border-radius: 6px;
+  box-shadow: none;
+  color: var(--wornux-ink);
+  font-size: 1rem;
+  font-weight: 700;
+  min-height: 2.75rem;
+  transition: background-color 150ms ease, transform 150ms ease;
+}
+
+#kc-login:hover,
+.pf-c-button.pf-m-primary:hover {
+  background: var(--wornux-accent-hover);
+  color: var(--wornux-ink);
+  transform: translateY(-1px);
+}
+
+#kc-login:active,
+.pf-c-button.pf-m-primary:active {
+  transform: translateY(0);
+}
+
+a {
+  color: #8a4600;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+}
+
+a:hover {
+  color: #5c2f00;
+}
+
+#kc-info {
+  background: transparent;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  text-align: center;
+}
+
+#kc-registration {
+  color: var(--wornux-muted);
+  font-size: 0.875rem;
+}
+
+.pf-c-alert {
+  border-radius: 6px;
+  margin-bottom: 1.25rem;
+}
+
+.pf-c-alert.pf-m-danger,
+.pf-c-form__helper-text.pf-m-error {
+  color: var(--wornux-error);
+}
+
+#kc-locale {
+  position: absolute;
+  right: 2rem;
+  top: 2rem;
+  z-index: 2;
+}
+
+#kc-current-locale-link {
+  background: transparent;
+  border: 0;
+  color: var(--wornux-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 0.25rem;
+}
+
+#kc-locale-dropdown ul {
+  background: var(--wornux-surface);
+  border: 1px solid var(--wornux-border);
+  border-radius: 6px;
+  box-shadow: 0 10px 28px rgba(33, 43, 54, 0.16);
+  display: none;
+  right: 0;
+  top: 2rem;
+}
+
+#kc-locale-dropdown:hover ul,
+#kc-locale-dropdown:focus-within ul,
+#kc-current-locale-link[aria-expanded="true"] + ul {
+  display: block;
+}
+
+@media (max-width: 520px) {
+  html.login-pf body {
+    align-items: flex-start;
+    padding: 1rem;
+  }
+
+  .login-pf-page {
+    margin-top: max(1rem, 8vh);
+  }
+
+  .login-pf-page .card-pf {
+    padding: 1.25rem;
+  }
+
+  .login-pf-header {
+    padding-top: 2rem;
+  }
+
+  #kc-page-title {
+    font-size: 1.75rem;
+  }
+
+  #kc-locale {
+    right: 1.25rem;
+    top: 1.25rem;
+  }
+
+  #kc-registration span {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #kc-login,
+  .pf-c-button.pf-m-primary {
+    transition: none;
+  }
+}

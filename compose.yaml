@@ -34,11 +34,15 @@ services:
     command:
       - start-dev
       - --import-realm
+      - --spi-theme--static-max-age=-1
+      - --spi-theme--cache-themes=false
+      - --spi-theme--cache-templates=false
     ports:
       - "7777:7777"
       - "9000:9000"
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro
+      - ./keycloak/themes:/opt/keycloak/themes:ro
     environment:
       KC_HTTP_PORT: 7777
       KC_HOSTNAME: http://localhost:7777
