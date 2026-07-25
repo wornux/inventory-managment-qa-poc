@@ -2,7 +2,7 @@ package com.wornux.api.product;
 
 import java.math.BigDecimal;
 
-public record ProductResponse(
+public record ProductResponseDto(
         Long id,
         String sku,
         String name,
@@ -13,5 +13,5 @@ public record ProductResponse(
         boolean active,
         Long version,
         boolean lowStock,
-        CatalogReferenceResponse category,
-        CatalogReferenceResponse supplier) {}
+        CatalogReferenceResponseDto category,
+        CatalogReferenceResponseDto supplier) {}

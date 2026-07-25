@@ -6,8 +6,9 @@ import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
+import com.vaadin.flow.component.details.Details;
+import com.vaadin.flow.component.details.DetailsVariant;
 import com.vaadin.flow.component.html.Div;
-import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.icon.VaadinIcon;
@@ -63,8 +64,8 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
 
         addClassName("main-layout");
         setPrimarySection(Section.DRAWER);
-        addToNavbar(createTopBar());
-        addToDrawer(createDrawerHeader(), new Scroller(createNavigation()), createDrawerFooter());
+        addToNavbar(createMobileDrawerToggle("main-layout-toggle", "Open navigation"));
+        addToDrawer(createDrawerHeader(), new Scroller(createNavigation()), createProfileDrawer());
     }
 
     @Override
@@ -74,35 +75,6 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         if (permission != null && !accessService.canRead(permission)) {
             event.rerouteTo(ForbiddenView.class);
         }
-    }
-
-    private Component createTopBar() {
-        var mobileToggle = new DrawerToggle();
-        mobileToggle.addClassName("main-layout-toggle");
-        mobileToggle.setAriaLabel("Open navigation");
-
-        var railToggle = new DrawerRailToggle();
-
-        var title = new H1("Inventory");
-        title.addClassName("main-layout-title");
-
-        var spacer = new Div();
-        spacer.addClassName("main-layout-spacer");
-
-        var user = currentUsername();
-        var avatar = new Avatar(user);
-        avatar.addClassName("main-layout-avatar");
-
-        var logout = new Button("Sign out", VaadinIcon.SIGN_OUT.create(), event -> authenticationContext.logout());
-        logout.addThemeVariants(ButtonVariant.TERTIARY);
-        logout.addClassName("main-layout-logout");
-
-        var topBar = new HorizontalLayout(mobileToggle, railToggle, title, spacer, avatar, logout);
-        topBar.addClassName("main-layout-topbar");
-        topBar.setAlignItems(FlexComponent.Alignment.CENTER);
-        topBar.setWidthFull();
-
-        return topBar;
     }
 
     private Component createDrawerHeader() {
@@ -120,11 +92,31 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         copy.setPadding(false);
         copy.setSpacing(false);
 
-        var header = new HorizontalLayout(mark, copy);
+        var identity = new HorizontalLayout(mark, copy);
+        identity.addClassName("main-layout-brand-identity");
+        identity.setAlignItems(FlexComponent.Alignment.CENTER);
+
+        var railToggle = new DrawerRailToggle();
+        railToggle.addClassName("main-layout-rail-toggle");
+
+        var mobileToggle = createMobileDrawerToggle("main-layout-drawer-close", "Close navigation");
+        var controls = new Div(railToggle, mobileToggle);
+        controls.addClassName("main-layout-brand-controls");
+
+        var header = new HorizontalLayout(identity, controls);
         header.addClassName("main-layout-brand");
         header.setAlignItems(FlexComponent.Alignment.CENTER);
 
         return header;
+    }
+
+    private DrawerToggle createMobileDrawerToggle(String className, String ariaLabel) {
+        var toggle = new DrawerToggle();
+        toggle.addThemeVariants(ButtonVariant.TERTIARY);
+        toggle.addClassName(className);
+        toggle.setAriaLabel(ariaLabel);
+
+        return toggle;
     }
 
     private Component createNavigation() {
@@ -208,49 +200,69 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         return icon;
     }
 
-    private Component createDrawerFooter() {
-        var user = new Span(currentUsername());
-        user.addClassName("main-layout-user-name");
+    private Component createProfileDrawer() {
+        var profile = currentUserProfile();
 
-        var role = new Span("Signed in");
-        role.addClassName("main-layout-user-role");
+        var avatar = new Avatar(profile.name());
+        avatar.addClassName("profile-drawer-card__avatar");
 
-        var avatar = new Avatar(currentUsername());
-        avatar.addClassName("main-layout-footer-avatar");
+        var name = new Span(profile.name());
+        name.addClassName("profile-drawer-card__name");
 
-        var copy = new VerticalLayout(user, role);
-        copy.addClassName("main-layout-user-copy");
-        copy.setPadding(false);
-        copy.setSpacing(false);
+        var identity = new Div(name);
+        identity.addClassName("profile-drawer-card__identity");
+        if (!profile.email().isBlank()) {
+            var email = new Span(profile.email());
+            email.addClassName("profile-drawer-card__email");
+            identity.add(email);
+        }
 
-        var footer = new HorizontalLayout(avatar, copy);
-        footer.addClassName("main-layout-user");
-        footer.setAlignItems(FlexComponent.Alignment.CENTER);
+        var summary = new Div(avatar, identity);
+        summary.addClassName("profile-drawer-card__summary");
 
-        return footer;
+        var logout = new Button("Sign out", VaadinIcon.SIGN_OUT.create(), event -> authenticationContext.logout());
+        logout.addThemeVariants(ButtonVariant.TERTIARY);
+        logout.addClassName("profile-drawer-card__logout");
+
+        var details = new Details(summary, logout);
+        details.addThemeVariants(DetailsVariant.REVERSE);
+        details.addClassName("profile-drawer-card");
+
+        return details;
     }
 
-    private String currentUsername() {
+    private UserProfile currentUserProfile() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null) {
-            return "User";
+            return new UserProfile("User", "");
         }
 
         Object principal = authentication.getPrincipal();
 
         if (principal instanceof OidcUser oidcUser) {
-            String username = oidcUser.getClaimAsString("preferred_username");
+            String username = firstNonBlank(oidcUser.getClaimAsString("preferred_username"), oidcUser.getName(), "User");
+            String displayName = firstNonBlank(oidcUser.getClaimAsString("name"), username);
 
-            return username == null || username.isBlank() ? oidcUser.getName() : username;
+            return new UserProfile(displayName, firstNonBlank(oidcUser.getEmail(), ""));
         }
 
         if (principal instanceof UserDetails userDetails) {
-            return userDetails.getUsername();
+            return new UserProfile(firstNonBlank(userDetails.getUsername(), "User"), "");
         }
 
-        return authentication.getName() == null || authentication.getName().isBlank()
-                ? "User"
-                : authentication.getName();
+        return new UserProfile(firstNonBlank(authentication.getName(), "User"), "");
     }
+
+    private String firstNonBlank(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+
+        return "";
+    }
+
+    private record UserProfile(String name, String email) {}
 }

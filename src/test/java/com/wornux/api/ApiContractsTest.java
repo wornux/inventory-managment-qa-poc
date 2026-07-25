@@ -5,21 +5,28 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.wornux.catalog.ProductException;
+import com.wornux.catalog.StockMovementException;
+import io.swagger.v3.oas.models.security.SecurityScheme;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
 import java.net.URI;
+import java.time.Instant;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 class ApiContractsTest extends AbstractRestController {
 
@@ -49,15 +56,20 @@ class ApiContractsTest extends AbstractRestController {
 
         assertThat(mapper.writeValueAsString(ApiResponse.success("ok", 1))).contains("\"success\":true");
 
-        var api = new OpenApiConfig().openAPI();
+        var issuerUri = "http://localhost:7777/realms/wornux";
+        var api = new OpenApiConfig().openAPI(issuerUri);
 
         assertThat(api.getInfo().getTitle()).isEqualTo("QA Final Project API");
         assertThat(api.getInfo().getVersion()).isEqualTo("1.0");
 
-        var scheme = api.getComponents().getSecuritySchemes().get(OpenApiConfig.JWT_BEARER_SCHEME);
+        var scheme = api.getComponents().getSecuritySchemes().get(OpenApiConfig.OAUTH2_SCHEME);
 
-        assertThat(scheme.getScheme()).isEqualTo("bearer");
-        assertThat(scheme.getBearerFormat()).isEqualTo("JWT");
+        assertThat(scheme.getType()).isEqualTo(SecurityScheme.Type.OAUTH2);
+        assertThat(scheme.getFlows().getAuthorizationCode().getAuthorizationUrl())
+                .isEqualTo(issuerUri + "/protocol/openid-connect/auth");
+        assertThat(scheme.getFlows().getAuthorizationCode().getTokenUrl())
+                .isEqualTo(issuerUri + "/protocol/openid-connect/token");
+        assertThat(scheme.getFlows().getAuthorizationCode().getScopes()).containsKeys("openid", "profile", "email");
     }
 
     @Test
@@ -87,6 +99,28 @@ class ApiContractsTest extends AbstractRestController {
                 .isEqualTo(HttpStatus.FORBIDDEN);
         assertThat(handler.runtime(new RuntimeException("boom")).getBody().message())
                 .isEqualTo("Unexpected API error.");
+    }
+
+    @Test
+    void exceptionHandlerMapsMalformedRequestsAndStockMovementFailures() {
+        var handler = new RestExceptionHandler();
+        var mismatch = new MethodArgumentTypeMismatchException(
+                "bad", Instant.class, "createdFrom", null, new IllegalArgumentException("bad"));
+
+        assertThat(handler.methodArgumentTypeMismatch(mismatch).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(handler.methodArgumentTypeMismatch(mismatch).getBody().errors().getFirst().field())
+                .isEqualTo("createdFrom");
+
+        var unreadable = new HttpMessageNotReadableException("bad json", mock(HttpInputMessage.class));
+
+        assertThat(handler.httpMessageNotReadable(unreadable).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(handler.stockMovement(new StockMovementException("Invalid movement."))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(handler.stockMovement(new StockMovementException(
+                                "Failed to save movement.", new DataIntegrityViolationException("database")))
+                        .getStatusCode())
+                .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
     @Test

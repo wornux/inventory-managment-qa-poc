@@ -1,16 +1,20 @@
 package com.wornux.api;
 
 import com.wornux.catalog.ProductException;
+import com.wornux.catalog.StockMovementException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
+import org.springframework.dao.DataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @RestControllerAdvice(basePackages = "com.wornux.api")
 public class RestExceptionHandler {
@@ -34,6 +38,22 @@ public class RestExceptionHandler {
         return failure(HttpStatus.BAD_REQUEST, "Request validation failed.", errors);
     }
 
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    ResponseEntity<ApiResponse<Void>> methodArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
+        return failure(
+                HttpStatus.BAD_REQUEST,
+                "Request validation failed.",
+                List.of(new ApiErrorResponse(exception.getName(), "Invalid value.")));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    ResponseEntity<ApiResponse<Void>> httpMessageNotReadable(HttpMessageNotReadableException exception) {
+        return failure(
+                HttpStatus.BAD_REQUEST,
+                "Request validation failed.",
+                List.of(new ApiErrorResponse(null, "Request body is not valid JSON.")));
+    }
+
     @ExceptionHandler(AuthenticationException.class)
     ResponseEntity<ApiResponse<Void>> authentication(AuthenticationException exception) {
         return failure(HttpStatus.UNAUTHORIZED, "Authentication failed.", List.of(error(exception.getMessage())));
@@ -47,6 +67,15 @@ public class RestExceptionHandler {
     @ExceptionHandler(ProductException.class)
     ResponseEntity<ApiResponse<Void>> product(ProductException exception) {
         HttpStatus status = productStatus(exception.getMessage());
+
+        return failure(status, exception.getMessage(), List.of(error(exception.getMessage())));
+    }
+
+    @ExceptionHandler(StockMovementException.class)
+    ResponseEntity<ApiResponse<Void>> stockMovement(StockMovementException exception) {
+        HttpStatus status = exception.getCause() instanceof DataAccessException
+                ? HttpStatus.INTERNAL_SERVER_ERROR
+                : HttpStatus.BAD_REQUEST;
 
         return failure(status, exception.getMessage(), List.of(error(exception.getMessage())));
     }

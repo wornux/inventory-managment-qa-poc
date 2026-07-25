@@ -4,9 +4,11 @@ import com.wornux.security.permission.AppPermission;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
 import com.wornux.user.Role;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -28,10 +30,19 @@ public class AuthorizationService {
 
     @Transactional(readOnly = true)
     public boolean canAll(Collection<AppPermission> permissions) {
-        Set<AppPermission> granted = currentPermissions();
+        Set<AppPermission> granted = assignedPermissions();
 
         return permissions.stream()
                 .allMatch(requested -> granted.stream().anyMatch(permission -> permission.grants(requested)));
+    }
+
+    @Transactional(readOnly = true)
+    public Set<AppPermission> effectivePermissions() {
+        Set<AppPermission> granted = assignedPermissions();
+
+        return Arrays.stream(AppPermission.values())
+                .filter(requested -> granted.stream().anyMatch(permission -> permission.grants(requested)))
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     public void check(AppPermission permission) {
@@ -40,7 +51,7 @@ public class AuthorizationService {
         }
     }
 
-    private Set<AppPermission> currentPermissions() {
+    private Set<AppPermission> assignedPermissions() {
         // ponytail: query per check keeps revocation immediate; add versioned snapshots only if this becomes a measured
         // bottleneck.
         var authentication = SecurityContextHolder.getContext().getAuthentication();

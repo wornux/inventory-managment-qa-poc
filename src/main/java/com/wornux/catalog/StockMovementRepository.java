@@ -1,33 +1,27 @@
 package com.wornux.catalog;
 
-import java.time.Instant;
 import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
-public interface StockMovementRepository extends JpaRepository<StockMovement, Long> {
+public interface StockMovementRepository
+        extends JpaRepository<StockMovement, Long>, JpaSpecificationExecutor<StockMovement> {
 
     boolean existsByProductId(Long productId);
 
+    @Override
     @EntityGraph(attributePaths = {"product", "user"})
-    @Query("""
-            select movement
-            from StockMovement movement
-            where movement.createdDate >= :createdFrom
-                and movement.createdDate < :createdTo
-                and (:productId is null or movement.product.id = :productId)
-                and (:movementType is null or movement.movementType = :movementType)
-                and (:username = '' or (movement.user is not null and lower(movement.user.username) = lower(:username)))
-            order by movement.createdDate desc, movement.id desc
-            """)
-    List<StockMovement> search(
-            @Param("createdFrom") Instant createdFrom,
-            @Param("createdTo") Instant createdTo,
-            @Param("productId") Long productId,
-            @Param("movementType") MovementType movementType,
-            @Param("username") String username);
+    List<StockMovement> findAll(Specification<StockMovement> specification, Sort sort);
+
+    @Override
+    @EntityGraph(attributePaths = {"product", "user"})
+    Page<StockMovement> findAll(Specification<StockMovement> specification, Pageable pageable);
 
     @Query("""
             select distinct movement.user.username

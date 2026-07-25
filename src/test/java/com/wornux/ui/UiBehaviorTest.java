@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.button.Button;
+import com.vaadin.flow.component.details.Details;
 import com.vaadin.flow.component.html.Span;
 import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.spring.security.AuthenticationContext;
@@ -64,7 +65,7 @@ class UiBehaviorTest {
                 .map(e -> e.getText())
                 .toList();
 
-        assertThat(text).contains("Products", "alice", "Signed in");
+        assertThat(text).contains("Products", "alice", "Sign out");
         assertThat(text).doesNotContain("Categories", "Users", "No modules available");
     }
 
@@ -126,6 +127,25 @@ class UiBehaviorTest {
 
         assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class))))
                 .contains("subject");
+    }
+
+    @Test
+    void profileDrawerShowsOidcIdentityAndOnlyLogoutOption() {
+        var authentication = mock(Authentication.class);
+        var principal = mock(OidcUser.class);
+        when(authentication.getPrincipal()).thenReturn(principal);
+        when(principal.getClaimAsString("preferred_username")).thenReturn("alice");
+        when(principal.getClaimAsString("name")).thenReturn("Alice Example");
+        when(principal.getEmail()).thenReturn("alice@example.com");
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        var layout = new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class));
+        var profile = descendants(layout).filter(Details.class::isInstance).map(Details.class::cast).findFirst().orElseThrow();
+
+        assertThat(textOf(profile)).contains("Alice Example", "alice@example.com", "Sign out");
+        assertThat(profile.isOpened()).isFalse();
+        assertThat(descendants(profile).filter(Button.class::isInstance).map(Button.class::cast).map(Button::getText))
+                .containsExactly("Sign out");
     }
 
     @Test

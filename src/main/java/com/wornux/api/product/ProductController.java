@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/products")
 @Tag(name = "Products", description = "Product inventory CRUD")
-@SecurityRequirement(name = OpenApiConfig.JWT_BEARER_SCHEME)
+@SecurityRequirement(name = OpenApiConfig.OAUTH2_SCHEME)
 public class ProductController extends AbstractRestController {
 
     private final ProductService productService;
@@ -41,14 +41,14 @@ public class ProductController extends AbstractRestController {
 
     @GetMapping
     @Operation(summary = "List products", description = "Returns a pageable product list with optional filters.")
-    ResponseEntity<ApiResponse<List<ProductResponse>>> list(
+    ResponseEntity<ApiResponse<List<ProductResponseDto>>> list(
             @RequestParam(defaultValue = "") String text,
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) Long supplierId,
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "false") boolean lowStockOnly,
             Pageable pageable) {
-        Page<ProductResponse> products = productService
+        Page<ProductResponseDto> products = productService
                 .search(new ProductFilter(text, categoryId, supplierId, active, lowStockOnly), pageable)
                 .map(productApiMapper::toResponse);
 
@@ -57,23 +57,23 @@ public class ProductController extends AbstractRestController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get product", description = "Returns one product by identifier.")
-    ResponseEntity<ApiResponse<ProductResponse>> get(@PathVariable Long id) {
+    ResponseEntity<ApiResponse<ProductResponseDto>> get(@PathVariable Long id) {
         return ok("Product retrieved.", productApiMapper.toResponse(productService.get(id)));
     }
 
     @PostMapping
     @Operation(summary = "Create product", description = "Creates a product and returns its API representation.")
-    ResponseEntity<ApiResponse<ProductResponse>> create(@Valid @RequestBody ProductRequest request) {
+    ResponseEntity<ApiResponse<ProductResponseDto>> create(@Valid @RequestBody ProductRequestDto request) {
         Product product = productService.create(productApiMapper.toDomainRequest(request));
-        ProductResponse response = productApiMapper.toResponse(product);
+        ProductResponseDto response = productApiMapper.toResponse(product);
 
         return created("Product created.", URI.create("/api/products/" + product.getId()), response);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update product", description = "Updates an existing product using optimistic locking.")
-    ResponseEntity<ApiResponse<ProductResponse>> update(
-            @PathVariable Long id, @Valid @RequestBody ProductRequest request) {
+    ResponseEntity<ApiResponse<ProductResponseDto>> update(
+            @PathVariable Long id, @Valid @RequestBody ProductRequestDto request) {
         Product product = productService.update(id, productApiMapper.toDomainRequest(request));
 
         return ok("Product updated.", productApiMapper.toResponse(product));

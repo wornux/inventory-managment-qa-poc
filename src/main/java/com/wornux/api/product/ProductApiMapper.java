@@ -17,11 +17,11 @@ public class ProductApiMapper {
         this.jsonMapper = jsonMapper;
     }
 
-    public com.wornux.catalog.ProductRequest toDomainRequest(ProductRequest request) {
+    public com.wornux.catalog.ProductRequest toDomainRequest(ProductRequestDto request) {
         return jsonMapper.convertValue(request, com.wornux.catalog.ProductRequest.class);
     }
 
-    public ProductResponse toResponse(Product product) {
+    public ProductResponseDto toResponse(Product product) {
         Map<String, Object> value = new LinkedHashMap<>();
         value.put("id", product.getId());
         value.put("sku", product.getSku());
@@ -36,24 +36,24 @@ public class ProductApiMapper {
         value.put("category", reference(product.getCategory()));
         value.put("supplier", reference(product.getSupplier()));
 
-        return jsonMapper.convertValue(value, ProductResponse.class);
+        return jsonMapper.convertValue(value, ProductResponseDto.class);
     }
 
-    private CatalogReferenceResponse reference(Category category) {
+    private CatalogReferenceResponseDto reference(Category category) {
         if (category == null) {
             return null;
         }
 
         return jsonMapper.convertValue(
-                Map.of("id", category.getId(), "name", category.getName()), CatalogReferenceResponse.class);
+                Map.of("id", category.getId(), "name", category.getName()), CatalogReferenceResponseDto.class);
     }
 
-    private CatalogReferenceResponse reference(Supplier supplier) {
+    private CatalogReferenceResponseDto reference(Supplier supplier) {
         if (supplier == null) {
             return null;
         }
 
         return jsonMapper.convertValue(
-                Map.of("id", supplier.getId(), "name", supplier.getName()), CatalogReferenceResponse.class);
+                Map.of("id", supplier.getId(), "name", supplier.getName()), CatalogReferenceResponseDto.class);
     }
 }

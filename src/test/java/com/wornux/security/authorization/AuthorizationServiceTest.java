@@ -97,6 +97,28 @@ class AuthorizationServiceTest {
     }
 
     @Test
+    void effectivePermissionsIncludesCapabilitiesImpliedByAssignedActions() {
+        Role role = new Role("EDITOR", "Editor", null);
+        role.update(
+                role.getName(),
+                role.getDescription(),
+                true,
+                Set.of(AppPermission.PRODUCT_UPDATE, AppPermission.STOCK_MOVEMENT_CREATE));
+        AppUser user = new AppUser("editor", "editor@example.com", "issuer", "subject");
+        user.addRole(role);
+        when(appUserRepository.findForAuthorization("editor")).thenReturn(Optional.of(user));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("editor", "password", List.of()));
+
+        assertThat(new AuthorizationService(appUserRepository).effectivePermissions())
+                .containsExactlyInAnyOrder(
+                        AppPermission.PRODUCT_VIEW,
+                        AppPermission.PRODUCT_UPDATE,
+                        AppPermission.STOCK_MOVEMENT_VIEW,
+                        AppPermission.STOCK_MOVEMENT_CREATE);
+    }
+
+    @Test
     void inactiveUserHasNoPermissions() {
         AppUser user = new AppUser("disabled", "disabled@example.com", "issuer", "subject");
         user.deactivate();

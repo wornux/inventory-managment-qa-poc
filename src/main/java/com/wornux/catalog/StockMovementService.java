@@ -8,6 +8,9 @@ import jakarta.validation.Valid;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.dao.DataAccessException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -18,8 +21,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class StockMovementService {
 
-    private static final Instant LEDGER_START = Instant.parse("1970-01-01T00:00:00Z");
-    private static final Instant LEDGER_END = Instant.parse("9999-12-31T00:00:00Z");
+    private static final Sort LEDGER_ORDER = Sort.by(Sort.Order.desc("createdDate"), Sort.Order.desc("id"));
     private final StockMovementRepository stockMovementRepository;
     private final ProductRepository productRepository;
     private final AppUserRepository appUserRepository;
@@ -39,14 +41,15 @@ public class StockMovementService {
     @Transactional(readOnly = true)
     public List<StockMovement> search(StockMovementFilter filter) {
         requireRead();
-        StockMovementFilter safeFilter = filter == null ? new StockMovementFilter(null, null, null, null, "") : filter;
 
-        return stockMovementRepository.search(
-                safeFilter.createdFrom() == null ? LEDGER_START : safeFilter.createdFrom(),
-                safeFilter.createdTo() == null ? LEDGER_END : safeFilter.createdTo(),
-                safeFilter.productId(),
-                safeFilter.movementType(),
-                normalizeUsername(safeFilter.username()));
+        return stockMovementRepository.findAll(StockMovementSpecifications.from(filter), LEDGER_ORDER);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<StockMovement> search(StockMovementFilter filter, Pageable pageable) {
+        requireRead();
+
+        return stockMovementRepository.findAll(StockMovementSpecifications.from(filter), pageable);
     }
 
     @Transactional(readOnly = true)
@@ -145,7 +148,4 @@ public class StockMovementService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private String normalizeUsername(String value) {
-        return value == null ? "" : value.trim();
-    }
 }

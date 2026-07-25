@@ -1,0 +1,106 @@
+{
+  "info": {
+    "name": "Wornux API",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "oauth2",
+    "oauth2": [
+      { "key": "tokenName", "value": "Wornux Keycloak user", "type": "string" },
+      { "key": "grant_type", "value": "authorization_code_with_pkce", "type": "string" },
+      { "key": "authUrl", "value": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/auth", "type": "string" },
+      { "key": "accessTokenUrl", "value": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token", "type": "string" },
+      { "key": "clientId", "value": "{{interactiveClientId}}", "type": "string" },
+      { "key": "redirect_uri", "value": "https://oauth.pstmn.io/v1/browser-callback", "type": "string" },
+      { "key": "scope", "value": "openid profile email", "type": "string" },
+      { "key": "challengeAlgorithm", "value": "S256", "type": "string" },
+      { "key": "addTokenTo", "value": "header", "type": "string" }
+    ]
+  },
+  "item": [
+    {
+      "name": "Products",
+      "item": [
+        {
+          "name": "List products",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/products",
+              "host": ["{{apiUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Automation",
+      "item": [
+        {
+          "name": "Get service-account token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const response = pm.response.json();",
+                  "pm.collectionVariables.set('automationAccessToken', response.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/x-www-form-urlencoded" }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "client_credentials", "type": "text" },
+                { "key": "client_id", "value": "{{automationClientId}}", "type": "text" },
+                { "key": "client_secret", "value": "{{automationClientSecret}}", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloakUrl}}/realms/{{keycloakRealm}}/protocol/openid-connect/token",
+              "host": ["{{keycloakUrl}}"],
+              "path": ["realms", "{{keycloakRealm}}", "protocol", "openid-connect", "token"]
+            }
+          }
+        },
+        {
+          "name": "List products as service account",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                { "key": "token", "value": "{{automationAccessToken}}", "type": "string" }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{apiUrl}}/api/products",
+              "host": ["{{apiUrl}}"],
+              "path": ["api", "products"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "apiUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "keycloakUrl", "value": "http://localhost:7777", "type": "string" },
+    { "key": "keycloakRealm", "value": "wornux", "type": "string" },
+    { "key": "interactiveClientId", "value": "inventory-api-tools", "type": "string" },
+    { "key": "automationClientId", "value": "inventory-automation", "type": "string" },
+    { "key": "automationClientSecret", "value": "", "type": "string" },
+    { "key": "automationAccessToken", "value": "", "type": "string" }
+  ]
+}

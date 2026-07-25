@@ -53,6 +53,9 @@ springdoc:
     path: /v3/api-docs
   swagger-ui:
     path: /swagger-ui.html
+    oauth:
+      client-id: inventory-api-tools
+      use-pkce-with-authorization-code-grant: true
 
 app:
   keycloak:

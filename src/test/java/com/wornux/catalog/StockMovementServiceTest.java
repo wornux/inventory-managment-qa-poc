@@ -3,6 +3,7 @@ package com.wornux.catalog;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -30,6 +31,10 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -38,9 +43,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
 class StockMovementServiceTest {
-
-    private static final Instant LEDGER_START = Instant.parse("1970-01-01T00:00:00Z");
-    private static final Instant LEDGER_END = Instant.parse("9999-12-31T00:00:00Z");
 
     @Mock
     private StockMovementRepository stockMovementRepository;
@@ -68,36 +70,51 @@ class StockMovementServiceTest {
     }
 
     @Test
-    void search_withNullFilter_usesLedgerDefaultsAndEmptyUsername() {
+    void search_withNullFilter_usesSpecificationAndLedgerOrder() {
         authenticate("viewer", "stock-movement:view");
         List<StockMovement> expected = List.of();
-        when(stockMovementRepository.search(LEDGER_START, LEDGER_END, null, null, ""))
-                .thenReturn(expected);
+        when(stockMovementRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(expected);
 
         List<StockMovement> result = service.search(null);
 
         assertThat(result).isSameAs(expected);
-        verify(stockMovementRepository).search(LEDGER_START, LEDGER_END, null, null, "");
         assertThat(service.search(new StockMovementFilter(null, null, null, null, null)))
                 .isSameAs(expected);
-        verify(stockMovementRepository, times(2)).search(LEDGER_START, LEDGER_END, null, null, "");
+        verify(stockMovementRepository, times(2))
+                .findAll(
+                        any(Specification.class),
+                        eq(Sort.by(Sort.Order.desc("createdDate"), Sort.Order.desc("id"))));
     }
 
     @Test
-    void search_withFilter_trimsUsernameAndPassesFilterValues() {
+    void search_withFilter_usesSpecification() {
         authenticate("manager", "stock-movement:create");
         Instant createdFrom = Instant.parse("2026-01-01T00:00:00Z");
         Instant createdTo = Instant.parse("2026-01-31T00:00:00Z");
         StockMovementFilter filter =
                 new StockMovementFilter(createdFrom, createdTo, 9L, MovementType.SALE, " manager ");
         List<StockMovement> expected = List.of(movement(product(10), user("manager"), MovementType.SALE, -2, null));
-        when(stockMovementRepository.search(createdFrom, createdTo, 9L, MovementType.SALE, "manager"))
-                .thenReturn(expected);
+        when(stockMovementRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(expected);
 
         List<StockMovement> result = service.search(filter);
 
         assertThat(result).isSameAs(expected);
-        verify(stockMovementRepository).search(createdFrom, createdTo, 9L, MovementType.SALE, "manager");
+        verify(stockMovementRepository).findAll(any(Specification.class), any(Sort.class));
+    }
+
+    @Test
+    void pagedSearch_usesTheSameFiltersAndPageable() {
+        authenticate("manager", "stock-movement:view");
+        Instant createdFrom = Instant.parse("2026-01-01T00:00:00Z");
+        Instant createdTo = Instant.parse("2026-02-01T00:00:00Z");
+        var filter = new StockMovementFilter(createdFrom, createdTo, 9L, MovementType.SALE, " manager ");
+        var pageable = PageRequest.of(1, 20);
+        var expected = new PageImpl<StockMovement>(List.of(), pageable, 21);
+        when(stockMovementRepository.findAll(any(Specification.class), eq(pageable)))
+                .thenReturn(expected);
+
+        assertThat(service.search(filter, pageable)).isSameAs(expected);
+        verify(stockMovementRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test
