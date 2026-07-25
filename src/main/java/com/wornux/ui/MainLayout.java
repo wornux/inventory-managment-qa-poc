@@ -9,7 +9,7 @@ import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Span;
-import com.vaadin.flow.component.icon.Icon;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.icon.VaadinIcon;
 import com.vaadin.flow.component.orderedlayout.FlexComponent;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -22,6 +22,7 @@ import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.wornux.security.permission.AppPermission;
+import com.wornux.ui.components.DrawerRailToggle;
 import com.wornux.ui.security.UiAccessService;
 import com.wornux.ui.views.CategoriesView;
 import com.wornux.ui.views.ForbiddenView;
@@ -75,8 +76,11 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
     }
 
     private Component createTopBar() {
-        var toggle = new DrawerToggle();
-        toggle.addClassName("main-layout-toggle");
+        var mobileToggle = new DrawerToggle();
+        mobileToggle.addClassName("main-layout-toggle");
+        mobileToggle.setAriaLabel("Open navigation");
+
+        var railToggle = new DrawerRailToggle();
 
         var title = new H1("Inventory");
         title.addClassName("main-layout-title");
@@ -92,7 +96,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         logout.addThemeVariants(ButtonVariant.TERTIARY);
         logout.addClassName("main-layout-logout");
 
-        var topBar = new HorizontalLayout(toggle, title, spacer, avatar, logout);
+        var topBar = new HorizontalLayout(mobileToggle, railToggle, title, spacer, avatar, logout);
         topBar.addClassName("main-layout-topbar");
         topBar.setAlignItems(FlexComponent.Alignment.CENTER);
         topBar.setWidthFull();
@@ -122,29 +126,29 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
 
     private Component createNavigation() {
         var wrapper = new VerticalLayout();
-        wrapper.addClassName("main-layout-nav");
+        wrapper.addClassNames("main-layout-nav", "main-layout-icon-carousel");
         wrapper.setPadding(false);
         wrapper.setSpacing(false);
 
         var overview = new SideNav();
-        overview.addItem(navItem("Overview", "", VaadinIcon.HOME));
+        overview.addItem(navItem("Overview", "", VaadinIcon.HOME.create()));
         wrapper.add(overview);
 
         var inventory = section("Inventory");
         boolean hasInventory = false;
-        hasInventory |= addIfAllowed(inventory, "Products", "products", VaadinIcon.PACKAGE, AppPermission.PRODUCT_VIEW);
-        hasInventory |= addIfAllowed(inventory, "Categories", "categories", VaadinIcon.TAGS, AppPermission.CATEGORY_VIEW);
-        hasInventory |= addIfAllowed(inventory, "Suppliers", "suppliers", VaadinIcon.TRUCK, AppPermission.SUPPLIER_VIEW);
+        hasInventory |= addIfAllowed(inventory, "Products", "products", svgIcon("/icons/package.svg"), AppPermission.PRODUCT_VIEW);
+        hasInventory |= addIfAllowed(inventory, "Categories", "categories", VaadinIcon.TAGS.create(), AppPermission.CATEGORY_VIEW);
+        hasInventory |= addIfAllowed(inventory, "Suppliers", "suppliers", VaadinIcon.TRUCK.create(), AppPermission.SUPPLIER_VIEW);
         hasInventory |= addIfAllowed(
-                inventory, "Stock Movements", "stock-movements", VaadinIcon.EXCHANGE, AppPermission.STOCK_MOVEMENT_VIEW);
+                inventory, "Stock Movements", "stock-movements", VaadinIcon.EXCHANGE.create(), AppPermission.STOCK_MOVEMENT_VIEW);
         if (hasInventory) {
             wrapper.add(inventory);
         }
 
         var administration = section("Administration");
         boolean hasAdministration = false;
-        hasAdministration |= addIfAllowed(administration, "Users", "users", VaadinIcon.USERS, AppPermission.USER_VIEW);
-        hasAdministration |= addIfAllowed(administration, "Roles", "roles", VaadinIcon.KEY, AppPermission.ROLE_VIEW);
+        hasAdministration |= addIfAllowed(administration, "Users", "users", VaadinIcon.USERS.create(), AppPermission.USER_VIEW);
+        hasAdministration |= addIfAllowed(administration, "Roles", "roles", svgIcon("/icons/roles.svg"), AppPermission.ROLE_VIEW);
         if (hasAdministration) {
             wrapper.add(administration);
         }
@@ -168,7 +172,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
             SideNav nav,
             String label,
             String path,
-            VaadinIcon icon,
+            Component icon,
             AppPermission permission) {
         if (accessService.canRead(permission)) {
             nav.addItem(navItem(label, path, icon));
@@ -177,11 +181,17 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         return false;
     }
 
-    private SideNavItem navItem(String label, String path, VaadinIcon icon) {
+    private SideNavItem navItem(String label, String path, Component icon) {
         var item = new SideNavItem(label, path);
-        item.setPrefixComponent(new Icon(icon));
+        item.setPrefixComponent(icon);
         item.setMatchNested(true);
         return item;
+    }
+
+    private SvgIcon svgIcon(String path) {
+        var icon = new SvgIcon(path);
+        icon.addClassName("main-layout-custom-icon");
+        return icon;
     }
 
     private Component createDrawerFooter() {

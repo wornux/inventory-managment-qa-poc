@@ -40,13 +40,14 @@ User navigates to the home route or any protected application route.
 1. User opens the home route or a protected application route.
 2. System renders the protected view inside `MainLayout`, implemented as `public class MainLayout extends AppLayout`.
 3. System applies the main layout to protected views through route layout configuration.
-4. System displays an Aura-style drawer with brand area, sectioned navigation groups, icons, active route highlighting, and current user context.
-5. System checks the user's permissions for each protected resource before displaying the matching navigation item.
-6. System displays only navigation items for resources where the user has the required VIEW permission.
-7. User selects a visible navigation item in the drawer.
-8. System navigates to the selected view and updates the active navigation state.
-9. User navigates to the home route.
-10. System displays a refactored home view with a polished pending/dashboard placeholder instead of the current raw list of links.
+4. System displays an Aura-style drawer with brand area, sectioned navigation groups, icons, active route highlighting, current user context, and a desktop rail toggle.
+5. On desktop, the user can collapse the drawer into a vertically scrollable icon rail and expand it again; the preference persists across navigation.
+6. System checks the user's permissions for each protected resource before displaying the matching navigation item.
+7. System displays only navigation items for resources where the user has the required VIEW permission.
+8. User selects a visible navigation item in the drawer or collapsed icon rail.
+9. System navigates to the selected view and updates the active navigation state.
+10. User navigates to the home route.
+11. System displays a refactored home view with a polished pending/dashboard placeholder instead of the current raw list of links.
 
 ---
 
@@ -72,16 +73,16 @@ User navigates to the home route or any protected application route.
 
 ### AF-3: Navigation Item Hidden By Permission
 
-**Branches from:** Main Flow step 5
+**Branches from:** Main Flow step 6
 **Condition:** User lacks the VIEW permission for a protected resource represented in the drawer.
 
 1. System omits the restricted navigation item from the drawer.
 2. User continues navigating with the remaining permitted items.
-3. Returns to Main Flow step 7.
+3. Returns to Main Flow step 8.
 
 ### AF-4: No Business Navigation Items Available
 
-**Branches from:** Main Flow step 6
+**Branches from:** Main Flow step 7
 **Condition:** User is authenticated but has no VIEW permissions for business or administration resources.
 
 1. System displays the home navigation item and user context.
@@ -97,7 +98,18 @@ User navigates to the home route or any protected application route.
 1. System presents the drawer in a responsive collapsed or overlay mode.
 2. User opens the drawer with the menu control.
 3. System preserves the same sectioning, active state, and permission filtering as desktop.
-4. Returns to Main Flow step 7.
+4. Returns to Main Flow step 8.
+
+### AF-6: Desktop Drawer Collapsed
+
+**Branches from:** Main Flow step 5
+**Condition:** User activates the desktop drawer rail toggle.
+
+1. System animates the drawer to a compact vertical icon rail.
+2. System hides section labels and navigation text while keeping every permitted icon and active state visible.
+3. System exposes navigation labels as native titles and updates the toggle's accessible label.
+4. User can navigate from the rail or expand the full drawer again.
+5. Returns to Main Flow step 8.
 
 ---
 
@@ -121,14 +133,16 @@ User navigates to the home route or any protected application route.
 | BR-07 | The home view must no longer be a raw list of anchors; it should become a polished pending/dashboard-style landing page. |
 | BR-08 | Styling must use Aura-compatible theme variables and must not mix in Lumo-only variables. |
 | BR-09 | The layout must remain usable on narrow screens through a responsive drawer behavior. |
+| BR-10 | Products and Roles use the provided custom SVG navigation icons, colored through the current Aura text color. |
+| BR-11 | Desktop drawer collapse/expand is client-side, animated, keyboard accessible, reduced-motion aware, and persisted in local storage. |
 
 ---
 
 ## Tests
 
-- [x] Main Flow covered (steps 1-10)
-- [x] AF-1, AF-2, AF-3, AF-4, and AF-5 covered
-- [x] BR-01 through BR-09 covered
+- [x] Main Flow covered (steps 1-11)
+- [x] AF-1 through AF-6 covered
+- [x] BR-01 through BR-11 covered
 
 ---
 
@@ -139,6 +153,7 @@ User navigates to the home route or any protected application route.
 - **Forbidden Access Surface:** Authenticated users without route permission see a clear forbidden message instead of the target view.
 - **Home View:** Refactored landing page that can show pending/dashboard placeholder content until real dashboard metrics are implemented.
 - **Responsive Drawer:** Drawer remains usable on desktop and narrow screens.
+- **Desktop Icon Rail:** Animated Lit toggle collapses the drawer into a vertically scrollable icon carousel with hover feedback, active states, and persisted preference.
 
 | Page | Access |
 |------|--------|
