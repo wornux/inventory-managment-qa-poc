@@ -459,6 +459,10 @@ body {
 }
 
 @media (min-width: 800px) {
+  .main-layout {
+    --vaadin-app-layout-transition-duration: 0s;
+  }
+
   .main-layout.drawer-collapsed .main-layout-brand {
     justify-content: center;
     padding-inline: 0;
