@@ -131,23 +131,30 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         wrapper.setSpacing(false);
 
         var overview = new SideNav();
-        overview.addItem(navItem("Overview", "", VaadinIcon.HOME.create()));
+        overview.addItem(navItem("Overview", "", svgIcon("/icons/overview.svg")));
         wrapper.add(overview);
 
         var inventory = section("Inventory");
         boolean hasInventory = false;
         hasInventory |= addIfAllowed(inventory, "Products", "products", svgIcon("/icons/package.svg"), AppPermission.PRODUCT_VIEW);
-        hasInventory |= addIfAllowed(inventory, "Categories", "categories", VaadinIcon.TAGS.create(), AppPermission.CATEGORY_VIEW);
-        hasInventory |= addIfAllowed(inventory, "Suppliers", "suppliers", VaadinIcon.TRUCK.create(), AppPermission.SUPPLIER_VIEW);
         hasInventory |= addIfAllowed(
-                inventory, "Stock Movements", "stock-movements", VaadinIcon.EXCHANGE.create(), AppPermission.STOCK_MOVEMENT_VIEW);
+                inventory, "Categories", "categories", svgIcon("/icons/categories.svg"), AppPermission.CATEGORY_VIEW);
+        hasInventory |= addIfAllowed(
+                inventory, "Suppliers", "suppliers", svgIcon("/icons/suppliers.svg"), AppPermission.SUPPLIER_VIEW);
+        hasInventory |= addIfAllowed(
+                inventory,
+                "Stock Movements",
+                "stock-movements",
+                svgIcon("/icons/stock-movement.svg"),
+                AppPermission.STOCK_MOVEMENT_VIEW);
         if (hasInventory) {
             wrapper.add(inventory);
         }
 
         var administration = section("Administration");
         boolean hasAdministration = false;
-        hasAdministration |= addIfAllowed(administration, "Users", "users", VaadinIcon.USERS.create(), AppPermission.USER_VIEW);
+        hasAdministration |= addIfAllowed(
+                administration, "Users", "users", svgIcon("/icons/users.svg"), AppPermission.USER_VIEW);
         hasAdministration |= addIfAllowed(administration, "Roles", "roles", svgIcon("/icons/roles.svg"), AppPermission.ROLE_VIEW);
         if (hasAdministration) {
             wrapper.add(administration);

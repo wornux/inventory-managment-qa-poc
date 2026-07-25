@@ -133,7 +133,7 @@ User navigates to the home route or any protected application route.
 | BR-07 | The home view must no longer be a raw list of anchors; it should become a polished pending/dashboard-style landing page. |
 | BR-08 | Styling must use Aura-compatible theme variables and must not mix in Lumo-only variables. |
 | BR-09 | The layout must remain usable on narrow screens through a responsive drawer behavior. |
-| BR-10 | Products and Roles use the provided custom SVG navigation icons, colored through the current Aura text color. |
+| BR-10 | Every navigation item uses its provided custom SVG icon, colored through the current Aura text color. |
 | BR-11 | Desktop drawer collapse/expand is client-side, animated, keyboard accessible, reduced-motion aware, and persisted in local storage. |
 
 ---

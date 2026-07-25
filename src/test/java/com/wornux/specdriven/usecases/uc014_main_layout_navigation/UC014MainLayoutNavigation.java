@@ -26,7 +26,7 @@ class UC014MainLayoutNavigation {
     private UiAccessService accessService;
 
     @Test
-    void mainFlow_rendersLitRailToggleAndCustomNavigationIcons() {
+    void mainFlow_rendersLitRailToggleAndAllCustomNavigationIcons() {
         when(accessService.canRead(any(AppPermission.class))).thenReturn(true);
 
         var layout = new MainLayout(authenticationContext, accessService);
@@ -38,7 +38,14 @@ class UC014MainLayoutNavigation {
         assertThat(descendants.stream()
                 .filter(element -> element.getClassList().contains("main-layout-custom-icon"))
                 .map(element -> element.getAttribute("src")))
-                .contains("/icons/package.svg", "/icons/roles.svg");
+                .containsExactlyInAnyOrder(
+                        "/icons/overview.svg",
+                        "/icons/package.svg",
+                        "/icons/categories.svg",
+                        "/icons/suppliers.svg",
+                        "/icons/stock-movement.svg",
+                        "/icons/users.svg",
+                        "/icons/roles.svg");
     }
 
     private Stream<Element> descendants(Element parent) {
