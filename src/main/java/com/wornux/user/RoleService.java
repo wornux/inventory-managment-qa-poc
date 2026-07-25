@@ -4,11 +4,14 @@ import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
 import jakarta.validation.Valid;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.annotation.Validated;
@@ -58,6 +61,22 @@ public class RoleService {
     @Transactional(readOnly = true)
     public long permissionCount(Long roleId) {
         return get(roleId).getPermissions().size();
+    }
+
+    @Transactional(readOnly = true)
+    public Map<Long, Long> userCounts(Collection<Long> roleIds) {
+        authorizationService.check(AppPermission.ROLE_VIEW);
+        if (roleIds.isEmpty()) {
+            return Map.of();
+        }
+        return appUserRepository.countMembersByRoleIds(roleIds).stream()
+                .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
+    }
+
+    @Transactional(readOnly = true)
+    public List<AppUser> members(Long roleId) {
+        authorizationService.check(AppPermission.ROLE_VIEW);
+        return appUserRepository.findDistinctByRolesIdOrderByUsernameAsc(roleId);
     }
 
     @Transactional

@@ -37,12 +37,12 @@ User navigates to the Roles view from the main administration menu.
 
 ### Main Flow: View and Search Roles
 
-1. System displays a grid containing all roles with columns: Code, Name, Description, System Role badge, Active badge, User Count, Permission Count, Actions.
-2. System displays a text search field above the grid.
-3. System displays filter controls for System/Custom role type and Active/Inactive status.
-4. User optionally enters search text (role code or name) and filters are applied in real time.
-5. Grid updates to show matching roles.
-6. User can click on a row to view role details in a dismissible sidebar form (read-only or edit mode).
+1. System displays a master-detail workspace with a compact role column and a selected-role detail panel.
+2. The role column shows each role's name, code, member count, a text search, and System/Custom and Active/Inactive filters.
+3. User optionally enters search text (role code or name) and filters are applied in real time.
+4. The role column updates to show matching roles and selects the first available role when needed.
+5. The detail panel shows Information, Permissions, and Members tabs for the selected global role.
+6. User selects a role to inspect its metadata, typed permissions grouped by resource, and assigned users; editable custom roles expose Edit and Deactivate actions.
 
 ### Main Flow: Create Custom Role
 
@@ -57,7 +57,7 @@ User navigates to the Roles view from the main administration menu.
 
 ### Main Flow: Edit Role
 
-15. User clicks the "Edit" action on a custom role row (system roles cannot be edited).
+15. User selects a custom role and clicks the "Edit role" action in its detail header (system roles cannot be edited).
 16. System opens the sidebar form pre-populated with the role's current data and permission assignments.
 17. User modifies one or more fields (name, description, active status, permissions) and clicks "Save".
 18. System validates the form.
@@ -66,7 +66,7 @@ User navigates to the Roles view from the main administration menu.
 
 ### Main Flow: Deactivate Role
 
-21. User clicks the "Deactivate" action on an active custom role row.
+21. User selects an active custom role and clicks the "Deactivate" action in its detail header.
 22. System displays a confirmation dialog: "Deactivate this role? Users with this role will retain it, but new users cannot be assigned to it."
 23. User confirms the deactivation.
 24. System sets the role's active flag to false and persists the change.
@@ -210,8 +210,9 @@ User navigates to the Roles view from the main administration menu.
 
 ## UI Surface
 
-- **Role List Page:** Grid with search, filters, and action buttons.
-- **Sidebar Form:** Create/edit/view form displayed in a dismissible right-side panel.
+- **Role Management Workspace:** Responsive master-detail surface with a searchable/filterable role column and a persistent selected-role panel.
+- **Role Detail Tabs:** Information, typed permissions grouped by resource, and read-only assigned-member list.
+- **Sidebar Form:** Create/edit form displayed in a dismissible right-side panel.
 - **Permission Selection:** Multi-select dropdown populated from the fixed `AppPermission` catalog.
 - **Confirmation Dialogs:** Deactivate confirmation and dirty-state warning.
 - **Notifications:** Success and error messages displayed at top of view.

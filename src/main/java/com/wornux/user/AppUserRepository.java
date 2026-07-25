@@ -1,5 +1,7 @@
 package com.wornux.user;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -9,6 +11,16 @@ import org.springframework.data.repository.query.Param;
 public interface AppUserRepository extends JpaRepository<AppUser, Long> {
 
     long countByRolesId(Long roleId);
+
+    List<AppUser> findDistinctByRolesIdOrderByUsernameAsc(Long roleId);
+
+    @Query("""
+            select role.id, count(user.id)
+            from AppUser user join user.roles role
+            where role.id in :roleIds
+            group by role.id
+            """)
+    List<Object[]> countMembersByRoleIds(@Param("roleIds") Collection<Long> roleIds);
 
     boolean existsByUsernameIgnoreCase(String username);
 
@@ -44,5 +56,5 @@ public interface AppUserRepository extends JpaRepository<AppUser, Long> {
                 and (:active is null or user.active = :active)
             order by user.username
             """)
-    java.util.List<AppUser> search(@Param("text") String text, @Param("active") Boolean active);
+    List<AppUser> search(@Param("text") String text, @Param("active") Boolean active);
 }

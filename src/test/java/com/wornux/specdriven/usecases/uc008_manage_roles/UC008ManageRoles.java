@@ -18,6 +18,7 @@ import com.wornux.user.RoleRequest;
 import com.wornux.user.RoleService;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -80,6 +81,26 @@ class UC008ManageRoles {
 
         assertThat(authorities).extracting(authority -> authority.getAuthority())
                 .containsExactly("product:update");
+    }
+
+    @Test
+    void mainFlow_listsMembersAssignedToSelectedRole() {
+        authenticate("role:view");
+        AppUser member = new AppUser("editor", "editor@example.com", "issuer", "subject");
+        when(appUserRepository.findDistinctByRolesIdOrderByUsernameAsc(7L)).thenReturn(List.of(member));
+
+        assertThat(roleService.members(7L)).containsExactly(member);
+    }
+
+    @Test
+    void mainFlow_listsMemberCountsForVisibleRoles() {
+        authenticate("role:view");
+        when(appUserRepository.countMembersByRoleIds(List.of(7L, 8L)))
+                .thenReturn(List.<Object[]>of(new Object[] {7L, 3L}));
+
+        assertThat(roleService.userCounts(List.of(7L, 8L)))
+                .containsEntry(7L, 3L)
+                .doesNotContainKey(8L);
     }
 
     @Test

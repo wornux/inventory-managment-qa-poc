@@ -53,6 +53,9 @@ public class SecurityConfig {
     @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http, AppOidcUserService oidcUserService) throws Exception {
 
+        http.authorizeHttpRequests(authorize -> authorize
+                .requestMatchers("/styles/**", "/icons/**").permitAll());
+
         http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
             configurer.oauth2LoginPage("/oauth2/authorization/keycloak", "{baseUrl}/login");
         });
