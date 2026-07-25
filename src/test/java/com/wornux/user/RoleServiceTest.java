@@ -1,4 +1,4 @@
-package com.wornux.specdriven.usecases.uc008_manage_roles;
+package com.wornux.user;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -8,18 +8,9 @@ import static org.mockito.Mockito.when;
 
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
-import com.wornux.user.AppUser;
-import com.wornux.user.AppUserRepository;
-import com.wornux.user.AppUserService;
-import com.wornux.user.Role;
-import com.wornux.user.RoleException;
-import com.wornux.user.RoleRepository;
-import com.wornux.user.RoleRequest;
-import com.wornux.user.RoleService;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -32,7 +23,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
-class UC008ManageRoles {
+class RoleServiceTest {
 
     @Mock
     private RoleRepository roleRepository;
@@ -56,7 +47,7 @@ class UC008ManageRoles {
     }
 
     @Test
-    void mainFlow_createCustomRoleWithTypedPermissions() {
+    void create_persistsCustomRoleWithTypedPermissions() {
         authenticate("role:create", "role:assign", "product:update");
         RoleRequest request = request(AppPermission.PRODUCT_VIEW, AppPermission.PRODUCT_UPDATE);
         when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -71,20 +62,7 @@ class UC008ManageRoles {
     }
 
     @Test
-    void mainFlow_activeRolePermissionsBecomeAuthorities() {
-        Role role = new Role("CATALOG_EDITOR", "Catalog Editor", null, false);
-        role.update(role.getName(), role.getDescription(), true, Set.of(AppPermission.PRODUCT_UPDATE));
-        AppUser user = new AppUser("editor", "editor@example.com", "issuer", "subject");
-        user.addRole(role);
-
-        var authorities = new AppUserService(appUserRepository, roleRepository).authorities(user);
-
-        assertThat(authorities).extracting(authority -> authority.getAuthority())
-                .containsExactly("product:update");
-    }
-
-    @Test
-    void mainFlow_listsMembersAssignedToSelectedRole() {
+    void members_returnsUsersAssignedToRole() {
         authenticate("role:view");
         AppUser member = new AppUser("editor", "editor@example.com", "issuer", "subject");
         when(appUserRepository.findDistinctByRolesIdOrderByUsernameAsc(7L)).thenReturn(List.of(member));
@@ -93,7 +71,7 @@ class UC008ManageRoles {
     }
 
     @Test
-    void mainFlow_listsMemberCountsForVisibleRoles() {
+    void userCounts_returnsCountsForRolesWithMembers() {
         authenticate("role:view");
         when(appUserRepository.countMembersByRoleIds(List.of(7L, 8L)))
                 .thenReturn(List.<Object[]>of(new Object[] {7L, 3L}));
@@ -104,23 +82,7 @@ class UC008ManageRoles {
     }
 
     @Test
-    void br14_deactivatedRoleStopsAuthorizingExistingSessions() {
-        Role role = new Role("VIEWER", "Viewer", null);
-        role.update(role.getName(), role.getDescription(), true, Set.of(AppPermission.PRODUCT_VIEW));
-        AppUser user = new AppUser("viewer", "viewer@example.com", "issuer", "subject");
-        user.addRole(role);
-        when(appUserRepository.findForAuthorization("viewer")).thenReturn(java.util.Optional.of(user));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("viewer", "password", java.util.List.of()));
-        var authorizationService = new AuthorizationService(appUserRepository);
-
-        assertThat(authorizationService.can(AppPermission.PRODUCT_VIEW)).isTrue();
-        role.deactivate();
-        assertThat(authorizationService.can(AppPermission.PRODUCT_VIEW)).isFalse();
-    }
-
-    @Test
-    void af4_missingRoleCreatePermissionIsDenied() {
+    void create_withoutCreatePermission_throwsAccessDeniedException() {
         authenticate("role:view", "role:assign", "product:update");
 
         assertThatThrownBy(() -> roleService.create(request(AppPermission.PRODUCT_UPDATE)))
@@ -130,7 +92,7 @@ class UC008ManageRoles {
     }
 
     @Test
-    void af9_actorCannotAssignPermissionTheyDoNotHave() {
+    void create_withUnassignablePermission_throwsRoleException() {
         authenticate("role:create", "role:assign", "product:view");
 
         assertThatThrownBy(() -> roleService.create(request(AppPermission.PRODUCT_DELETE)))

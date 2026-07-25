@@ -1,17 +1,10 @@
-package com.wornux.specdriven.usecases.uc005_manage_users;
+package com.wornux.user;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
-import com.wornux.user.AppUser;
-import com.wornux.user.AppUserRepository;
-import com.wornux.user.Role;
-import com.wornux.user.RoleRepository;
-import com.wornux.user.UserException;
-import com.wornux.user.UserRequest;
-import com.wornux.user.UserService;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -22,7 +15,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.context.SecurityContextHolder;
 
 @ExtendWith(MockitoExtension.class)
-class UC005ManageUsers {
+class UserServiceTest {
 
     @Mock
     private AppUserRepository appUserRepository;
@@ -36,7 +29,7 @@ class UC005ManageUsers {
     }
 
     @Test
-    void br11_actorCannotAssignRoleContainingPermissionsTheyDoNotHave() {
+    void create_rejectsRoleWithPermissionsActorDoesNotHave() {
         authenticateActor(AppPermission.USER_CREATE, AppPermission.USER_ASSIGN);
         Role elevatedRole = role(AppPermission.PRODUCT_DELETE);
         when(roleRepository.findAllById(Set.of(7L))).thenReturn(java.util.List.of(elevatedRole));
