@@ -1,6 +1,7 @@
 package com.wornux.ui;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.HasSize;
 import com.vaadin.flow.component.applayout.AppLayout;
 import com.vaadin.flow.component.applayout.DrawerToggle;
 import com.vaadin.flow.component.avatar.Avatar;
@@ -41,7 +42,7 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 @Layout
 @PermitAll
-public class MainLayout extends AppLayout implements BeforeEnterObserver {
+public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSize {
 
     private static final Map<Class<? extends Component>, AppPermission> ROUTE_PERMISSIONS = new LinkedHashMap<>();
 
@@ -62,6 +63,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         this.accessService = accessService;
 
         addClassName("main-layout");
+        setHeightFull();
         setPrimarySection(Section.DRAWER);
         addToNavbar(createMobileDrawerToggle("main-layout-toggle", "Open navigation"));
         addToDrawer(createDrawerHeader(), new Scroller(createNavigation()), createProfileDrawer());

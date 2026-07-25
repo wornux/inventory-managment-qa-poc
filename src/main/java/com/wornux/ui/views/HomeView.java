@@ -16,6 +16,7 @@ import jakarta.annotation.security.PermitAll;
 public class HomeView extends Main {
 
     public HomeView() {
+        setSizeFull();
         addClassName("home-view");
 
         var eyebrow = new Span("Overview");

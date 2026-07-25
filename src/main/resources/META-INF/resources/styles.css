@@ -12,6 +12,7 @@ html {
   --aura-overlay-surface-opacity: 1;
   --aura-surface-level: -0.5;
   --aura-app-layout-inset: 0px;
+  --aura-app-layout-radius: 0px;
 }
 
 :is(vaadin-button, vaadin-menu-bar-button, vaadin-upload-button),
@@ -316,7 +317,6 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
   display: grid;
   gap: var(--vaadin-gap-m);
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  min-height: 100%;
   padding: var(--vaadin-padding-l);
 }
 
@@ -402,7 +402,6 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
   display: flex;
   flex-direction: column;
   gap: var(--vaadin-gap-s);
-  min-height: 100%;
   padding: var(--vaadin-padding-xl);
 }
 
@@ -411,7 +410,6 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
   display: flex;
   flex-direction: column;
   gap: var(--vaadin-gap-m);
-  height: 100vh;
   padding: var(--vaadin-padding-l);
 }
 

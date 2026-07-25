@@ -16,6 +16,7 @@ import jakarta.annotation.security.PermitAll;
 public class ForbiddenView extends Main {
 
     public ForbiddenView() {
+        setSizeFull();
         addClassNames("forbidden-view", "centered-state-view");
 
         var eyebrow = new Span("403");
