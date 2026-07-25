@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "Debug using Hotswap Agent",
+      "request": "launch",
+      "javaExec": "${env:HOME}/.vaadin/jdk/jbrsdk-25-osx-aarch64-b176.4/Contents/Home/bin/java",
+      "mainClass": "com.wornux.Application",
+      "cwd": "${workspaceFolder}",
+      "console": "internalConsole",
+      "vmArgs": "--add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.security.action=ALL-UNNAMED --add-opens java.desktop/java.beans=ALL-UNNAMED --add-opens java.desktop/com.sun.beans=ALL-UNNAMED --add-opens java.desktop/com.sun.beans.introspect=ALL-UNNAMED --add-opens java.desktop/com.sun.beans.util=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED -XX:+AllowEnhancedClassRedefinition -XX:+ClassUnloading -javaagent:${env:HOME}/.vaadin/vscode-plugin/hotswap-agent.jar",
+      "stepFilters": {
+        "skipClasses": [
+          "$JDK",
+          "java.*",
+          "javax.*",
+          "sun.*",
+          "jdk.*",
+          "org.springframework.*",
+          "reactor.*"
+        ],
+        "skipSynthetics": true,
+        "skipStaticInitializers": true,
+        "skipConstructors": true
+      }
+    }
+  ]
+}
