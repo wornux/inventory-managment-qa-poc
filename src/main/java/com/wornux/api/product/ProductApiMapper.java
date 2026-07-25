@@ -35,6 +35,7 @@ public class ProductApiMapper {
         value.put("lowStock", product.isLowStock());
         value.put("category", reference(product.getCategory()));
         value.put("supplier", reference(product.getSupplier()));
+
         return jsonMapper.convertValue(value, ProductResponse.class);
     }
 
@@ -42,15 +43,17 @@ public class ProductApiMapper {
         if (category == null) {
             return null;
         }
-        return jsonMapper.convertValue(Map.of("id", category.getId(), "name", category.getName()),
-                CatalogReferenceResponse.class);
+
+        return jsonMapper.convertValue(
+                Map.of("id", category.getId(), "name", category.getName()), CatalogReferenceResponse.class);
     }
 
     private CatalogReferenceResponse reference(Supplier supplier) {
         if (supplier == null) {
             return null;
         }
-        return jsonMapper.convertValue(Map.of("id", supplier.getId(), "name", supplier.getName()),
-                CatalogReferenceResponse.class);
+
+        return jsonMapper.convertValue(
+                Map.of("id", supplier.getId(), "name", supplier.getName()), CatalogReferenceResponse.class);
     }
 }

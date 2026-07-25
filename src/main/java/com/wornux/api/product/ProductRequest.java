@@ -10,17 +10,20 @@ public record ProductRequest(
         @NotBlank(message = "SKU is required.") String sku,
         @NotBlank(message = "Product name is required.") String name,
         String description,
+
         @NotNull(message = "Unit price is required.")
         @DecimalMin(value = "0.00", message = "Unit price must be a positive number.")
         BigDecimal unitPrice,
+
         @NotNull(message = "Quantity on hand is required.")
         @Min(value = 0, message = "Quantity on hand must be zero or greater.")
         Integer quantityOnHand,
+
         @NotNull(message = "Minimum stock is required.")
         @Min(value = 0, message = "Minimum stock must be zero or greater.")
         Integer minimumStock,
+
         @NotNull(message = "Category is required.") Long categoryId,
         Long supplierId,
         boolean active,
-        Long version) {
-}
+        Long version) {}

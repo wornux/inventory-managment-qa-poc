@@ -29,6 +29,7 @@ public class AuthorizationService {
     @Transactional(readOnly = true)
     public boolean canAll(Collection<AppPermission> permissions) {
         Set<AppPermission> granted = currentPermissions();
+
         return permissions.stream()
                 .allMatch(requested -> granted.stream().anyMatch(permission -> permission.grants(requested)));
     }
@@ -40,11 +41,14 @@ public class AuthorizationService {
     }
 
     private Set<AppPermission> currentPermissions() {
-        // ponytail: query per check keeps revocation immediate; add versioned snapshots only if this becomes a measured bottleneck.
+        // ponytail: query per check keeps revocation immediate; add versioned snapshots only if this becomes a measured
+        // bottleneck.
         var authentication = SecurityContextHolder.getContext().getAuthentication();
+
         if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
             return Set.of();
         }
+
         return appUserRepository
                 .findForAuthorization(authentication.getName())
                 .filter(AppUser::isActive)
@@ -54,6 +58,7 @@ public class AuthorizationService {
                             .filter(Role::isActive)
                             .flatMap(role -> role.getPermissions().stream())
                             .forEach(permissions::add);
+
                     return Set.copyOf(permissions);
                 })
                 .orElseGet(Set::of);

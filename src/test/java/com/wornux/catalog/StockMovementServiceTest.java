@@ -78,7 +78,8 @@ class StockMovementServiceTest {
 
         assertThat(result).isSameAs(expected);
         verify(stockMovementRepository).search(LEDGER_START, LEDGER_END, null, null, "");
-        assertThat(service.search(new StockMovementFilter(null, null, null, null, null))).isSameAs(expected);
+        assertThat(service.search(new StockMovementFilter(null, null, null, null, null)))
+                .isSameAs(expected);
         verify(stockMovementRepository, times(2)).search(LEDGER_START, LEDGER_END, null, null, "");
     }
 
@@ -87,7 +88,8 @@ class StockMovementServiceTest {
         authenticate("manager", "stock-movement:create");
         Instant createdFrom = Instant.parse("2026-01-01T00:00:00Z");
         Instant createdTo = Instant.parse("2026-01-31T00:00:00Z");
-        StockMovementFilter filter = new StockMovementFilter(createdFrom, createdTo, 9L, MovementType.SALE, " manager ");
+        StockMovementFilter filter =
+                new StockMovementFilter(createdFrom, createdTo, 9L, MovementType.SALE, " manager ");
         List<StockMovement> expected = List.of(movement(product(10), user("manager"), MovementType.SALE, -2, null));
         when(stockMovementRepository.search(createdFrom, createdTo, 9L, MovementType.SALE, "manager"))
                 .thenReturn(expected);
@@ -136,21 +138,26 @@ class StockMovementServiceTest {
     @Test
     void canCreateMovements_allowsCreatePermission() {
         authenticate("operator", "stock-movement:create");
+
         assertThat(service.canCreateMovements()).isTrue();
 
         authenticate("manager", "stock-movement:create");
+
         assertThat(service.canCreateMovements()).isTrue();
 
         authenticate("admin", "stock-movement:create");
+
         assertThat(service.canCreateMovements()).isTrue();
     }
 
     @Test
     void canCreateMovements_rejectsViewPermissionAndAnonymous() {
         authenticate("viewer", "stock-movement:view");
+
         assertThat(service.canCreateMovements()).isFalse();
 
         SecurityContextHolder.clearContext();
+
         assertThat(service.canCreateMovements()).isFalse();
     }
 
@@ -162,7 +169,8 @@ class StockMovementServiceTest {
         when(productRepository.findWithCategoryAndSupplierById(12L)).thenReturn(Optional.of(product));
         when(appUserRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase("manager", "manager"))
                 .thenReturn(Optional.of(user));
-        when(stockMovementRepository.save(any(StockMovement.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(stockMovementRepository.save(any(StockMovement.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         StockMovement result = service.recordStockMovement(request(12L, MovementType.PURCHASE, 3, "  restock  "));
 
@@ -181,7 +189,9 @@ class StockMovementServiceTest {
         authenticate("manager", "stock-movement:create");
         when(productRepository.findWithCategoryAndSupplierById(12L)).thenReturn(Optional.of(product(5)));
         when(stockMovementRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-        assertThat(service.recordStockMovement(request(12L, MovementType.ADJUSTMENT_IN, 1, "count correction")).getReason())
+
+        assertThat(service.recordStockMovement(request(12L, MovementType.ADJUSTMENT_IN, 1, "count correction"))
+                        .getReason())
                 .isEqualTo("count correction");
     }
 
@@ -194,7 +204,8 @@ class StockMovementServiceTest {
         when(productRepository.findWithCategoryAndSupplierById(13L)).thenReturn(Optional.of(product));
         when(appUserRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase("operator", "operator"))
                 .thenReturn(Optional.of(user));
-        when(stockMovementRepository.save(any(StockMovement.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(stockMovementRepository.save(any(StockMovement.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
 
         StockMovement result = service.recordStockMovement(request(13L, MovementType.SALE, -2, null));
 
@@ -233,16 +244,20 @@ class StockMovementServiceTest {
     @Test
     void record_withNullQuantity_usesSameNonZeroRule() {
         authenticate("manager", "stock-movement:create");
+
         assertThatThrownBy(() -> service.recordStockMovement(request(1L, MovementType.PURCHASE, null, null)))
-                .isInstanceOf(StockMovementException.class).hasMessage("Quantity delta must not be zero.");
+                .isInstanceOf(StockMovementException.class)
+                .hasMessage("Quantity delta must not be zero.");
     }
 
     @Test
     void record_cannotReduceInventoryBelowZero() {
         authenticate("manager", "stock-movement:create");
         when(productRepository.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(product(2)));
+
         assertThatThrownBy(() -> service.recordStockMovement(request(1L, MovementType.SALE, -3, null)))
-                .isInstanceOf(StockMovementException.class).hasMessage("Insufficient stock. Current stock: 2, requested: 3.");
+                .isInstanceOf(StockMovementException.class)
+                .hasMessage("Insufficient stock. Current stock: 2, requested: 3.");
         verify(productRepository, never()).save(any());
     }
 
@@ -251,16 +266,28 @@ class StockMovementServiceTest {
         authenticate("operator", "stock-movement:create");
         when(productRepository.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(product(2)));
         when(stockMovementRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-        assertThat(service.recordStockMovement(request(1L, MovementType.PURCHASE, 1, null)).getUser()).isNull();
+
+        assertThat(service.recordStockMovement(request(1L, MovementType.PURCHASE, 1, null))
+                        .getUser())
+                .isNull();
 
         SecurityContextHolder.clearContext();
         AuthorizationService authorization = mock(AuthorizationService.class);
-        StockMovementService permissive = new StockMovementService(stockMovementRepository, productRepository, appUserRepository, authorization);
-        assertThat(permissive.recordStockMovement(request(1L, MovementType.PURCHASE, 1, null)).getUser()).isNull();
+        StockMovementService permissive =
+                new StockMovementService(stockMovementRepository, productRepository, appUserRepository, authorization);
+
+        assertThat(permissive
+                        .recordStockMovement(request(1L, MovementType.PURCHASE, 1, null))
+                        .getUser())
+                .isNull();
 
         var unnamedAuthentication = mock(Authentication.class);
         SecurityContextHolder.getContext().setAuthentication(unnamedAuthentication);
-        assertThat(permissive.recordStockMovement(request(1L, MovementType.PURCHASE, 1, null)).getUser()).isNull();
+
+        assertThat(permissive
+                        .recordStockMovement(request(1L, MovementType.PURCHASE, 1, null))
+                        .getUser())
+                .isNull();
     }
 
     @Test
@@ -345,9 +372,10 @@ class StockMovementServiceTest {
         user.addRole(role);
         when(appUserRepository.findForAuthorization(username)).thenReturn(Optional.of(user));
 
-        var grantedAuthorities = Arrays.stream(authorities).map(SimpleGrantedAuthority::new).toList();
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken(username, "password", grantedAuthorities));
+        var grantedAuthorities =
+                Arrays.stream(authorities).map(SimpleGrantedAuthority::new).toList();
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken(username, "password", grantedAuthorities));
     }
 
     private static Product product(int quantityOnHand) {
@@ -368,24 +396,18 @@ class StockMovementServiceTest {
     }
 
     private static StockMovement movement(
-            Product product,
-            AppUser user,
-            MovementType movementType,
-            Integer quantityDelta,
-            String reason) {
+            Product product, AppUser user, MovementType movementType, Integer quantityDelta, String reason) {
         return new StockMovement(product, user, movementType, quantityDelta, reason);
     }
 
     private static StockMovementRequest request(
-            Long productId,
-            MovementType movementType,
-            Integer quantityDelta,
-            String reason) {
+            Long productId, MovementType movementType, Integer quantityDelta, String reason) {
         StockMovementRequest request = new StockMovementRequest();
         request.setProductId(productId);
         request.setMovementType(movementType);
         request.setQuantityDelta(quantityDelta);
         request.setReason(reason);
+
         return request;
     }
 }

@@ -50,10 +50,7 @@ class UserServiceTest {
         request.setUsername("new-user");
         request.setEmail("new-user@example.com");
         request.setRoleIds(Set.of(7L));
-        var service = new UserService(
-                appUserRepository,
-                roleRepository,
-                new AuthorizationService(appUserRepository));
+        var service = new UserService(appUserRepository, roleRepository, new AuthorizationService(appUserRepository));
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(UserException.class)
@@ -64,15 +61,26 @@ class UserServiceTest {
     void reads_normalizeFiltersAuthorizeAndReportMissingUsers() {
         UserService service = service();
         when(appUserRepository.search("query", true)).thenReturn(List.of());
+
         assertThat(service.search(new UserFilter(" QUERY ", true))).isEmpty();
+
         when(appUserRepository.search("", null)).thenReturn(List.of());
+
         assertThat(service.search(null)).isEmpty();
         assertThat(service.search(new UserFilter(null, null))).isEmpty();
+
         when(appUserRepository.findWithRolesById(1L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service.get(1L)).isInstanceOf(UserException.class).hasMessage("User was not found.");
-        AppUser found = new AppUser("u", "e", null, null); when(appUserRepository.findWithRolesById(2L)).thenReturn(Optional.of(found));
+
+        assertThatThrownBy(() -> service.get(1L))
+                .isInstanceOf(UserException.class)
+                .hasMessage("User was not found.");
+        AppUser found = new AppUser("u", "e", null, null);
+        when(appUserRepository.findWithRolesById(2L)).thenReturn(Optional.of(found));
+
         assertThat(service.get(2L)).isSameAs(found);
+
         when(roleRepository.findByActiveTrueOrderByNameAsc()).thenReturn(List.of());
+
         assertThat(service.activeRoles()).isEmpty();
         verify(authorizationService, times(6)).check(AppPermission.USER_VIEW);
     }
@@ -85,30 +93,51 @@ class UserServiceTest {
         when(appUserRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         UserRequest request = request(" user ", " U@E.COM ", 1L);
         request.setActive(false);
+
         AppUser result = service().create(request);
+
         assertThat(result.getUsername()).isEqualTo("user");
         assertThat(result.getEmail()).isEqualTo("u@e.com");
         assertThat(result.isActive()).isFalse();
 
         when(appUserRepository.existsByUsernameIgnoreCase("user")).thenReturn(true);
-        assertThatThrownBy(() -> service().create(request)).isInstanceOf(UserException.class).hasMessageContaining("Username");
+
+        assertThatThrownBy(() -> service().create(request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("Username");
         when(appUserRepository.existsByUsernameIgnoreCase("user")).thenReturn(false);
         when(appUserRepository.existsByEmailIgnoreCase("u@e.com")).thenReturn(true);
-        assertThatThrownBy(() -> service().create(request)).isInstanceOf(UserException.class).hasMessageContaining("Email");
+
+        assertThatThrownBy(() -> service().create(request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("Email");
     }
 
     @Test
     void create_rejectsAbsentInactiveAndIncompleteRoleSelections() {
         UserRequest request = request(null, null);
-        assertThatThrownBy(() -> service().create(request)).isInstanceOf(UserException.class).hasMessageContaining("one role");
+
+        assertThatThrownBy(() -> service().create(request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("one role");
         request.setRoleIds(null);
-        assertThatThrownBy(() -> service().create(request)).isInstanceOf(UserException.class).hasMessageContaining("one role");
+
+        assertThatThrownBy(() -> service().create(request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("one role");
         UserRequest nullRoles = mock(UserRequest.class);
         when(nullRoles.getRoleIds()).thenReturn(null);
-        assertThatThrownBy(() -> service().create(nullRoles)).isInstanceOf(UserException.class).hasMessageContaining("one role");
+
+        assertThatThrownBy(() -> service().create(nullRoles))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("one role");
         request.setRoleIds(Set.of(1L));
-        when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(UserDomainTest.role("R", false, AppPermission.USER_VIEW)));
-        assertThatThrownBy(() -> service().create(request)).isInstanceOf(UserException.class).hasMessageContaining("one role");
+        when(roleRepository.findAllById(Set.of(1L)))
+                .thenReturn(List.of(UserDomainTest.role("R", false, AppPermission.USER_VIEW)));
+
+        assertThatThrownBy(() -> service().create(request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("one role");
     }
 
     @Test
@@ -116,43 +145,71 @@ class UserServiceTest {
         AppUser user = new AppUser("old", "old@e.com", null, null);
         set(user, "version", 2L);
         Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
-        UserRequest request = request(" new ", " N@E.COM ", 1L); request.setVersion(2L);
+        UserRequest request = request(" new ", " N@E.COM ", 1L);
+        request.setVersion(2L);
         when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
         when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
         when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
         when(appUserRepository.save(user)).thenReturn(user);
+
         assertThat(service().update(7L, request).getUsername()).isEqualTo("new");
 
         request.setVersion(3L);
-        assertThatThrownBy(() -> service().update(7L, request)).isInstanceOf(UserException.class).hasMessageContaining("another administrator");
+
+        assertThatThrownBy(() -> service().update(7L, request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("another administrator");
         request.setVersion(2L);
         when(appUserRepository.existsByUsernameIgnoreCaseAndIdNot("new", 7L)).thenReturn(true);
-        assertThatThrownBy(() -> service().update(7L, request)).isInstanceOf(UserException.class).hasMessageContaining("Username");
+
+        assertThatThrownBy(() -> service().update(7L, request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("Username");
         when(appUserRepository.existsByUsernameIgnoreCaseAndIdNot("new", 7L)).thenReturn(false);
         when(appUserRepository.existsByEmailIgnoreCaseAndIdNot("n@e.com", 7L)).thenReturn(true);
-        assertThatThrownBy(() -> service().update(7L, request)).isInstanceOf(UserException.class).hasMessageContaining("Email");
+
+        assertThatThrownBy(() -> service().update(7L, request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("Email");
         when(appUserRepository.findWithRolesById(8L)).thenReturn(Optional.empty());
-        assertThatThrownBy(() -> service().update(8L, request)).isInstanceOf(UserException.class).hasMessage("User was not found.");
+
+        assertThatThrownBy(() -> service().update(8L, request))
+                .isInstanceOf(UserException.class)
+                .hasMessage("User was not found.");
     }
 
     @Test
     void deactivate_rejectsSelfByUsernameOrEmailAndHandlesAuthenticationEdges() {
         AppUser user = new AppUser("User", "mail@example.com", null, null);
         when(appUserRepository.findWithRolesById(1L)).thenReturn(Optional.of(user));
+
         authenticate("user");
-        assertThatThrownBy(() -> service().deactivate(1L)).isInstanceOf(UserException.class).hasMessageContaining("own account");
+
+        assertThatThrownBy(() -> service().deactivate(1L))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("own account");
         authenticate("MAIL@example.com");
+
         assertThatThrownBy(() -> service().deactivate(1L)).isInstanceOf(UserException.class);
+
         SecurityContextHolder.clearContext();
+
         service().deactivate(1L);
+
         assertThat(user.isActive()).isFalse();
+
         user.setActive(true);
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken(null, "x"));
+
         service().deactivate(1L);
+
         Authentication noName = mock(Authentication.class);
         SecurityContextHolder.getContext().setAuthentication(noName);
+
         service().deactivate(1L);
+
         when(appUserRepository.findWithRolesById(2L)).thenReturn(Optional.empty());
+
         assertThatThrownBy(() -> service().deactivate(2L)).isInstanceOf(UserException.class);
     }
 
@@ -163,6 +220,7 @@ class UserServiceTest {
         when(authorizationService.canAll(create)).thenReturn(true);
         when(authorizationService.canAll(update)).thenReturn(false);
         when(authorizationService.can(AppPermission.USER_DELETE)).thenReturn(true);
+
         assertThat(service().canCreateUsers()).isTrue();
         assertThat(service().canUpdateUsers()).isFalse();
         assertThat(service().canDeleteUsers()).isTrue();
@@ -170,11 +228,17 @@ class UserServiceTest {
         verify(authorizationService).canAll(update);
     }
 
-    private UserService service() { return new UserService(appUserRepository, roleRepository, authorizationService); }
+    private UserService service() {
+        return new UserService(appUserRepository, roleRepository, authorizationService);
+    }
 
     private UserRequest request(String username, String email, Long... ids) {
-        UserRequest request = new UserRequest(); request.setUsername(username); request.setEmail(email);
-        request.setRoleIds(new LinkedHashSet<>(List.of(ids))); return request;
+        UserRequest request = new UserRequest();
+        request.setUsername(username);
+        request.setEmail(email);
+        request.setRoleIds(new LinkedHashSet<>(List.of(ids)));
+
+        return request;
     }
 
     private void authenticate(String name) {
@@ -182,7 +246,10 @@ class UserServiceTest {
     }
 
     private static void set(Object target, String field, Object value) throws Exception {
-        var declared = target.getClass().getDeclaredField(field); declared.setAccessible(true); declared.set(target, value);
+        var declared = target.getClass().getDeclaredField(field);
+        declared.setAccessible(true);
+
+        declared.set(target, value);
     }
 
     private void authenticateActor(AppPermission... permissions) {
@@ -190,13 +257,14 @@ class UserServiceTest {
         AppUser actor = new AppUser("admin", "admin@example.com", "issuer", "subject");
         actor.addRole(role);
         when(appUserRepository.findForAuthorization("admin")).thenReturn(Optional.of(actor));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("admin", "password", List.of()));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("admin", "password", List.of()));
     }
 
     private Role role(AppPermission... permissions) {
         Role role = new Role("TEST", "Test", null, false);
         role.update(role.getName(), role.getDescription(), true, Set.of(permissions));
+
         return role;
     }
 }

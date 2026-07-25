@@ -16,10 +16,11 @@ class UserDomainTest {
                 .isEqualTo(new OidcUserProfile("issuer", "subject", "user", "user@example.com"));
 
         for (var profile : new OidcUserProfile[] {
-                new OidcUserProfile(null, "s", "u", "e"),
-                new OidcUserProfile("i", " ", "u", "e"),
-                new OidcUserProfile("i", "s", "", "e"),
-                new OidcUserProfile("i", "s", "u", null)}) {
+            new OidcUserProfile(null, "s", "u", "e"),
+            new OidcUserProfile("i", " ", "u", "e"),
+            new OidcUserProfile("i", "s", "", "e"),
+            new OidcUserProfile("i", "s", "u", null)
+        }) {
             assertThatThrownBy(profile::normalized)
                     .isInstanceOf(OidcProvisioningException.class)
                     .hasMessageStartingWith("Missing required OIDC claim:");
@@ -44,19 +45,24 @@ class UserDomainTest {
         assertThat(user.getVersion()).isNull();
         assertThat(user.getCreatedAt()).isNull();
         assertThat(user.getUpdatedAt()).isNull();
+
         user.setActive(true);
         user.deactivate();
+
         assertThat(user.isActive()).isFalse();
 
         Set<AppPermission> copy = second.getPermissions();
         copy.clear();
+
         assertThat(second.getPermissions()).containsExactly(AppPermission.PRODUCT_UPDATE);
         assertThat(second.getId()).isNull();
         assertThat(second.getVersion()).isNull();
         assertThat(second.getCreatedAt()).isNull();
         assertThat(second.getUpdatedAt()).isNull();
         assertThat(second.isSystemRole()).isFalse();
+
         second.deactivate();
+
         assertThat(second.isActive()).isFalse();
     }
 
@@ -66,22 +72,27 @@ class UserDomainTest {
         var permissions = new LinkedHashSet<>(Set.of(AppPermission.PRODUCT_VIEW));
         roleRequest.setPermissions(permissions);
         permissions.clear();
+
         assertThat(roleRequest.getPermissions()).containsExactly(AppPermission.PRODUCT_VIEW);
         roleRequest.setPermissions(null);
+
         assertThat(roleRequest.getPermissions()).isEmpty();
 
         var userRequest = new UserRequest();
         var ids = new LinkedHashSet<>(Set.of(1L));
         userRequest.setRoleIds(ids);
         ids.clear();
+
         assertThat(userRequest.getRoleIds()).containsExactly(1L);
         userRequest.setRoleIds(null);
+
         assertThat(userRequest.getRoleIds()).isEmpty();
     }
 
     @Test
     void provisioningException_preservesCause() {
         RuntimeException cause = new RuntimeException("cause");
+
         assertThat(new OidcProvisioningException("message", cause)).hasCause(cause);
         assertThat(new UserException("user")).hasMessage("user");
         assertThat(new RoleFilter("x", true, false).text()).isEqualTo("x");
@@ -90,20 +101,30 @@ class UserDomainTest {
 
     @Test
     void jpaConstructors_initializeSafeDefaultsAndUnknownPermissionsAreIgnored() throws Exception {
-        var userConstructor = AppUser.class.getDeclaredConstructor(); userConstructor.setAccessible(true);
+        var userConstructor = AppUser.class.getDeclaredConstructor();
+        userConstructor.setAccessible(true);
+
         AppUser user = userConstructor.newInstance();
-        assertThat(user.isActive()).isTrue(); assertThat(user.getRoles()).isEmpty();
-        var roleConstructor = Role.class.getDeclaredConstructor(); roleConstructor.setAccessible(true);
+
+        assertThat(user.isActive()).isTrue();
+        assertThat(user.getRoles()).isEmpty();
+
+        var roleConstructor = Role.class.getDeclaredConstructor();
+        roleConstructor.setAccessible(true);
         Role role = roleConstructor.newInstance();
-        var field = Role.class.getDeclaredField("permissions"); field.setAccessible(true);
+        var field = Role.class.getDeclaredField("permissions");
+        field.setAccessible(true);
         field.set(role, new String[] {AppPermission.PRODUCT_VIEW.code(), "unknown"});
+
         assertThat(role.getPermissions()).containsExactly(AppPermission.PRODUCT_VIEW);
-        assertThat(role.isActive()).isTrue(); assertThat(role.isSystemRole()).isTrue();
+        assertThat(role.isActive()).isTrue();
+        assertThat(role.isSystemRole()).isTrue();
     }
 
     static Role role(String code, boolean active, AppPermission... permissions) {
         Role role = new Role(code, code, null, false);
         role.update(code, null, active, new LinkedHashSet<>(Set.of(permissions)));
+
         return role;
     }
 }

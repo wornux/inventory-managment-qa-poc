@@ -39,7 +39,9 @@ import org.springframework.security.access.AccessDeniedException;
 public class CategoriesView extends Main {
 
     private enum FormMode {
-        CREATE, EDIT, VIEW
+        CREATE,
+        EDIT,
+        VIEW
     }
 
     private final CategoryService categoryService;
@@ -84,6 +86,7 @@ public class CategoriesView extends Main {
         var subtitle = new Span("Product grouping, assignment availability, and catalog organization.");
         subtitle.addClassName("products-subtitle");
         header.add(title, subtitle);
+
         return header;
     }
 
@@ -99,6 +102,7 @@ public class CategoriesView extends Main {
 
         toolbar.add(search, activeFilter, newCategory);
         toolbar.setFlexGrow(1, search);
+
         return toolbar;
     }
 
@@ -117,13 +121,21 @@ public class CategoriesView extends Main {
     private void configureGrid() {
         grid.addClassName("products-grid");
         grid.setSizeFull();
-        grid.addColumn(categoryRenderer()).setHeader("Category").setSortable(true).setAutoWidth(true).setFlexGrow(2);
-        grid.addColumn(new ComponentRenderer<>(this::activeBadge)).setHeader("Active").setAutoWidth(true);
+        grid.addColumn(categoryRenderer())
+                .setHeader("Category")
+                .setSortable(true)
+                .setAutoWidth(true)
+                .setFlexGrow(2);
+        grid.addColumn(new ComponentRenderer<>(this::activeBadge))
+                .setHeader("Active")
+                .setAutoWidth(true);
         grid.addColumn(category -> categoryService.productCount(category.getId()))
                 .setHeader("Product Count")
                 .setSortable(true)
                 .setAutoWidth(true);
-        grid.addColumn(new ComponentRenderer<>(this::actions)).setHeader("Actions").setAutoWidth(true);
+        grid.addColumn(new ComponentRenderer<>(this::actions))
+                .setHeader("Actions")
+                .setAutoWidth(true);
         grid.addItemClickListener(event -> openView(event.getItem()));
     }
 
@@ -135,12 +147,15 @@ public class CategoriesView extends Main {
                 </div>
                 """)
                 .withProperty("name", Category::getName)
-                .withProperty("description", category -> category.getDescription() == null ? "No description" : category.getDescription());
+                .withProperty(
+                        "description",
+                        category -> category.getDescription() == null ? "No description" : category.getDescription());
     }
 
     private Component activeBadge(Category category) {
         Span badge = new Span(category.isActive() ? "Active" : "Inactive");
         badge.addClassNames("status-badge", category.isActive() ? "active-yes" : "active-no");
+
         return badge;
     }
 
@@ -149,14 +164,17 @@ public class CategoriesView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(category));
         layout.add(view);
+
         if (categoryService.canUpdateCategories()) {
             layout.add(new Button("Edit", event -> openEdit(category)));
         }
+
         if (categoryService.canDeleteCategories() && category.isActive()) {
             Button deactivate = new Button("Deactivate", event -> confirmDeactivate(category));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(deactivate);
         }
+
         return layout;
     }
 
@@ -210,7 +228,9 @@ public class CategoriesView extends Main {
     }
 
     private void bindForm() {
-        binder.forField(name).asRequired("Category name is required.").bind(CategoryRequest::getName, CategoryRequest::setName);
+        binder.forField(name)
+                .asRequired("Category name is required.")
+                .bind(CategoryRequest::getName, CategoryRequest::setName);
         binder.bind(description, CategoryRequest::getDescription, CategoryRequest::setDescription);
         binder.bind(active, CategoryRequest::isActive, CategoryRequest::setActive);
     }
@@ -219,10 +239,8 @@ public class CategoriesView extends Main {
         Button confirm = new Button("Deactivate", event -> deactivateSelected());
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
         Button cancelDeactivate = new Button("Cancel", event -> deactivateDialog.close());
-        deactivateDialog.add(new VerticalLayout(
-                deactivateTitle,
-                deactivateText,
-                new HorizontalLayout(confirm, cancelDeactivate)));
+        deactivateDialog.add(
+                new VerticalLayout(deactivateTitle, deactivateText, new HorizontalLayout(confirm, cancelDeactivate)));
 
         var dirtyTitle = new H1("Unsaved changes");
         var dirtyText = new Span("You have unsaved changes. Discard them?");
@@ -294,6 +312,7 @@ public class CategoriesView extends Main {
         request.setDescription(category.getDescription());
         request.setActive(category.isActive());
         request.setVersion(category.getVersion());
+
         return request;
     }
 
@@ -302,6 +321,7 @@ public class CategoriesView extends Main {
             showError("Please fix the highlighted fields.");
             return;
         }
+
         try {
             if (mode == FormMode.CREATE) {
                 categoryService.create(formData);
@@ -310,6 +330,7 @@ public class CategoriesView extends Main {
                 categoryService.update(selectedCategory.getId(), formData);
                 showSuccess("Category updated.");
             }
+
             dirty = false;
             sidebar.close();
             refreshGrid();
@@ -321,12 +342,16 @@ public class CategoriesView extends Main {
     private void confirmDeactivate(Category category) {
         selectedCategory = category;
         long activeProducts = categoryService.activeProductCount(category.getId());
+
         if (activeProducts > 0) {
-            deactivateText.setText("This category has " + activeProducts
-                    + " products. Deactivating the category will not affect existing products, but new products cannot be assigned to it.");
+            deactivateText.setText(
+                    "This category has " + activeProducts
+                            + " products. Deactivating the category will not affect existing products, but new products cannot be assigned to it.");
         } else {
-            deactivateText.setText("Products in this category will still exist but will be hidden from new assignments.");
+            deactivateText.setText(
+                    "Products in this category will still exist but will be hidden from new assignments.");
         }
+
         deactivateDialog.open();
     }
 
@@ -348,6 +373,7 @@ public class CategoriesView extends Main {
             dirtyDialog.open();
             return;
         }
+
         dirty = false;
         sidebar.close();
     }
@@ -366,9 +392,11 @@ public class CategoriesView extends Main {
         if ("Active".equals(activeFilter.getValue())) {
             return true;
         }
+
         if ("Inactive".equals(activeFilter.getValue())) {
             return false;
         }
+
         return null;
     }
 

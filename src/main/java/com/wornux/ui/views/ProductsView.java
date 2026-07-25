@@ -46,7 +46,9 @@ import org.springframework.security.access.AccessDeniedException;
 public class ProductsView extends Main {
 
     private enum FormMode {
-        CREATE, EDIT, VIEW
+        CREATE,
+        EDIT,
+        VIEW
     }
 
     private final ProductService productService;
@@ -101,6 +103,7 @@ public class ProductsView extends Main {
         var subtitle = new Span("Catalog records, pricing, stock thresholds, and availability.");
         subtitle.addClassName("products-subtitle");
         header.add(title, subtitle);
+
         return header;
     }
 
@@ -116,6 +119,7 @@ public class ProductsView extends Main {
 
         toolbar.add(search, categoryFilter, supplierFilter, activeFilter, lowStockFilter, newProduct);
         toolbar.setFlexGrow(1, search);
+
         return toolbar;
     }
 
@@ -151,16 +155,26 @@ public class ProductsView extends Main {
                 .setSortable(true)
                 .setAutoWidth(true)
                 .setFlexGrow(2);
-        grid.addColumn(product -> product.getCategory().getName()).setHeader("Category").setSortable(true);
-        grid.addColumn(product -> product.getSupplier() == null ? "None" : product.getSupplier().getName())
+        grid.addColumn(product -> product.getCategory().getName())
+                .setHeader("Category")
+                .setSortable(true);
+        grid.addColumn(product -> product.getSupplier() == null
+                        ? "None"
+                        : product.getSupplier().getName())
                 .setHeader("Supplier")
                 .setSortable(true);
         grid.addColumn(Product::getUnitPrice).setHeader("Unit Price").setSortable(true);
         grid.addColumn(Product::getQuantityOnHand).setHeader("Quantity").setSortable(true);
         grid.addColumn(Product::getMinimumStock).setHeader("Minimum").setSortable(true);
-        grid.addColumn(new ComponentRenderer<>(this::stockStatusBadge)).setHeader("Stock Status").setAutoWidth(true);
-        grid.addColumn(new ComponentRenderer<>(this::activeBadge)).setHeader("Active").setAutoWidth(true);
-        grid.addColumn(new ComponentRenderer<>(this::actions)).setHeader("Actions").setAutoWidth(true);
+        grid.addColumn(new ComponentRenderer<>(this::stockStatusBadge))
+                .setHeader("Stock Status")
+                .setAutoWidth(true);
+        grid.addColumn(new ComponentRenderer<>(this::activeBadge))
+                .setHeader("Active")
+                .setAutoWidth(true);
+        grid.addColumn(new ComponentRenderer<>(this::actions))
+                .setHeader("Actions")
+                .setAutoWidth(true);
         grid.addItemClickListener(event -> openView(event.getItem()));
     }
 
@@ -178,12 +192,14 @@ public class ProductsView extends Main {
     private Component stockStatusBadge(Product product) {
         Span badge = new Span(product.getStockStatus());
         badge.addClassNames("status-badge", product.isLowStock() ? "stock-low" : "stock-ok");
+
         return badge;
     }
 
     private Component activeBadge(Product product) {
         Span badge = new Span(product.isActive() ? "Active" : "Inactive");
         badge.addClassNames("status-badge", product.isActive() ? "active-yes" : "active-no");
+
         return badge;
     }
 
@@ -192,14 +208,17 @@ public class ProductsView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(product));
         layout.add(view);
+
         if (productService.canUpdateProducts()) {
             layout.add(new Button("Edit", event -> openEdit(product)));
         }
+
         if (productService.canDeleteProducts()) {
             Button delete = new Button("Delete", event -> confirmDelete(product));
             delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(delete);
         }
+
         return layout;
     }
 
@@ -264,7 +283,9 @@ public class ProductsView extends Main {
 
     private void bindForm() {
         binder.forField(sku).asRequired("SKU is required.").bind(ProductRequest::getSku, ProductRequest::setSku);
-        binder.forField(name).asRequired("Product name is required.").bind(ProductRequest::getName, ProductRequest::setName);
+        binder.forField(name)
+                .asRequired("Product name is required.")
+                .bind(ProductRequest::getName, ProductRequest::setName);
         binder.bind(description, ProductRequest::getDescription, ProductRequest::setDescription);
         binder.forField(unitPrice)
                 .asRequired("Unit price is required.")
@@ -280,9 +301,13 @@ public class ProductsView extends Main {
                 .bind(ProductRequest::getMinimumStock, ProductRequest::setMinimumStock);
         binder.forField(category)
                 .asRequired("Category is required.")
-                .bind(this::categoryFromRequest, (request, value) -> request.setCategoryId(value == null ? null : value.getId()));
+                .bind(
+                        this::categoryFromRequest,
+                        (request, value) -> request.setCategoryId(value == null ? null : value.getId()));
         binder.forField(supplier)
-                .bind(this::supplierFromRequest, (request, value) -> request.setSupplierId(value == null ? null : value.getId()));
+                .bind(
+                        this::supplierFromRequest,
+                        (request, value) -> request.setSupplierId(value == null ? null : value.getId()));
         binder.bind(active, ProductRequest::isActive, ProductRequest::setActive);
     }
 
@@ -364,6 +389,7 @@ public class ProductsView extends Main {
             showError("Please fix the highlighted fields.");
             return;
         }
+
         try {
             if (mode == FormMode.CREATE) {
                 productService.create(formData);
@@ -372,6 +398,7 @@ public class ProductsView extends Main {
                 productService.update(selectedProduct.getId(), formData);
                 showSuccess("Product updated.");
             }
+
             dirty = false;
             sidebar.close();
             refreshGrid();
@@ -401,6 +428,7 @@ public class ProductsView extends Main {
             dirtyDialog.open();
             return;
         }
+
         dirty = false;
         sidebar.close();
     }
@@ -426,9 +454,11 @@ public class ProductsView extends Main {
         request.setQuantityOnHand(product.getQuantityOnHand());
         request.setMinimumStock(product.getMinimumStock());
         request.setCategoryId(product.getCategory().getId());
-        request.setSupplierId(product.getSupplier() == null ? null : product.getSupplier().getId());
+        request.setSupplierId(
+                product.getSupplier() == null ? null : product.getSupplier().getId());
         request.setActive(product.isActive());
         request.setVersion(product.getVersion());
+
         return request;
     }
 
@@ -449,8 +479,12 @@ public class ProductsView extends Main {
     private void refreshGrid() {
         grid.setItems(productService.search(new ProductFilter(
                 search.getValue(),
-                categoryFilter.getValue() == null ? null : categoryFilter.getValue().getId(),
-                supplierFilter.getValue() == null ? null : supplierFilter.getValue().getId(),
+                categoryFilter.getValue() == null
+                        ? null
+                        : categoryFilter.getValue().getId(),
+                supplierFilter.getValue() == null
+                        ? null
+                        : supplierFilter.getValue().getId(),
                 activeFilterValue(),
                 lowStockFilter.getValue())));
     }
@@ -459,9 +493,11 @@ public class ProductsView extends Main {
         if ("Active".equals(activeFilter.getValue())) {
             return true;
         }
+
         if ("Inactive".equals(activeFilter.getValue())) {
             return false;
         }
+
         return null;
     }
 

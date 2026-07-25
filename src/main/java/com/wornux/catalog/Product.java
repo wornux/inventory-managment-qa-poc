@@ -55,8 +55,7 @@ public class Product extends Auditable {
     @Version
     private Long version;
 
-    protected Product() {
-    }
+    protected Product() {}
 
     public Product(
             String sku,

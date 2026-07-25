@@ -36,8 +36,7 @@ public class Supplier extends Auditable {
     @Version
     private Long version;
 
-    protected Supplier() {
-    }
+    protected Supplier() {}
 
     public Supplier(String name, String contactName, String email, String phone) {
         this.name = name;

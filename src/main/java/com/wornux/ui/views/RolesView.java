@@ -56,7 +56,9 @@ import org.springframework.security.access.AccessDeniedException;
 public class RolesView extends Div {
 
     private enum RoleTab {
-        INFORMATION, PERMISSIONS, MEMBERS
+        INFORMATION,
+        PERMISSIONS,
+        MEMBERS
     }
 
     private final RoleService roleService;
@@ -106,12 +108,14 @@ public class RolesView extends Div {
         description.addClassName("role-management-description");
         var header = new Header(title, description);
         header.addClassName("role-management-header");
+
         return header;
     }
 
     private Component createWorkspace() {
         var workspace = new Div(createRolePanel(), createEditorPanel());
         workspace.addClassName("role-management-split");
+
         return workspace;
     }
 
@@ -135,6 +139,7 @@ public class RolesView extends Div {
         panel.setPadding(false);
         panel.setSpacing(false);
         panel.addClassName("role-management-role-panel");
+
         return panel;
     }
 
@@ -148,6 +153,7 @@ public class RolesView extends Div {
         panel.setPadding(false);
         panel.setSpacing(false);
         panel.addClassName("role-management-editor-panel");
+
         return panel;
     }
 
@@ -178,7 +184,10 @@ public class RolesView extends Div {
         roleGrid.setEmptyStateText("No roles match the current filters.");
         roleGrid.addClassName("role-management-role-list");
         roleGrid.addColumn(roleIdentityRenderer()).setHeader("Roles").setFlexGrow(1);
-        roleGrid.addColumn(roleMemberCountRenderer()).setHeader("Members").setAutoWidth(true).setFlexGrow(0);
+        roleGrid.addColumn(roleMemberCountRenderer())
+                .setHeader("Members")
+                .setAutoWidth(true)
+                .setFlexGrow(0);
     }
 
     private LitRenderer<Role> roleIdentityRenderer() {
@@ -204,8 +213,7 @@ public class RolesView extends Div {
                     <span>${item.count}</span>
                     <vaadin-icon src="/icons/IconPeople.svg" aria-hidden="true"></vaadin-icon>
                 </span>
-                """)
-                .withProperty("count", role -> roleMemberCounts.getOrDefault(role.getId(), 0L));
+                """).withProperty("count", role -> roleMemberCounts.getOrDefault(role.getId(), 0L));
     }
 
     private void configureTabs() {
@@ -218,8 +226,10 @@ public class RolesView extends Div {
     }
 
     private void refreshRoleList() {
-        visibleRoles = roleService.search(new RoleFilter(roleSearch.getValue(), typeFilterValue(), activeFilterValue()));
-        roleMemberCounts = roleService.userCounts(visibleRoles.stream().map(Role::getId).toList());
+        visibleRoles =
+                roleService.search(new RoleFilter(roleSearch.getValue(), typeFilterValue(), activeFilterValue()));
+        roleMemberCounts =
+                roleService.userCounts(visibleRoles.stream().map(Role::getId).toList());
         selectedRoleId = visibleRoles.stream()
                 .filter(role -> Objects.equals(role.getId(), selectedRoleId))
                 .findFirst()
@@ -241,18 +251,21 @@ public class RolesView extends Div {
         roleHeader.removeAll();
         tabContent.removeAll();
         Role role = currentRole();
+
         if (role == null) {
             tabs.setVisible(false);
             roleHeader.add(emptyState("Select or create a role to get started."));
             return;
         }
+
         tabs.setVisible(true);
         roleHeader.add(createSelectedRoleHeader(role));
-        tabContent.add(switch (selectedTab) {
-            case INFORMATION -> createInformationTab(role);
-            case PERMISSIONS -> createPermissionsTab(role);
-            case MEMBERS -> createMembersTab(role);
-        });
+        tabContent.add(
+                switch (selectedTab) {
+                    case INFORMATION -> createInformationTab(role);
+                    case PERMISSIONS -> createPermissionsTab(role);
+                    case MEMBERS -> createMembersTab(role);
+                });
     }
 
     private Role currentRole() {
@@ -264,11 +277,12 @@ public class RolesView extends Div {
 
     private Component createSelectedRoleHeader(Role role) {
         var title = new H2(role.getName());
-        var meta = new Span("%s · %s · %s · %d permissions".formatted(
-                role.getCode(),
-                role.isSystemRole() ? "System role" : "Custom role",
-                role.isActive() ? "Active" : "Inactive",
-                role.getPermissions().size()));
+        var meta = new Span("%s · %s · %s · %d permissions"
+                .formatted(
+                        role.getCode(),
+                        role.isSystemRole() ? "System role" : "Custom role",
+                        role.isActive() ? "Active" : "Inactive",
+                        role.getPermissions().size()));
         meta.addClassName("role-management-role-meta");
 
         var copy = new VerticalLayout(title, meta);
@@ -278,9 +292,11 @@ public class RolesView extends Div {
 
         var actions = new HorizontalLayout();
         actions.addClassName("role-management-header-actions");
+
         if (!role.isSystemRole() && roleService.canUpdateRoles()) {
             actions.add(new Button("Edit role", event -> openEdit(role)));
         }
+
         if (!role.isSystemRole() && role.isActive() && roleService.canDeleteRoles()) {
             var deactivate = new Button("Deactivate", event -> confirmDeactivate(role));
             deactivate.addThemeVariants(ButtonVariant.ERROR);
@@ -292,6 +308,7 @@ public class RolesView extends Div {
         header.setAlignItems(FlexComponent.Alignment.CENTER);
         header.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         header.addClassName("role-management-role-header");
+
         return header;
     }
 
@@ -310,18 +327,18 @@ public class RolesView extends Div {
         var form = new FormLayout(code, name, description, active, system);
         form.setWidthFull();
         form.setColspan(description, 2);
-        form.setResponsiveSteps(
-                new FormLayout.ResponsiveStep("0", 1),
-                new FormLayout.ResponsiveStep("36rem", 2));
+        form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("36rem", 2));
 
         var content = createTabLayout("Information", "Review the role identity, description, type, and availability.");
         content.add(form);
+
         return content;
     }
 
     private TextField readOnly(TextField field, String value) {
         field.setValue(value);
         field.setReadOnly(true);
+
         return field;
     }
 
@@ -340,9 +357,9 @@ public class RolesView extends Div {
         renderPermissionGroups(role, groups, "");
 
         var content = createTabLayout(
-                "Permissions",
-                "Permissions are grouped by resource. Edit custom roles with the action above.");
+                "Permissions", "Permissions are grouped by resource. Edit custom roles with the action above.");
         content.add(search, groups);
+
         return content;
     }
 
@@ -352,10 +369,12 @@ public class RolesView extends Div {
             var visible = resourcePermissions.stream()
                     .filter(permissionMatches(query))
                     .toList();
+
             if (!visible.isEmpty()) {
                 groups.add(createPermissionGroup(role, resource, visible));
             }
         });
+
         if (groups.getComponentCount() == 0) {
             groups.add(emptyState("No permissions match the search."));
         }
@@ -363,6 +382,7 @@ public class RolesView extends Div {
 
     private Predicate<AppPermission> permissionMatches(String query) {
         String normalized = nullToBlank(query).trim().toLowerCase(Locale.ROOT);
+
         return permission -> normalized.isBlank()
                 || permission.code().contains(normalized)
                 || permission.label().toLowerCase(Locale.ROOT).contains(normalized);
@@ -380,6 +400,7 @@ public class RolesView extends Div {
         group.setPadding(false);
         group.setSpacing(false);
         group.addClassName("role-management-permission-group");
+
         return group;
     }
 
@@ -394,6 +415,7 @@ public class RolesView extends Div {
         row.setAlignItems(FlexComponent.Alignment.CENTER);
         row.setJustifyContentMode(FlexComponent.JustifyContentMode.BETWEEN);
         row.addClassName("role-management-permission-row");
+
         return row;
     }
 
@@ -405,7 +427,9 @@ public class RolesView extends Div {
     private Component createMembersTab(Role role) {
         var members = new Grid<>(AppUser.class, false);
         members.addColumn(memberIdentityRenderer()).setHeader("Member").setFlexGrow(1);
-        members.addColumn(member -> member.isActive() ? "Active" : "Inactive").setHeader("Status").setAutoWidth(true);
+        members.addColumn(member -> member.isActive() ? "Active" : "Inactive")
+                .setHeader("Status")
+                .setAutoWidth(true);
         members.setItems(roleService.members(role.getId()));
         members.setEmptyStateText("No users are assigned to this role.");
         members.addClassName("role-management-members-grid");
@@ -415,6 +439,7 @@ public class RolesView extends Div {
                 "Users assigned to this global role. Manage assignments from the Users view.");
         content.add(members);
         content.addClassName("role-management-members-content");
+
         return content;
     }
 
@@ -438,12 +463,14 @@ public class RolesView extends Div {
         layout.setSpacing(false);
         layout.setWidthFull();
         layout.addClassName("role-management-tab-layout");
+
         return layout;
     }
 
     private Component emptyState(String message) {
         var state = new Paragraph(message);
         state.addClassName("role-management-empty-state");
+
         return state;
     }
 
@@ -525,10 +552,12 @@ public class RolesView extends Div {
 
     private void openEdit(Role role) {
         selectedRole = roleService.get(role.getId());
+
         if (selectedRole.isSystemRole()) {
             showError("System roles cannot be edited.");
             return;
         }
+
         sidebarTitle.setText("Edit role");
         sidebar.getElement().setAttribute("aria-label", "Edit role");
         resetForm(fromRole(selectedRole));
@@ -559,6 +588,7 @@ public class RolesView extends Div {
         request.setActive(role.isActive());
         request.setVersion(role.getVersion());
         request.setPermissions(role.getPermissions());
+
         return request;
     }
 
@@ -567,6 +597,7 @@ public class RolesView extends Div {
             showError("Please fix the highlighted fields.");
             return;
         }
+
         try {
             Role saved = selectedRole == null
                     ? roleService.create(formData)
@@ -586,9 +617,11 @@ public class RolesView extends Div {
         var dialog = new Dialog();
         dialog.getElement().setAttribute("aria-label", "Deactivate this role");
         var title = new H1("Deactivate this role?");
-        var text = new Span(users > 0
-                ? "This role has %d users. They will retain the assignment, but it will stop granting permissions.".formatted(users)
-                : "The role will become unavailable for new assignments.");
+        var text = new Span(
+                users > 0
+                        ? "This role has %d users. They will retain the assignment, but it will stop granting permissions."
+                                .formatted(users)
+                        : "The role will become unavailable for new assignments.");
         var confirm = new Button("Deactivate", event -> deactivate(role, dialog));
         confirm.addThemeVariants(ButtonVariant.PRIMARY, ButtonVariant.ERROR);
         var cancel = new Button("Cancel", event -> dialog.close());
@@ -612,6 +645,7 @@ public class RolesView extends Div {
             dirtyDialog.open();
             return;
         }
+
         sidebar.close();
     }
 
@@ -619,9 +653,11 @@ public class RolesView extends Div {
         if ("System".equals(typeFilter.getValue())) {
             return true;
         }
+
         if ("Custom".equals(typeFilter.getValue())) {
             return false;
         }
+
         return null;
     }
 
@@ -629,9 +665,11 @@ public class RolesView extends Div {
         if ("Active".equals(activeFilter.getValue())) {
             return true;
         }
+
         if ("Inactive".equals(activeFilter.getValue())) {
             return false;
         }
+
         return null;
     }
 

@@ -25,8 +25,11 @@ class AppPermissionTest {
         assertThat(AppAction.UPDATE.grants(AppAction.UPDATE)).isTrue();
         assertThat(AppAction.UPDATE.grants(AppAction.VIEW)).isTrue();
         assertThat(AppAction.VIEW.grants(AppAction.UPDATE)).isFalse();
-        assertThat(AppPermission.PRODUCT_UPDATE.grants(AppPermission.PRODUCT_VIEW)).isTrue();
-        assertThat(AppPermission.PRODUCT_UPDATE.grants(AppPermission.PRODUCT_DELETE)).isFalse();
-        assertThat(AppPermission.PRODUCT_UPDATE.grants(AppPermission.CATEGORY_VIEW)).isFalse();
+        assertThat(AppPermission.PRODUCT_UPDATE.grants(AppPermission.PRODUCT_VIEW))
+                .isTrue();
+        assertThat(AppPermission.PRODUCT_UPDATE.grants(AppPermission.PRODUCT_DELETE))
+                .isFalse();
+        assertThat(AppPermission.PRODUCT_UPDATE.grants(AppPermission.CATEGORY_VIEW))
+                .isFalse();
     }
 }

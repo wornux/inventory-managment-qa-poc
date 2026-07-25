@@ -31,9 +31,15 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class AppOidcUserServiceTest {
-    @Mock AppUserService users;
-    @Mock OidcUserService delegate;
-    @Mock OidcUserRequest request;
+    @Mock
+    AppUserService users;
+
+    @Mock
+    OidcUserService delegate;
+
+    @Mock
+    OidcUserRequest request;
+
     private AppOidcUserService service;
 
     @BeforeEach
@@ -44,18 +50,32 @@ class AppOidcUserServiceTest {
 
     @Test
     void mergesProviderAndApplicationAuthoritiesAndProvisionsProfile() {
-        var provider = provider(Map.of("iss", "https://issuer", "sub", "subject", "preferred_username", "remote", "email", "mail@example.com"));
+        var provider = provider(Map.of(
+                "iss",
+                "https://issuer",
+                "sub",
+                "subject",
+                "preferred_username",
+                "remote",
+                "email",
+                "mail@example.com"));
         AppUser local = new AppUser("local", "mail@example.com", "https://issuer", "subject");
         when(delegate.loadUser(request)).thenReturn(provider);
         when(users.provisionOidcUser(any())).thenReturn(local);
         when(users.authorities(local)).thenReturn(List.of(new SimpleGrantedAuthority("product:view")));
 
         var result = service.loadUser(request);
+
         assertThat(result.getName()).isEqualTo("remote");
-        assertThat(result.getAuthorities()).extracting("authority").containsExactlyInAnyOrder("OIDC_USER", "product:view");
+        assertThat(result.getAuthorities())
+                .extracting("authority")
+                .containsExactlyInAnyOrder("OIDC_USER", "product:view");
+
         ArgumentCaptor<OidcUserProfile> profile = ArgumentCaptor.forClass(OidcUserProfile.class);
+
         verify(users).provisionOidcUser(profile.capture());
-        assertThat(profile.getValue()).isEqualTo(new OidcUserProfile("https://issuer", "subject", "remote", "mail@example.com"));
+        assertThat(profile.getValue())
+                .isEqualTo(new OidcUserProfile("https://issuer", "subject", "remote", "mail@example.com"));
     }
 
     @Test
@@ -65,8 +85,11 @@ class AppOidcUserServiceTest {
         when(delegate.loadUser(request)).thenReturn(provider);
         when(users.provisionOidcUser(any())).thenReturn(local);
         when(users.authorities(local)).thenReturn(List.of());
+
         service.loadUser(request);
+
         ArgumentCaptor<OidcUserProfile> profile = ArgumentCaptor.forClass(OidcUserProfile.class);
+
         verify(users).provisionOidcUser(profile.capture());
         assertThat(profile.getValue().issuer()).isNull();
     }
@@ -76,7 +99,9 @@ class AppOidcUserServiceTest {
         when(delegate.loadUser(request)).thenReturn(provider(Map.of("sub", "subject", "preferred_username", "remote")));
         doThrow(new OidcProvisioningException("cannot provision"))
                 .doThrow(new BadCredentialsException("disabled"))
-                .when(users).provisionOidcUser(any());
+                .when(users)
+                .provisionOidcUser(any());
+
         assertOAuthFailure("cannot provision", OidcProvisioningException.class);
         assertOAuthFailure("disabled", BadCredentialsException.class);
     }

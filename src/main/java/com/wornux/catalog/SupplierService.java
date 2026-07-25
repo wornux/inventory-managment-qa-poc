@@ -31,25 +31,28 @@ public class SupplierService {
     public List<Supplier> search(SupplierFilter filter) {
         requireRead();
         SupplierFilter safeFilter = filter == null ? new SupplierFilter("", null) : filter;
+
         return supplierRepository.search(normalizeSearch(safeFilter.text()), safeFilter.active());
     }
 
     @Transactional(readOnly = true)
     public Supplier get(Long id) {
         requireRead();
-        return supplierRepository.findById(id)
-                .orElseThrow(() -> new SupplierException("Supplier was not found."));
+
+        return supplierRepository.findById(id).orElseThrow(() -> new SupplierException("Supplier was not found."));
     }
 
     @Transactional(readOnly = true)
     public long productCount(Long supplierId) {
         requireRead();
+
         return productRepository.countBySupplierId(supplierId);
     }
 
     @Transactional(readOnly = true)
     public long activeProductCount(Long supplierId) {
         requireRead();
+
         return productRepository.countBySupplierIdAndActiveTrue(supplierId);
     }
 
@@ -67,31 +70,35 @@ public class SupplierService {
                 supplier.getEmail(),
                 supplier.getPhone(),
                 request.isActive());
+
         return supplierRepository.save(supplier);
     }
 
     @Transactional
     public Supplier update(Long id, @Valid SupplierRequest request) {
         authorizationService.check(AppPermission.SUPPLIER_UPDATE);
-        Supplier supplier = supplierRepository.findById(id)
-                .orElseThrow(() -> new SupplierException("Supplier was not found."));
+        Supplier supplier =
+                supplierRepository.findById(id).orElseThrow(() -> new SupplierException("Supplier was not found."));
+
         if (!Objects.equals(supplier.getVersion(), request.getVersion())) {
             throw new SupplierException("Supplier was updated by another user. Refresh the form and try again.");
         }
+
         supplier.update(
                 normalizeName(request.getName()),
                 trimToNull(request.getContactName()),
                 trimToNull(request.getEmail()),
                 trimToNull(request.getPhone()),
                 request.isActive());
+
         return supplierRepository.save(supplier);
     }
 
     @Transactional
     public void deactivate(Long id) {
         authorizationService.check(AppPermission.SUPPLIER_DELETE);
-        Supplier supplier = supplierRepository.findById(id)
-                .orElseThrow(() -> new SupplierException("Supplier was not found."));
+        Supplier supplier =
+                supplierRepository.findById(id).orElseThrow(() -> new SupplierException("Supplier was not found."));
         supplier.deactivate();
         supplierRepository.save(supplier);
     }
@@ -122,6 +129,7 @@ public class SupplierService {
 
     private String trimToNull(String value) {
         String trimmed = value == null ? "" : value.trim();
+
         return trimmed.isEmpty() ? null : trimmed;
     }
 }

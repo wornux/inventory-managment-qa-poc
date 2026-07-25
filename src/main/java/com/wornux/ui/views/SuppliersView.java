@@ -39,7 +39,9 @@ import org.springframework.security.access.AccessDeniedException;
 public class SuppliersView extends Main {
 
     private enum FormMode {
-        CREATE, EDIT, VIEW
+        CREATE,
+        EDIT,
+        VIEW
     }
 
     private final SupplierService supplierService;
@@ -86,6 +88,7 @@ public class SuppliersView extends Main {
         var subtitle = new Span("Sourcing contacts, assignment availability, and supplier status.");
         subtitle.addClassName("products-subtitle");
         header.add(title, subtitle);
+
         return header;
     }
 
@@ -101,6 +104,7 @@ public class SuppliersView extends Main {
 
         toolbar.add(search, activeFilter, newSupplier);
         toolbar.setFlexGrow(1, search);
+
         return toolbar;
     }
 
@@ -119,14 +123,25 @@ public class SuppliersView extends Main {
     private void configureGrid() {
         grid.addClassName("products-grid");
         grid.setSizeFull();
-        grid.addColumn(supplierRenderer()).setHeader("Supplier").setSortable(true).setAutoWidth(true).setFlexGrow(2);
-        grid.addColumn(contactRenderer()).setHeader("Contact").setAutoWidth(true).setFlexGrow(2);
-        grid.addColumn(new ComponentRenderer<>(this::activeBadge)).setHeader("Active").setAutoWidth(true);
+        grid.addColumn(supplierRenderer())
+                .setHeader("Supplier")
+                .setSortable(true)
+                .setAutoWidth(true)
+                .setFlexGrow(2);
+        grid.addColumn(contactRenderer())
+                .setHeader("Contact")
+                .setAutoWidth(true)
+                .setFlexGrow(2);
+        grid.addColumn(new ComponentRenderer<>(this::activeBadge))
+                .setHeader("Active")
+                .setAutoWidth(true);
         grid.addColumn(supplier -> supplierService.productCount(supplier.getId()))
                 .setHeader("Product Count")
                 .setSortable(true)
                 .setAutoWidth(true);
-        grid.addColumn(new ComponentRenderer<>(this::actions)).setHeader("Actions").setAutoWidth(true);
+        grid.addColumn(new ComponentRenderer<>(this::actions))
+                .setHeader("Actions")
+                .setAutoWidth(true);
         grid.addItemClickListener(event -> openView(event.getItem()));
     }
 
@@ -138,7 +153,9 @@ public class SuppliersView extends Main {
                 </div>
                 """)
                 .withProperty("name", Supplier::getName)
-                .withProperty("contactName", supplier -> supplier.getContactName() == null ? "No contact name" : supplier.getContactName());
+                .withProperty(
+                        "contactName",
+                        supplier -> supplier.getContactName() == null ? "No contact name" : supplier.getContactName());
     }
 
     private LitRenderer<Supplier> contactRenderer() {
@@ -155,6 +172,7 @@ public class SuppliersView extends Main {
     private Component activeBadge(Supplier supplier) {
         Span badge = new Span(supplier.isActive() ? "Active" : "Inactive");
         badge.addClassNames("status-badge", supplier.isActive() ? "active-yes" : "active-no");
+
         return badge;
     }
 
@@ -163,14 +181,17 @@ public class SuppliersView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(supplier));
         layout.add(view);
+
         if (supplierService.canUpdateSuppliers()) {
             layout.add(new Button("Edit", event -> openEdit(supplier)));
         }
+
         if (supplierService.canDeleteSuppliers() && supplier.isActive()) {
             Button deactivate = new Button("Deactivate", event -> confirmDeactivate(supplier));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(deactivate);
         }
+
         return layout;
     }
 
@@ -226,7 +247,9 @@ public class SuppliersView extends Main {
     }
 
     private void bindForm() {
-        binder.forField(name).asRequired("Supplier name is required.").bind(SupplierRequest::getName, SupplierRequest::setName);
+        binder.forField(name)
+                .asRequired("Supplier name is required.")
+                .bind(SupplierRequest::getName, SupplierRequest::setName);
         binder.bind(contactName, SupplierRequest::getContactName, SupplierRequest::setContactName);
         binder.bind(email, SupplierRequest::getEmail, SupplierRequest::setEmail);
         binder.bind(phone, SupplierRequest::getPhone, SupplierRequest::setPhone);
@@ -237,10 +260,8 @@ public class SuppliersView extends Main {
         Button confirm = new Button("Deactivate", event -> deactivateSelected());
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
         Button cancelDeactivate = new Button("Cancel", event -> deactivateDialog.close());
-        deactivateDialog.add(new VerticalLayout(
-                deactivateTitle,
-                deactivateText,
-                new HorizontalLayout(confirm, cancelDeactivate)));
+        deactivateDialog.add(
+                new VerticalLayout(deactivateTitle, deactivateText, new HorizontalLayout(confirm, cancelDeactivate)));
 
         var dirtyTitle = new H1("Unsaved changes");
         var dirtyText = new Span("You have unsaved changes. Discard them?");
@@ -318,6 +339,7 @@ public class SuppliersView extends Main {
         request.setPhone(supplier.getPhone());
         request.setActive(supplier.isActive());
         request.setVersion(supplier.getVersion());
+
         return request;
     }
 
@@ -326,6 +348,7 @@ public class SuppliersView extends Main {
             showError("Please fix the highlighted fields.");
             return;
         }
+
         try {
             if (mode == FormMode.CREATE) {
                 supplierService.create(formData);
@@ -334,6 +357,7 @@ public class SuppliersView extends Main {
                 supplierService.update(selectedSupplier.getId(), formData);
                 showSuccess("Supplier updated.");
             }
+
             dirty = false;
             sidebar.close();
             refreshGrid();
@@ -345,12 +369,16 @@ public class SuppliersView extends Main {
     private void confirmDeactivate(Supplier supplier) {
         selectedSupplier = supplier;
         long activeProducts = supplierService.activeProductCount(supplier.getId());
+
         if (activeProducts > 0) {
-            deactivateText.setText("This supplier has " + activeProducts
-                    + " products. Deactivating the supplier will not affect existing products, but new products cannot be assigned to this supplier.");
+            deactivateText.setText(
+                    "This supplier has " + activeProducts
+                            + " products. Deactivating the supplier will not affect existing products, but new products cannot be assigned to this supplier.");
         } else {
-            deactivateText.setText("Products sourced from this supplier will still exist but this supplier will not be available for new product assignments.");
+            deactivateText.setText(
+                    "Products sourced from this supplier will still exist but this supplier will not be available for new product assignments.");
         }
+
         deactivateDialog.open();
     }
 
@@ -372,6 +400,7 @@ public class SuppliersView extends Main {
             dirtyDialog.open();
             return;
         }
+
         dirty = false;
         sidebar.close();
     }
@@ -392,9 +421,11 @@ public class SuppliersView extends Main {
         if ("Active".equals(activeFilter.getValue())) {
             return true;
         }
+
         if ("Inactive".equals(activeFilter.getValue())) {
             return false;
         }
+
         return null;
     }
 

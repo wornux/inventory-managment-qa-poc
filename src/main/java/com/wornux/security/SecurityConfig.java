@@ -16,11 +16,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     private static final String[] OPEN_API_ENDPOINTS = {
-            "/swagger-ui.html",
-            "/swagger-ui/**",
-            "/v3/api-docs",
-            "/v3/api-docs/**",
-            "/webjars/swagger-ui/**"
+        "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**", "/webjars/swagger-ui/**"
     };
 
     @Bean
@@ -29,7 +25,8 @@ public class SecurityConfig {
             HttpSecurity http,
             AppJwtAuthenticationConverter jwtAuthenticationConverter,
             ApiAuthenticationEntryPoint apiAuthenticationEntryPoint,
-            ApiAccessDeniedHandler apiAccessDeniedHandler) throws Exception {
+            ApiAccessDeniedHandler apiAccessDeniedHandler)
+            throws Exception {
         http.securityMatcher(
                         "/api/**",
                         "/swagger-ui.html",
@@ -43,9 +40,13 @@ public class SecurityConfig {
                         .authenticationEntryPoint(apiAuthenticationEntryPoint)
                         .accessDeniedHandler(apiAccessDeniedHandler))
                 .authorizeHttpRequests(authorize -> authorize
-                        .requestMatchers(OPEN_API_ENDPOINTS).permitAll()
-                        .anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
+                        .requestMatchers(OPEN_API_ENDPOINTS)
+                        .permitAll()
+                        .anyRequest()
+                        .authenticated())
+                .oauth2ResourceServer(
+                        oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)));
+
         return http.build();
     }
 
@@ -53,18 +54,16 @@ public class SecurityConfig {
     @Order(2)
     SecurityFilterChain securityFilterChain(HttpSecurity http, AppOidcUserService oidcUserService) throws Exception {
 
-        http.authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/styles/**", "/icons/**").permitAll());
+        http.authorizeHttpRequests(authorize ->
+                authorize.requestMatchers("/styles/**", "/icons/**").permitAll());
 
         http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
             configurer.oauth2LoginPage("/oauth2/authorization/keycloak", "{baseUrl}/login");
         });
 
-        http.oauth2Login(oauth2 -> oauth2
-                .loginPage("/login")
+        http.oauth2Login(oauth2 -> oauth2.loginPage("/login")
                 .failureUrl("/login?error")
-                .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService))
-        );
+                .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService)));
 
         return http.build();
     }

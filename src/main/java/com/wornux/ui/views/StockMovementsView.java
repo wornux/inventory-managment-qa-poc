@@ -9,7 +9,6 @@ import com.vaadin.flow.component.datepicker.DatePicker;
 import com.vaadin.flow.component.dialog.Dialog;
 import com.vaadin.flow.component.formlayout.FormLayout;
 import com.vaadin.flow.component.grid.Grid;
-import com.vaadin.flow.component.html.Div;
 import com.vaadin.flow.component.html.H1;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
@@ -49,7 +48,8 @@ import org.springframework.security.access.AccessDeniedException;
 public class StockMovementsView extends Main {
 
     private enum FormMode {
-        CREATE, VIEW
+        CREATE,
+        VIEW
     }
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
@@ -64,7 +64,8 @@ public class StockMovementsView extends Main {
     private final ComboBox<String> userFilter = new ComboBox<>("User");
     private final Dialog sidebar = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
-    private final BeanValidationBinder<StockMovementRequest> binder = new BeanValidationBinder<>(StockMovementRequest.class);
+    private final BeanValidationBinder<StockMovementRequest> binder =
+            new BeanValidationBinder<>(StockMovementRequest.class);
     private final StockMovementRequest formData = new StockMovementRequest();
     private final TextField createdAt = new TextField("Created at");
     private final TextField user = new TextField("User");
@@ -103,6 +104,7 @@ public class StockMovementsView extends Main {
         var subtitle = new Span("Append-only ledger for product stock changes and attribution.");
         subtitle.addClassName("products-subtitle");
         header.add(title, subtitle);
+
         return header;
     }
 
@@ -117,6 +119,7 @@ public class StockMovementsView extends Main {
         recordMovement.setVisible(stockMovementService.canCreateMovements());
 
         toolbar.add(fromDate, toDate, productFilter, typeFilter, userFilter, recordMovement);
+
         return toolbar;
     }
 
@@ -158,7 +161,9 @@ public class StockMovementsView extends Main {
         grid.addColumn(new ComponentRenderer<>(this::quantityDeltaLabel))
                 .setHeader("Quantity Delta")
                 .setAutoWidth(true);
-        grid.addColumn(movement -> movement.getUser() == null ? "System" : movement.getUser().getUsername())
+        grid.addColumn(movement -> movement.getUser() == null
+                        ? "System"
+                        : movement.getUser().getUsername())
                 .setHeader("User")
                 .setAutoWidth(true);
         grid.addColumn(movement -> movement.getReason() == null ? "None" : movement.getReason())
@@ -181,6 +186,7 @@ public class StockMovementsView extends Main {
     private Component movementTypeBadge(StockMovement movement) {
         Span badge = new Span(movement.getMovementType().displayName());
         badge.addClassNames("status-badge", "movement-type", movementCssClass(movement.getMovementType()));
+
         return badge;
     }
 
@@ -188,6 +194,7 @@ public class StockMovementsView extends Main {
         Integer value = movement.getQuantityDelta();
         Span label = new Span(value > 0 ? "+" + value : String.valueOf(value));
         label.addClassName(value > 0 ? "quantity-positive" : "quantity-negative");
+
         return label;
     }
 
@@ -248,7 +255,9 @@ public class StockMovementsView extends Main {
     private void bindForm() {
         binder.forField(product)
                 .asRequired("Product is required.")
-                .bind(this::productFromRequest, (request, value) -> request.setProductId(value == null ? null : value.getId()));
+                .bind(
+                        this::productFromRequest,
+                        (request, value) -> request.setProductId(value == null ? null : value.getId()));
         binder.forField(movementType)
                 .asRequired("Movement type is required.")
                 .bind(StockMovementRequest::getMovementType, StockMovementRequest::setMovementType);
@@ -257,7 +266,8 @@ public class StockMovementsView extends Main {
                 .withValidator(value -> value != 0, "Quantity delta must not be zero.")
                 .bind(StockMovementRequest::getQuantityDelta, StockMovementRequest::setQuantityDelta);
         binder.forField(reason)
-                .withValidator(value -> !requiresReason() || !trimToNull(value).isEmpty(),
+                .withValidator(
+                        value -> !requiresReason() || !trimToNull(value).isEmpty(),
                         "Reason is required for this movement type.")
                 .bind(StockMovementRequest::getReason, StockMovementRequest::setReason);
     }
@@ -322,6 +332,7 @@ public class StockMovementsView extends Main {
         request.setMovementType(movement.getMovementType());
         request.setQuantityDelta(movement.getQuantityDelta());
         request.setReason(movement.getReason());
+
         return request;
     }
 
@@ -330,6 +341,7 @@ public class StockMovementsView extends Main {
             showError("Please fix the highlighted fields.");
             return;
         }
+
         try {
             stockMovementService.recordStockMovement(formData);
             showSuccess("Movement recorded.");
@@ -351,6 +363,7 @@ public class StockMovementsView extends Main {
             dirtyDialog.open();
             return;
         }
+
         dirty = false;
         sidebar.close();
     }
@@ -371,9 +384,11 @@ public class StockMovementsView extends Main {
 
     private void updateQuantityForType(MovementType type) {
         updateReasonState();
+
         if (type == null || quantityDelta.isReadOnly()) {
             return;
         }
+
         int value = Math.max(1, Math.abs(quantityDelta.getValue() == null ? 1 : quantityDelta.getValue()));
         quantityDelta.setValue(type.isPositive() ? value : -value);
     }
@@ -382,6 +397,7 @@ public class StockMovementsView extends Main {
         boolean reasonRequired = requiresReason();
         reason.setRequiredIndicatorVisible(reasonRequired);
         reason.setReadOnly(mode == FormMode.VIEW || !reasonRequired);
+
         if (!reasonRequired && mode == FormMode.CREATE) {
             reason.clear();
         }
@@ -389,6 +405,7 @@ public class StockMovementsView extends Main {
 
     private boolean requiresReason() {
         MovementType selectedType = movementType.getValue();
+
         return selectedType != null && selectedType.isReasonRequired();
     }
 
@@ -403,7 +420,9 @@ public class StockMovementsView extends Main {
         grid.setItems(stockMovementService.search(new StockMovementFilter(
                 startOfDay(fromDate.getValue()),
                 exclusiveEndOfDay(toDate.getValue()),
-                productFilter.getValue() == null ? null : productFilter.getValue().getId(),
+                productFilter.getValue() == null
+                        ? null
+                        : productFilter.getValue().getId(),
                 typeFilter.getValue(),
                 userFilter.getValue())));
     }
@@ -413,7 +432,9 @@ public class StockMovementsView extends Main {
     }
 
     private Instant exclusiveEndOfDay(LocalDate value) {
-        return value == null ? null : value.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
+        return value == null
+                ? null
+                : value.plusDays(1).atStartOfDay(ZoneId.systemDefault()).toInstant();
     }
 
     private String productLabel(Product product) {

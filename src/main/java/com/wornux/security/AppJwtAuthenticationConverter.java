@@ -25,6 +25,7 @@ public class AppJwtAuthenticationConverter implements Converter<Jwt, AbstractAut
                 jwt.getSubject(),
                 jwt.getClaimAsString("preferred_username"),
                 jwt.getClaimAsString("email")));
+
         return new JwtAuthenticationToken(jwt, appUserService.authorities(appUser), appUser.getUsername());
     }
 }

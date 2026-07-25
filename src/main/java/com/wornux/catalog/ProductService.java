@@ -39,6 +39,7 @@ public class ProductService {
     public List<Product> search(ProductFilter filter) {
         requireRead();
         ProductFilter safeFilter = filter == null ? new ProductFilter("", null, null, null, false) : filter;
+
         return productRepository.search(
                 normalizeSearch(safeFilter.text()),
                 safeFilter.categoryId(),
@@ -51,6 +52,7 @@ public class ProductService {
     public Page<Product> search(ProductFilter filter, Pageable pageable) {
         requireRead();
         ProductFilter safeFilter = filter == null ? new ProductFilter("", null, null, null, false) : filter;
+
         return productRepository.searchPage(
                 normalizeSearch(safeFilter.text()),
                 safeFilter.categoryId(),
@@ -63,7 +65,9 @@ public class ProductService {
     @Transactional(readOnly = true)
     public Product get(Long id) {
         requireRead();
-        return productRepository.findWithCategoryAndSupplierById(id)
+
+        return productRepository
+                .findWithCategoryAndSupplierById(id)
                 .orElseThrow(() -> new ProductException("Product was not found."));
     }
 
@@ -84,17 +88,21 @@ public class ProductService {
                 category,
                 supplier,
                 request.isActive());
+
         return productRepository.save(product);
     }
 
     @Transactional
     public Product update(Long id, @Valid ProductRequest request) {
         authorizationService.check(AppPermission.PRODUCT_UPDATE);
-        Product product = productRepository.findWithCategoryAndSupplierById(id)
+        Product product = productRepository
+                .findWithCategoryAndSupplierById(id)
                 .orElseThrow(() -> new ProductException("Product was not found."));
+
         if (!Objects.equals(product.getVersion(), request.getVersion())) {
             throw new ProductException("Product was updated by another user. Refresh the form and try again.");
         }
+
         validateUniqueSku(request.getSku(), id);
         validateUniqueActiveName(request.getName(), id);
         product.update(
@@ -107,31 +115,37 @@ public class ProductService {
                 requireCategory(request.getCategoryId()),
                 resolveSupplier(request.getSupplierId()),
                 request.isActive());
+
         return productRepository.save(product);
     }
 
     @Transactional
     public void delete(Long id) {
         authorizationService.check(AppPermission.PRODUCT_DELETE);
-        Product product = productRepository.findWithCategoryAndSupplierById(id)
+        Product product = productRepository
+                .findWithCategoryAndSupplierById(id)
                 .orElseThrow(() -> new ProductException("Product was not found."));
+
         if (stockMovementRepository.existsByProductId(id)) {
             product.deactivate();
             productRepository.save(product);
             return;
         }
+
         productRepository.delete(product);
     }
 
     @Transactional(readOnly = true)
     public List<Category> activeCategories() {
         requireRead();
+
         return categoryRepository.findByActiveTrueOrderByNameAsc();
     }
 
     @Transactional(readOnly = true)
     public List<Supplier> activeSuppliers() {
         requireRead();
+
         return supplierRepository.findByActiveTrueOrderByNameAsc();
     }
 
@@ -155,6 +169,7 @@ public class ProductService {
         boolean exists = id == null
                 ? productRepository.existsBySkuIgnoreCase(normalizeCode(sku))
                 : productRepository.existsBySkuIgnoreCaseAndIdNot(normalizeCode(sku), id);
+
         if (exists) {
             throw new ProductException("SKU already exists. Please choose a different one.");
         }
@@ -167,7 +182,8 @@ public class ProductService {
     }
 
     private Category requireCategory(Long id) {
-        return categoryRepository.findById(id)
+        return categoryRepository
+                .findById(id)
                 .filter(Category::isActive)
                 .orElseThrow(() -> new ProductException(
                         "Selected category/supplier is no longer available. Please refresh and try again."));
@@ -177,7 +193,9 @@ public class ProductService {
         if (id == null) {
             return null;
         }
-        return supplierRepository.findById(id)
+
+        return supplierRepository
+                .findById(id)
                 .filter(Supplier::isActive)
                 .orElseThrow(() -> new ProductException(
                         "Selected category/supplier is no longer available. Please refresh and try again."));
@@ -197,6 +215,7 @@ public class ProductService {
 
     private String trimToNull(String value) {
         String trimmed = value == null ? "" : value.trim();
+
         return trimmed.isEmpty() ? null : trimmed;
     }
 }

@@ -6,5 +6,4 @@ import com.vaadin.flow.component.dependency.JsModule;
 
 @Tag("drawer-rail-toggle")
 @JsModule("./components/drawer-rail-toggle.ts")
-public class DrawerRailToggle extends Component {
-}
+public class DrawerRailToggle extends Component {}

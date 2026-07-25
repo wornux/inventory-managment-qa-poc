@@ -4,9 +4,9 @@ import com.wornux.audit.Auditable;
 import com.wornux.user.AppUser;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -42,10 +42,10 @@ public class StockMovement extends Auditable {
 
     private String reason;
 
-    protected StockMovement() {
-    }
+    protected StockMovement() {}
 
-    public StockMovement(Product product, AppUser user, MovementType movementType, Integer quantityDelta, String reason) {
+    public StockMovement(
+            Product product, AppUser user, MovementType movementType, Integer quantityDelta, String reason) {
         this.product = product;
         this.user = user;
         this.movementType = movementType;

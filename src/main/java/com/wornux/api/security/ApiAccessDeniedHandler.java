@@ -24,14 +24,14 @@ public class ApiAccessDeniedHandler implements AccessDeniedHandler {
 
     @Override
     public void handle(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            AccessDeniedException accessDeniedException) throws IOException {
+            HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException)
+            throws IOException {
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
         ApiResponse<Void> body = ApiResponse.failure(
-                "Access denied.",
-                List.of(new ApiErrorResponse(null, accessDeniedException.getMessage())));
+                "Access denied.", List.of(new ApiErrorResponse(null, accessDeniedException.getMessage())));
+
         jsonMapper.writeValue(response.getOutputStream(), body);
     }
 }

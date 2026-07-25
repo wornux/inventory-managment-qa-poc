@@ -18,8 +18,11 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 
 @ExtendWith(MockitoExtension.class)
 class CustomUserDetailsServiceTest {
-    @Mock AppUserRepository repository;
-    @Mock AppUserService appUserService;
+    @Mock
+    AppUserRepository repository;
+
+    @Mock
+    AppUserService appUserService;
 
     @Test
     void loadsByUsernameOrEmailWithApplicationAuthoritiesAndStatus() {
@@ -29,6 +32,7 @@ class CustomUserDetailsServiceTest {
         when(appUserService.authorities(user)).thenReturn(List.of(new SimpleGrantedAuthority("product:view")));
 
         var details = new CustomUserDetailsService(repository, appUserService).loadUserByUsername("alice@example.com");
+
         assertThat(details.getUsername()).isEqualTo("Alice");
         assertThat(details.getPassword()).isEqualTo("{noop}oauth2");
         assertThat(details.isEnabled()).isTrue();
@@ -37,7 +41,9 @@ class CustomUserDetailsServiceTest {
 
     @Test
     void missingUserIsReportedWithoutLeakingWhichIdentifierFailed() {
-        when(repository.findByUsernameIgnoreCaseOrEmailIgnoreCase("nobody", "nobody")).thenReturn(Optional.empty());
+        when(repository.findByUsernameIgnoreCaseOrEmailIgnoreCase("nobody", "nobody"))
+                .thenReturn(Optional.empty());
+
         assertThatThrownBy(() -> new CustomUserDetailsService(repository, appUserService).loadUserByUsername("nobody"))
                 .isInstanceOf(UsernameNotFoundException.class)
                 .hasMessage("Invalid username/email or password.");
@@ -47,8 +53,14 @@ class CustomUserDetailsServiceTest {
     void inactiveUserIsDisabled() {
         AppUser user = new AppUser("Alice", "alice@example.com", "issuer", "subject");
         user.deactivate();
-        when(repository.findByUsernameIgnoreCaseOrEmailIgnoreCase("Alice", "Alice")).thenReturn(Optional.of(user));
+
+        when(repository.findByUsernameIgnoreCaseOrEmailIgnoreCase("Alice", "Alice"))
+                .thenReturn(Optional.of(user));
         when(appUserService.authorities(user)).thenReturn(List.of());
-        assertThat(new CustomUserDetailsService(repository, appUserService).loadUserByUsername("Alice").isEnabled()).isFalse();
+
+        assertThat(new CustomUserDetailsService(repository, appUserService)
+                        .loadUserByUsername("Alice")
+                        .isEnabled())
+                .isFalse();
     }
 }

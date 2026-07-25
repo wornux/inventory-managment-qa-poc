@@ -24,14 +24,14 @@ public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     @Override
     public void commence(
-            HttpServletRequest request,
-            HttpServletResponse response,
-            AuthenticationException authException) throws IOException {
+            HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
+            throws IOException {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+
         ApiResponse<Void> body = ApiResponse.failure(
-                "Authentication failed.",
-                List.of(new ApiErrorResponse(null, "A valid bearer token is required.")));
+                "Authentication failed.", List.of(new ApiErrorResponse(null, "A valid bearer token is required.")));
+
         jsonMapper.writeValue(response.getOutputStream(), body);
     }
 }

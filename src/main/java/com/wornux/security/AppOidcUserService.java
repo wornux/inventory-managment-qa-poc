@@ -5,8 +5,8 @@ import com.wornux.user.AppUserService;
 import com.wornux.user.OidcProvisioningException;
 import com.wornux.user.OidcUserProfile;
 import java.util.LinkedHashSet;
-import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
@@ -31,10 +31,12 @@ public class AppOidcUserService implements OAuth2UserService<OidcUserRequest, Oi
     @Override
     public OidcUser loadUser(OidcUserRequest userRequest) throws OAuth2AuthenticationException {
         OidcUser oidcUser = delegate.loadUser(userRequest);
+
         try {
             AppUser appUser = appUserService.provisionOidcUser(profile(oidcUser));
             var authorities = new LinkedHashSet<GrantedAuthority>(oidcUser.getAuthorities());
             authorities.addAll(appUserService.authorities(appUser));
+
             return new DefaultOidcUser(authorities, oidcUser.getIdToken(), oidcUser.getUserInfo(), USERNAME_CLAIM);
         } catch (AuthenticationException | OidcProvisioningException exception) {
             throw oauthFailure(exception.getMessage(), exception);
@@ -51,8 +53,6 @@ public class AppOidcUserService implements OAuth2UserService<OidcUserRequest, Oi
 
     private OAuth2AuthenticationException oauthFailure(String message, RuntimeException cause) {
         return new OAuth2AuthenticationException(
-                new OAuth2Error("oidc_provisioning_failed", message, null),
-                message,
-                cause);
+                new OAuth2Error("oidc_provisioning_failed", message, null), message, cause);
     }
 }

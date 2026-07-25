@@ -48,10 +48,10 @@ public class ProductController extends AbstractRestController {
             @RequestParam(required = false) Boolean active,
             @RequestParam(defaultValue = "false") boolean lowStockOnly,
             Pageable pageable) {
-        Page<ProductResponse> products = productService.search(
-                        new ProductFilter(text, categoryId, supplierId, active, lowStockOnly),
-                        pageable)
+        Page<ProductResponse> products = productService
+                .search(new ProductFilter(text, categoryId, supplierId, active, lowStockOnly), pageable)
                 .map(productApiMapper::toResponse);
+
         return ok("Products retrieved.", products);
     }
 
@@ -66,15 +66,16 @@ public class ProductController extends AbstractRestController {
     ResponseEntity<ApiResponse<ProductResponse>> create(@Valid @RequestBody ProductRequest request) {
         Product product = productService.create(productApiMapper.toDomainRequest(request));
         ProductResponse response = productApiMapper.toResponse(product);
+
         return created("Product created.", URI.create("/api/products/" + product.getId()), response);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update product", description = "Updates an existing product using optimistic locking.")
     ResponseEntity<ApiResponse<ProductResponse>> update(
-            @PathVariable Long id,
-            @Valid @RequestBody ProductRequest request) {
+            @PathVariable Long id, @Valid @RequestBody ProductRequest request) {
         Product product = productService.update(id, productApiMapper.toDomainRequest(request));
+
         return ok("Product updated.", productApiMapper.toResponse(product));
     }
 
@@ -82,6 +83,7 @@ public class ProductController extends AbstractRestController {
     @Operation(summary = "Delete product", description = "Deletes or deactivates a product according to domain rules.")
     ResponseEntity<ApiResponse<Void>> delete(@PathVariable Long id) {
         productService.delete(id);
+
         return noContentMessage("Product deleted or deactivated.");
     }
 }

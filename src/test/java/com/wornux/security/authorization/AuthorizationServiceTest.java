@@ -43,29 +43,34 @@ class AuthorizationServiceTest {
         AppUser user = new AppUser("viewer", "viewer@example.com", "issuer", "subject");
         user.addRole(role);
         when(appUserRepository.findForAuthorization("viewer")).thenReturn(Optional.of(user));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("viewer", "password", List.of()));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("viewer", "password", List.of()));
         var authorizationService = new AuthorizationService(appUserRepository);
 
         assertThat(authorizationService.can(AppPermission.PRODUCT_VIEW)).isTrue();
+
         role.deactivate();
+
         assertThat(authorizationService.can(AppPermission.PRODUCT_VIEW)).isFalse();
     }
 
     @Test
     void unauthenticatedAndMissingUsersHaveNoPermissions() {
         var service = new AuthorizationService(appUserRepository);
+
         assertThat(service.canAll(Set.of())).isTrue();
         assertThat(service.can(AppPermission.PRODUCT_VIEW)).isFalse();
         verify(appUserRepository, never()).findForAuthorization(any());
 
-        SecurityContextHolder.getContext().setAuthentication(
-                UsernamePasswordAuthenticationToken.unauthenticated("missing", "password"));
+        SecurityContextHolder.getContext()
+                .setAuthentication(UsernamePasswordAuthenticationToken.unauthenticated("missing", "password"));
+
         assertThat(service.can(AppPermission.PRODUCT_VIEW)).isFalse();
 
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("missing", "password", List.of()));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("missing", "password", List.of()));
         when(appUserRepository.findForAuthorization("missing")).thenReturn(Optional.empty());
+
         assertThat(service.can(AppPermission.PRODUCT_VIEW)).isFalse();
     }
 
@@ -76,13 +81,16 @@ class AuthorizationServiceTest {
         AppUser user = new AppUser("editor", "editor@example.com", "issuer", "subject");
         user.addRole(role);
         when(appUserRepository.findForAuthorization("editor")).thenReturn(Optional.of(user));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("editor", "password", List.of()));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("editor", "password", List.of()));
         var service = new AuthorizationService(appUserRepository);
 
-        assertThat(service.canAll(Set.of(AppPermission.PRODUCT_UPDATE, AppPermission.PRODUCT_VIEW))).isTrue();
+        assertThat(service.canAll(Set.of(AppPermission.PRODUCT_UPDATE, AppPermission.PRODUCT_VIEW)))
+                .isTrue();
         assertThat(service.can(AppPermission.CATEGORY_VIEW)).isFalse();
+
         service.check(AppPermission.PRODUCT_VIEW);
+
         assertThatThrownBy(() -> service.check(AppPermission.PRODUCT_DELETE))
                 .isInstanceOf(AccessDeniedException.class)
                 .hasMessage("Missing permission product:delete");
@@ -93,9 +101,11 @@ class AuthorizationServiceTest {
         AppUser user = new AppUser("disabled", "disabled@example.com", "issuer", "subject");
         user.deactivate();
         when(appUserRepository.findForAuthorization("disabled")).thenReturn(Optional.of(user));
-        SecurityContextHolder.getContext().setAuthentication(
-                new UsernamePasswordAuthenticationToken("disabled", "password", List.of()));
-        assertThat(new AuthorizationService(appUserRepository).can(AppPermission.PRODUCT_VIEW)).isFalse();
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("disabled", "password", List.of()));
+
+        assertThat(new AuthorizationService(appUserRepository).can(AppPermission.PRODUCT_VIEW))
+                .isFalse();
     }
 
     @Test
@@ -104,7 +114,9 @@ class AuthorizationServiceTest {
         when(authentication.isAuthenticated()).thenReturn(true);
         when(authentication.getName()).thenReturn(null);
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        assertThat(new AuthorizationService(appUserRepository).can(AppPermission.PRODUCT_VIEW)).isFalse();
+
+        assertThat(new AuthorizationService(appUserRepository).can(AppPermission.PRODUCT_VIEW))
+                .isFalse();
         verify(appUserRepository, never()).findForAuthorization(any());
     }
 }

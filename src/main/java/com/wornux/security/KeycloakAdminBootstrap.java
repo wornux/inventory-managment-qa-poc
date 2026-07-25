@@ -29,15 +29,13 @@ public class KeycloakAdminBootstrap implements ApplicationRunner {
         if (!properties.enabled()) {
             return;
         }
+
         try {
             properties.validate();
             String token = keycloakAdminClient.adminToken(properties);
             KeycloakAdminClient.KeycloakUser keycloakUser = keycloakAdminClient.ensureUser(properties, token);
             appUserService.provisionSystemAdministrator(new OidcUserProfile(
-                    properties.issuer(),
-                    keycloakUser.id(),
-                    keycloakUser.username(),
-                    keycloakUser.email()));
+                    properties.issuer(), keycloakUser.id(), keycloakUser.username(), keycloakUser.email()));
         } catch (RuntimeException exception) {
             throw new IllegalStateException("Keycloak admin bootstrap failed.", exception);
         }

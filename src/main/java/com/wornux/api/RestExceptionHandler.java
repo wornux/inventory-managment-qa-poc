@@ -20,14 +20,17 @@ public class RestExceptionHandler {
         List<ApiErrorResponse> errors = exception.getBindingResult().getFieldErrors().stream()
                 .map(this::toError)
                 .toList();
+
         return failure(HttpStatus.BAD_REQUEST, "Request validation failed.", errors);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     ResponseEntity<ApiResponse<Void>> constraintViolation(ConstraintViolationException exception) {
         List<ApiErrorResponse> errors = exception.getConstraintViolations().stream()
-                .map(violation -> new ApiErrorResponse(violation.getPropertyPath().toString(), violation.getMessage()))
+                .map(violation ->
+                        new ApiErrorResponse(violation.getPropertyPath().toString(), violation.getMessage()))
                 .toList();
+
         return failure(HttpStatus.BAD_REQUEST, "Request validation failed.", errors);
     }
 
@@ -44,12 +47,14 @@ public class RestExceptionHandler {
     @ExceptionHandler(ProductException.class)
     ResponseEntity<ApiResponse<Void>> product(ProductException exception) {
         HttpStatus status = productStatus(exception.getMessage());
+
         return failure(status, exception.getMessage(), List.of(error(exception.getMessage())));
     }
 
     @ExceptionHandler(RuntimeException.class)
     ResponseEntity<ApiResponse<Void>> runtime(RuntimeException exception) {
-        return failure(HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected API error.", List.of(error(exception.getMessage())));
+        return failure(
+                HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected API error.", List.of(error(exception.getMessage())));
     }
 
     private ApiErrorResponse toError(FieldError error) {
@@ -61,9 +66,7 @@ public class RestExceptionHandler {
     }
 
     private ResponseEntity<ApiResponse<Void>> failure(
-            HttpStatus status,
-            String message,
-            List<ApiErrorResponse> errors) {
+            HttpStatus status, String message, List<ApiErrorResponse> errors) {
         return ResponseEntity.status(status).body(ApiResponse.failure(message, errors));
     }
 
@@ -71,10 +74,13 @@ public class RestExceptionHandler {
         if (message != null && message.toLowerCase().contains("not found")) {
             return HttpStatus.NOT_FOUND;
         }
-        if (message != null && (message.toLowerCase().contains("already exists")
-                || message.toLowerCase().contains("updated by another user"))) {
+
+        if (message != null
+                && (message.toLowerCase().contains("already exists")
+                        || message.toLowerCase().contains("updated by another user"))) {
             return HttpStatus.CONFLICT;
         }
+
         return HttpStatus.BAD_REQUEST;
     }
 }

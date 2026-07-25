@@ -31,25 +31,28 @@ public class CategoryService {
     public List<Category> search(CategoryFilter filter) {
         requireRead();
         CategoryFilter safeFilter = filter == null ? new CategoryFilter("", null) : filter;
+
         return categoryRepository.search(normalizeSearch(safeFilter.text()), safeFilter.active());
     }
 
     @Transactional(readOnly = true)
     public Category get(Long id) {
         requireRead();
-        return categoryRepository.findById(id)
-                .orElseThrow(() -> new CategoryException("Category was not found."));
+
+        return categoryRepository.findById(id).orElseThrow(() -> new CategoryException("Category was not found."));
     }
 
     @Transactional(readOnly = true)
     public long productCount(Long categoryId) {
         requireRead();
+
         return productRepository.countByCategoryId(categoryId);
     }
 
     @Transactional(readOnly = true)
     public long activeProductCount(Long categoryId) {
         requireRead();
+
         return productRepository.countByCategoryIdAndActiveTrue(categoryId);
     }
 
@@ -59,27 +62,31 @@ public class CategoryService {
         validateUniqueName(request.getName(), null);
         Category category = new Category(normalizeName(request.getName()), trimToNull(request.getDescription()));
         category.update(category.getName(), category.getDescription(), request.isActive());
+
         return categoryRepository.save(category);
     }
 
     @Transactional
     public Category update(Long id, @Valid CategoryRequest request) {
         authorizationService.check(AppPermission.CATEGORY_UPDATE);
-        Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new CategoryException("Category was not found."));
+        Category category =
+                categoryRepository.findById(id).orElseThrow(() -> new CategoryException("Category was not found."));
+
         if (!Objects.equals(category.getVersion(), request.getVersion())) {
             throw new CategoryException("Category was updated by another user. Refresh the form and try again.");
         }
+
         validateUniqueName(request.getName(), id);
         category.update(normalizeName(request.getName()), trimToNull(request.getDescription()), request.isActive());
+
         return categoryRepository.save(category);
     }
 
     @Transactional
     public void deactivate(Long id) {
         authorizationService.check(AppPermission.CATEGORY_DELETE);
-        Category category = categoryRepository.findById(id)
-                .orElseThrow(() -> new CategoryException("Category was not found."));
+        Category category =
+                categoryRepository.findById(id).orElseThrow(() -> new CategoryException("Category was not found."));
         category.deactivate();
         categoryRepository.save(category);
     }
@@ -104,6 +111,7 @@ public class CategoryService {
         boolean exists = id == null
                 ? categoryRepository.existsByNameIgnoreCase(normalizeName(name))
                 : categoryRepository.existsByNameIgnoreCaseAndIdNot(normalizeName(name), id);
+
         if (exists) {
             throw new CategoryException("Category name already exists. Please choose a different one.");
         }
@@ -119,6 +127,7 @@ public class CategoryService {
 
     private String trimToNull(String value) {
         String trimmed = value == null ? "" : value.trim();
+
         return trimmed.isEmpty() ? null : trimmed;
     }
 }

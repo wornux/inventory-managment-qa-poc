@@ -70,6 +70,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
     @Override
     public void beforeEnter(BeforeEnterEvent event) {
         AppPermission permission = ROUTE_PERMISSIONS.get(event.getNavigationTarget());
+
         if (permission != null && !accessService.canRead(permission)) {
             event.rerouteTo(ForbiddenView.class);
         }
@@ -100,6 +101,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         topBar.addClassName("main-layout-topbar");
         topBar.setAlignItems(FlexComponent.Alignment.CENTER);
         topBar.setWidthFull();
+
         return topBar;
     }
 
@@ -121,6 +123,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         var header = new HorizontalLayout(mark, copy);
         header.addClassName("main-layout-brand");
         header.setAlignItems(FlexComponent.Alignment.CENTER);
+
         return header;
     }
 
@@ -136,7 +139,8 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
 
         var inventory = section("Inventory");
         boolean hasInventory = false;
-        hasInventory |= addIfAllowed(inventory, "Products", "products", svgIcon("/icons/package.svg"), AppPermission.PRODUCT_VIEW);
+        hasInventory |= addIfAllowed(
+                inventory, "Products", "products", svgIcon("/icons/package.svg"), AppPermission.PRODUCT_VIEW);
         hasInventory |= addIfAllowed(
                 inventory, "Categories", "categories", svgIcon("/icons/categories.svg"), AppPermission.CATEGORY_VIEW);
         hasInventory |= addIfAllowed(
@@ -147,15 +151,18 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
                 "stock-movements",
                 svgIcon("/icons/stock-movement.svg"),
                 AppPermission.STOCK_MOVEMENT_VIEW);
+
         if (hasInventory) {
             wrapper.add(inventory);
         }
 
         var administration = section("Administration");
         boolean hasAdministration = false;
-        hasAdministration |= addIfAllowed(
-                administration, "Users", "users", svgIcon("/icons/users.svg"), AppPermission.USER_VIEW);
-        hasAdministration |= addIfAllowed(administration, "Roles", "roles", svgIcon("/icons/roles.svg"), AppPermission.ROLE_VIEW);
+        hasAdministration |=
+                addIfAllowed(administration, "Users", "users", svgIcon("/icons/users.svg"), AppPermission.USER_VIEW);
+        hasAdministration |=
+                addIfAllowed(administration, "Roles", "roles", svgIcon("/icons/roles.svg"), AppPermission.ROLE_VIEW);
+
         if (hasAdministration) {
             wrapper.add(administration);
         }
@@ -172,19 +179,17 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
     private SideNav section(String label) {
         var nav = new SideNav(label);
         nav.addClassName("main-layout-nav-section");
+
         return nav;
     }
 
-    private boolean addIfAllowed(
-            SideNav nav,
-            String label,
-            String path,
-            Component icon,
-            AppPermission permission) {
+    private boolean addIfAllowed(SideNav nav, String label, String path, Component icon, AppPermission permission) {
         if (accessService.canRead(permission)) {
             nav.addItem(navItem(label, path, icon));
+
             return true;
         }
+
         return false;
     }
 
@@ -192,12 +197,14 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         var item = new SideNavItem(label, path);
         item.setPrefixComponent(icon);
         item.setMatchNested(true);
+
         return item;
     }
 
     private SvgIcon svgIcon(String path) {
         var icon = new SvgIcon(path);
         icon.addClassName("main-layout-custom-icon");
+
         return icon;
     }
 
@@ -219,22 +226,29 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
         var footer = new HorizontalLayout(avatar, copy);
         footer.addClassName("main-layout-user");
         footer.setAlignItems(FlexComponent.Alignment.CENTER);
+
         return footer;
     }
 
     private String currentUsername() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
         if (authentication == null) {
             return "User";
         }
+
         Object principal = authentication.getPrincipal();
+
         if (principal instanceof OidcUser oidcUser) {
             String username = oidcUser.getClaimAsString("preferred_username");
+
             return username == null || username.isBlank() ? oidcUser.getName() : username;
         }
+
         if (principal instanceof UserDetails userDetails) {
             return userDetails.getUsername();
         }
+
         return authentication.getName() == null || authentication.getName().isBlank()
                 ? "User"
                 : authentication.getName();

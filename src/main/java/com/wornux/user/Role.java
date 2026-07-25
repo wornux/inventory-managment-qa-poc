@@ -48,8 +48,7 @@ public class Role extends Auditable {
     @Column(nullable = false, columnDefinition = "text[]")
     private String[] permissions = new String[0];
 
-    protected Role() {
-    }
+    protected Role() {}
 
     public Role(String code, String name, String description) {
         this(code, name, description, true);
@@ -96,6 +95,7 @@ public class Role extends Auditable {
                 .map(AppPermission::fromCode)
                 .flatMap(Optional::stream)
                 .forEach(result::add);
+
         return result;
     }
 

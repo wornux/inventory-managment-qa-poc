@@ -19,79 +19,205 @@ import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
-    @Mock ProductRepository products; @Mock CategoryRepository categories; @Mock SupplierRepository suppliers;
-    @Mock StockMovementRepository movements; @Mock AuthorizationService authorization;
+    @Mock
+    ProductRepository products;
+
+    @Mock
+    CategoryRepository categories;
+
+    @Mock
+    SupplierRepository suppliers;
+
+    @Mock
+    StockMovementRepository movements;
+
+    @Mock
+    AuthorizationService authorization;
+
     ProductService service;
-    Category category; Supplier supplier;
-    @BeforeEach void setUp() { service=new ProductService(products,categories,suppliers,movements,authorization); category=new Category("Tools",null); supplier=new Supplier("Acme",null,null,null); }
+    Category category;
+    Supplier supplier;
 
-    @Test void searchesNormalizeNullAndExplicitFiltersForListsAndPages() {
-        ProductFilter filter=new ProductFilter(" HAMMER ",1L,2L,true,true); var pageable=PageRequest.of(0, 10);
-        when(products.search("",null,null,null,false)).thenReturn(List.of());
-        when(products.search("hammer",1L,2L,true,true)).thenReturn(List.of(product(true)));
-        when(products.search("",null,null,false,false)).thenReturn(List.of());
-        assertThat(service.search((ProductFilter)null)).isEmpty(); assertThat(service.search(filter)).hasSize(1);
-        assertThat(service.search(new ProductFilter(null,null,null,false,false))).isEmpty();
-        Page<Product> page=new PageImpl<>(List.of(product(true))); when(products.searchPage("",null,null,null,false,pageable)).thenReturn(page);
-        assertThat(service.search(null,pageable)).isSameAs(page);
-        when(products.searchPage("hammer",1L,2L,true,true,pageable)).thenReturn(page); assertThat(service.search(filter,pageable)).isSameAs(page);
+    @BeforeEach
+    void setUp() {
+        service = new ProductService(products, categories, suppliers, movements, authorization);
+        category = new Category("Tools", null);
+        supplier = new Supplier("Acme", null, null, null);
     }
 
-    @Test void getAndLookupListsHaveClearMissingSemantics() {
-        Product p=product(true); when(products.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(p));
-        assertThat(service.get(1L)).isSameAs(p); assertThatThrownBy(() -> service.get(2L)).hasMessage("Product was not found.");
-        when(categories.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(category)); when(suppliers.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(supplier));
-        assertThat(service.activeCategories()).containsExactly(category); assertThat(service.activeSuppliers()).containsExactly(supplier);
+    @Test
+    void searchesNormalizeNullAndExplicitFiltersForListsAndPages() {
+        ProductFilter filter = new ProductFilter(" HAMMER ", 1L, 2L, true, true);
+        var pageable = PageRequest.of(0, 10);
+        when(products.search("", null, null, null, false)).thenReturn(List.of());
+        when(products.search("hammer", 1L, 2L, true, true)).thenReturn(List.of(product(true)));
+        when(products.search("", null, null, false, false)).thenReturn(List.of());
+
+        assertThat(service.search((ProductFilter) null)).isEmpty();
+        assertThat(service.search(filter)).hasSize(1);
+        assertThat(service.search(new ProductFilter(null, null, null, false, false)))
+                .isEmpty();
+
+        Page<Product> page = new PageImpl<>(List.of(product(true)));
+        when(products.searchPage("", null, null, null, false, pageable)).thenReturn(page);
+
+        assertThat(service.search(null, pageable)).isSameAs(page);
+
+        when(products.searchPage("hammer", 1L, 2L, true, true, pageable)).thenReturn(page);
+
+        assertThat(service.search(filter, pageable)).isSameAs(page);
     }
 
-    @Test void createNormalizesFieldsAndAllowsNoSupplier() {
-        when(categories.findById(1L)).thenReturn(Optional.of(category)); when(products.save(any())).thenAnswer(i->i.getArgument(0));
-        Product p=service.create(request(" sku-a "," Hammer "," ",null,true));
-        assertThat(p.getSku()).isEqualTo("SKU-A"); assertThat(p.getName()).isEqualTo("Hammer"); assertThat(p.getDescription()).isNull(); assertThat(p.getSupplier()).isNull();
-        when(suppliers.findById(2L)).thenReturn(Optional.of(supplier));
-        Product supplied=service.create(request("sku-b","Mallet"," hardwood ",2L,true));
-        assertThat(supplied.getSupplier()).isSameAs(supplier); assertThat(supplied.getDescription()).isEqualTo("hardwood");
+    @Test
+    void getAndLookupListsHaveClearMissingSemantics() {
+        Product p = product(true);
+        when(products.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(p));
+
+        assertThat(service.get(1L)).isSameAs(p);
+        assertThatThrownBy(() -> service.get(2L)).hasMessage("Product was not found.");
+
+        when(categories.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(category));
+        when(suppliers.findByActiveTrueOrderByNameAsc()).thenReturn(List.of(supplier));
+
+        assertThat(service.activeCategories()).containsExactly(category);
+        assertThat(service.activeSuppliers()).containsExactly(supplier);
     }
 
-    @Test void createRejectsDuplicateSkuNameAndUnavailableRelationships() {
-        ProductRequest r=request("sku","Name",null,2L,true);
-        when(products.existsBySkuIgnoreCase("SKU")).thenReturn(true); assertThatThrownBy(()->service.create(r)).hasMessageContaining("SKU already");
-        when(products.existsBySkuIgnoreCase("SKU")).thenReturn(false); when(products.existsActiveNameExcludingId("Name",null)).thenReturn(true);
-        assertThatThrownBy(()->service.create(r)).hasMessageContaining("name already");
-        when(products.existsActiveNameExcludingId("Name",null)).thenReturn(false);
-        assertThatThrownBy(()->service.create(r)).hasMessageContaining("no longer available");
-        Category inactive=new Category("Old",null); inactive.deactivate(); when(categories.findById(1L)).thenReturn(Optional.of(inactive));
-        assertThatThrownBy(()->service.create(r)).hasMessageContaining("no longer available");
+    @Test
+    void createNormalizesFieldsAndAllowsNoSupplier() {
         when(categories.findById(1L)).thenReturn(Optional.of(category));
-        assertThatThrownBy(()->service.create(r)).hasMessageContaining("no longer available");
-        Supplier inactiveSupplier=new Supplier("Old",null,null,null); inactiveSupplier.deactivate(); when(suppliers.findById(2L)).thenReturn(Optional.of(inactiveSupplier));
-        assertThatThrownBy(()->service.create(r)).hasMessageContaining("no longer available");
+        when(products.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        Product p = service.create(request(" sku-a ", " Hammer ", " ", null, true));
+
+        assertThat(p.getSku()).isEqualTo("SKU-A");
+        assertThat(p.getName()).isEqualTo("Hammer");
+        assertThat(p.getDescription()).isNull();
+        assertThat(p.getSupplier()).isNull();
+
+        when(suppliers.findById(2L)).thenReturn(Optional.of(supplier));
+
+        Product supplied = service.create(request("sku-b", "Mallet", " hardwood ", 2L, true));
+
+        assertThat(supplied.getSupplier()).isSameAs(supplier);
+        assertThat(supplied.getDescription()).isEqualTo("hardwood");
     }
 
-    @Test void updateEnforcesVersionUniquenessAndChangesRelationships() {
-        Product p=product(true); when(products.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(p));
-        assertThatThrownBy(()->service.update(1L,request("x","X",null,null,true,1L))).hasMessageContaining("another user");
-        assertThatThrownBy(()->service.update(2L,request("x","X",null,null,true))).hasMessage("Product was not found.");
-        when(products.existsBySkuIgnoreCaseAndIdNot("X",1L)).thenReturn(true); assertThatThrownBy(()->service.update(1L,request("x","X",null,null,true))).hasMessageContaining("SKU already");
-        when(products.existsBySkuIgnoreCaseAndIdNot("X",1L)).thenReturn(false); when(products.existsActiveNameExcludingId("X",1L)).thenReturn(true);
-        assertThatThrownBy(()->service.update(1L,request("x","X",null,null,true))).hasMessageContaining("name already");
-        when(products.existsActiveNameExcludingId("",1L)).thenReturn(false); when(categories.findById(1L)).thenReturn(Optional.of(category)); when(products.save(p)).thenReturn(p);
-        assertThat(service.update(1L,request(null,null,null,null,false))).isSameAs(p); assertThat(p.getSku()).isEmpty(); assertThat(p.getName()).isEmpty(); assertThat(p.isActive()).isFalse();
+    @Test
+    void createRejectsDuplicateSkuNameAndUnavailableRelationships() {
+        ProductRequest r = request("sku", "Name", null, 2L, true);
+        when(products.existsBySkuIgnoreCase("SKU")).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(r)).hasMessageContaining("SKU already");
+
+        when(products.existsBySkuIgnoreCase("SKU")).thenReturn(false);
+        when(products.existsActiveNameExcludingId("Name", null)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.create(r)).hasMessageContaining("name already");
+
+        when(products.existsActiveNameExcludingId("Name", null)).thenReturn(false);
+
+        assertThatThrownBy(() -> service.create(r)).hasMessageContaining("no longer available");
+
+        Category inactive = new Category("Old", null);
+        inactive.deactivate();
+        when(categories.findById(1L)).thenReturn(Optional.of(inactive));
+
+        assertThatThrownBy(() -> service.create(r)).hasMessageContaining("no longer available");
+
+        when(categories.findById(1L)).thenReturn(Optional.of(category));
+
+        assertThatThrownBy(() -> service.create(r)).hasMessageContaining("no longer available");
+
+        Supplier inactiveSupplier = new Supplier("Old", null, null, null);
+        inactiveSupplier.deactivate();
+        when(suppliers.findById(2L)).thenReturn(Optional.of(inactiveSupplier));
+
+        assertThatThrownBy(() -> service.create(r)).hasMessageContaining("no longer available");
     }
 
-    @Test void deleteHardDeletesWithoutLedgerAndSoftDeletesWithLedger() {
-        Product p=product(true); when(products.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(p)); service.delete(1L); verify(products).delete(p);
-        Product linked=product(true); when(products.findWithCategoryAndSupplierById(2L)).thenReturn(Optional.of(linked)); when(movements.existsByProductId(2L)).thenReturn(true); service.delete(2L);
-        assertThat(linked.isActive()).isFalse(); verify(products).save(linked); verify(products,never()).delete(linked);
-        assertThatThrownBy(()->service.delete(3L)).hasMessage("Product was not found.");
+    @Test
+    void updateEnforcesVersionUniquenessAndChangesRelationships() {
+        Product p = product(true);
+        when(products.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(p));
+
+        assertThatThrownBy(() -> service.update(1L, request("x", "X", null, null, true, 1L)))
+                .hasMessageContaining("another user");
+        assertThatThrownBy(() -> service.update(2L, request("x", "X", null, null, true)))
+                .hasMessage("Product was not found.");
+        when(products.existsBySkuIgnoreCaseAndIdNot("X", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.update(1L, request("x", "X", null, null, true)))
+                .hasMessageContaining("SKU already");
+        when(products.existsBySkuIgnoreCaseAndIdNot("X", 1L)).thenReturn(false);
+        when(products.existsActiveNameExcludingId("X", 1L)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.update(1L, request("x", "X", null, null, true)))
+                .hasMessageContaining("name already");
+        when(products.existsActiveNameExcludingId("", 1L)).thenReturn(false);
+        when(categories.findById(1L)).thenReturn(Optional.of(category));
+        when(products.save(p)).thenReturn(p);
+
+        assertThat(service.update(1L, request(null, null, null, null, false))).isSameAs(p);
+        assertThat(p.getSku()).isEmpty();
+        assertThat(p.getName()).isEmpty();
+        assertThat(p.isActive()).isFalse();
     }
 
-    @Test void capabilitiesDelegateExactPermissions() {
-        when(authorization.can(AppPermission.PRODUCT_CREATE)).thenReturn(true); when(authorization.can(AppPermission.PRODUCT_UPDATE)).thenReturn(false); when(authorization.can(AppPermission.PRODUCT_DELETE)).thenReturn(true);
-        assertThat(service.canCreateProducts()).isTrue(); assertThat(service.canUpdateProducts()).isFalse(); assertThat(service.canDeleteProducts()).isTrue();
+    @Test
+    void deleteHardDeletesWithoutLedgerAndSoftDeletesWithLedger() {
+        Product p = product(true);
+        when(products.findWithCategoryAndSupplierById(1L)).thenReturn(Optional.of(p));
+
+        service.delete(1L);
+
+        verify(products).delete(p);
+
+        Product linked = product(true);
+        when(products.findWithCategoryAndSupplierById(2L)).thenReturn(Optional.of(linked));
+        when(movements.existsByProductId(2L)).thenReturn(true);
+
+        service.delete(2L);
+
+        assertThat(linked.isActive()).isFalse();
+        verify(products).save(linked);
+        verify(products, never()).delete(linked);
+        assertThatThrownBy(() -> service.delete(3L)).hasMessage("Product was not found.");
     }
 
-    private Product product(boolean active){return new Product("SKU","Name",null,BigDecimal.TEN,4,2,category,supplier,active);}
-    private static ProductRequest request(String sku,String name,String desc,Long supplier,boolean active){return request(sku,name,desc,supplier,active,null);}
-    private static ProductRequest request(String sku,String name,String desc,Long supplier,boolean active,Long version){ProductRequest r=new ProductRequest();r.setSku(sku);r.setName(name);r.setDescription(desc);r.setUnitPrice(BigDecimal.TEN);r.setQuantityOnHand(4);r.setMinimumStock(2);r.setCategoryId(1L);r.setSupplierId(supplier);r.setActive(active);r.setVersion(version);return r;}
+    @Test
+    void capabilitiesDelegateExactPermissions() {
+        when(authorization.can(AppPermission.PRODUCT_CREATE)).thenReturn(true);
+        when(authorization.can(AppPermission.PRODUCT_UPDATE)).thenReturn(false);
+        when(authorization.can(AppPermission.PRODUCT_DELETE)).thenReturn(true);
+
+        assertThat(service.canCreateProducts()).isTrue();
+        assertThat(service.canUpdateProducts()).isFalse();
+        assertThat(service.canDeleteProducts()).isTrue();
+    }
+
+    private Product product(boolean active) {
+        return new Product("SKU", "Name", null, BigDecimal.TEN, 4, 2, category, supplier, active);
+    }
+
+    private static ProductRequest request(String sku, String name, String desc, Long supplier, boolean active) {
+        return request(sku, name, desc, supplier, active, null);
+    }
+
+    private static ProductRequest request(
+            String sku, String name, String desc, Long supplier, boolean active, Long version) {
+        ProductRequest r = new ProductRequest();
+        r.setSku(sku);
+        r.setName(name);
+        r.setDescription(desc);
+        r.setUnitPrice(BigDecimal.TEN);
+        r.setQuantityOnHand(4);
+        r.setMinimumStock(2);
+        r.setCategoryId(1L);
+        r.setSupplierId(supplier);
+        r.setActive(active);
+        r.setVersion(version);
+
+        return r;
+    }
 }

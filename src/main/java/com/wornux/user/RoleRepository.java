@@ -24,7 +24,5 @@ public interface RoleRepository extends JpaRepository<Role, Long> {
             order by role.code
             """)
     List<Role> search(
-            @Param("text") String text,
-            @Param("systemRole") Boolean systemRole,
-            @Param("active") Boolean active);
+            @Param("text") String text, @Param("systemRole") Boolean systemRole, @Param("active") Boolean active);
 }

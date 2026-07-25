@@ -44,9 +44,11 @@ public class AppUserService {
         user.updateIdentity(normalized.username(), normalized.email(), normalized.issuer(), normalized.subject());
         user.setActive(true);
         Role administrator = requireRole(SYSTEM_ADMINISTRATOR_ROLE_CODE);
+
         if (user.getRoles().stream().noneMatch(role -> SYSTEM_ADMINISTRATOR_ROLE_CODE.equals(role.getCode()))) {
             user.addRole(administrator);
         }
+
         return appUserRepository.save(user);
     }
 
@@ -75,6 +77,7 @@ public class AppUserService {
         validateUniqueUsername(normalized.username(), user.getId());
         validateUniqueEmail(normalized.email(), user.getId());
         user.updateIdentity(normalized.username(), normalized.email(), normalized.issuer(), normalized.subject());
+
         return appUserRepository.save(user);
     }
 
@@ -83,11 +86,13 @@ public class AppUserService {
         validateUniqueEmail(profile.email(), null);
         AppUser user = new AppUser(profile.username(), profile.email(), profile.issuer(), profile.subject());
         user.addRole(requireRole(roleCode));
+
         return user;
     }
 
     private Role requireRole(String code) {
-        return roleRepository.findByCode(code)
+        return roleRepository
+                .findByCode(code)
                 .filter(Role::isActive)
                 .orElseThrow(() -> new IllegalStateException("Role " + code + " is not configured."));
     }
@@ -96,6 +101,7 @@ public class AppUserService {
         boolean exists = id == null
                 ? appUserRepository.existsByUsernameIgnoreCase(username)
                 : appUserRepository.existsByUsernameIgnoreCaseAndIdNot(username, id);
+
         if (exists) {
             throw new OidcProvisioningException("Username already exists for another local user.");
         }
@@ -105,6 +111,7 @@ public class AppUserService {
         boolean exists = id == null
                 ? appUserRepository.existsByEmailIgnoreCase(email)
                 : appUserRepository.existsByEmailIgnoreCaseAndIdNot(email, id);
+
         if (exists) {
             throw new OidcProvisioningException("Email already exists for another local user.");
         }
@@ -114,25 +121,26 @@ public class AppUserService {
         if (roleIds == null || roleIds.isEmpty()) {
             throw new UserException("At least one role must be selected.");
         }
+
         List<Role> roles = roleRepository.findAllById(roleIds).stream()
                 .filter(Role::isActive)
                 .toList();
+
         if (roles.size() != roleIds.size()) {
             throw new UserException("At least one role must be selected.");
         }
+
         return new LinkedHashSet<>(roles);
     }
 
     @Transactional
     public AppUser createLocalUser(UserRequest request) {
         Set<Role> roles = requireRoles(request.getRoleIds());
-        AppUser user = new AppUser(
-                normalizeUsername(request.getUsername()),
-                normalizeEmail(request.getEmail()),
-                null,
-                null);
+        AppUser user =
+                new AppUser(normalizeUsername(request.getUsername()), normalizeEmail(request.getEmail()), null, null);
         user.setActive(request.isActive());
         roles.forEach(user::addRole);
+
         return appUserRepository.save(user);
     }
 

@@ -37,9 +37,11 @@ public record KeycloakAdminBootstrapProperties(
 
     private static String required(String name, String value) {
         String normalized = value == null ? "" : value.trim();
+
         if (normalized.isBlank()) {
             throw new IllegalStateException("Keycloak admin bootstrap property is required: " + name);
         }
+
         return normalized;
     }
 
@@ -48,6 +50,7 @@ public record KeycloakAdminBootstrapProperties(
         while (normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
+
         return normalized;
     }
 }

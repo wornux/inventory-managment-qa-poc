@@ -15,12 +15,16 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class KeycloakAdminBootstrapTest {
-    @Mock KeycloakAdminClient client;
-    @Mock AppUserService users;
+    @Mock
+    KeycloakAdminClient client;
+
+    @Mock
+    AppUserService users;
 
     @Test
     void disabledBootstrapDoesNothing() {
         new KeycloakAdminBootstrap(properties(false), client, users).run(null);
+
         verify(client, never()).adminToken(any());
     }
 
@@ -30,14 +34,18 @@ class KeycloakAdminBootstrapTest {
         when(client.adminToken(properties)).thenReturn("token");
         when(client.ensureUser(properties, "token"))
                 .thenReturn(new KeycloakAdminClient.KeycloakUser("id", "sysadmin", "sys@example.com"));
+
         new KeycloakAdminBootstrap(properties, client, users).run(null);
-        verify(users).provisionSystemAdministrator(new OidcUserProfile(
-                "https://keycloak/realms/app", "id", "sysadmin", "sys@example.com"));
+
+        verify(users)
+                .provisionSystemAdministrator(
+                        new OidcUserProfile("https://keycloak/realms/app", "id", "sysadmin", "sys@example.com"));
     }
 
     @Test
     void wrapsConfigurationAndRemoteFailuresWithBootstrapContext() {
         var invalid = new KeycloakAdminBootstrapProperties(true, null, null, null, null, null, null, null, null, null);
+
         assertThatThrownBy(() -> new KeycloakAdminBootstrap(invalid, client, users).run(null))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("Keycloak admin bootstrap failed.")
@@ -45,6 +53,16 @@ class KeycloakAdminBootstrapTest {
     }
 
     static KeycloakAdminBootstrapProperties properties(boolean enabled) {
-        return new KeycloakAdminBootstrapProperties(enabled, "https://keycloak", "app", "master", "admin-cli", "admin", "secret", "sysadmin", "sys@example.com", "user-secret");
+        return new KeycloakAdminBootstrapProperties(
+                enabled,
+                "https://keycloak",
+                "app",
+                "master",
+                "admin-cli",
+                "admin",
+                "secret",
+                "sysadmin",
+                "sys@example.com",
+                "user-secret");
     }
 }

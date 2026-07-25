@@ -51,8 +51,7 @@ public class AppUser extends Auditable {
             inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<Role> roles = new LinkedHashSet<>();
 
-    protected AppUser() {
-    }
+    protected AppUser() {}
 
     public AppUser(String username, String email, String oidcIssuer, String oidcSubject) {
         this.username = username;

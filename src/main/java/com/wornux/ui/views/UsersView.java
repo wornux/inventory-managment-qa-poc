@@ -2,6 +2,7 @@ package com.wornux.ui.views;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Key;
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -32,9 +33,7 @@ import com.wornux.user.UserException;
 import com.wornux.user.UserFilter;
 import com.wornux.user.UserRequest;
 import com.wornux.user.UserService;
-
 import jakarta.annotation.security.PermitAll;
-
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -43,10 +42,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import org.springframework.security.access.AccessDeniedException;
-
-import com.vaadin.flow.component.ModalityMode;
 
 @Route("users")
 @PageTitle("Users")
@@ -54,7 +50,9 @@ import com.vaadin.flow.component.ModalityMode;
 public class UsersView extends Main {
 
     private enum FormMode {
-        CREATE, EDIT, VIEW
+        CREATE,
+        EDIT,
+        VIEW
     }
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER =
@@ -104,6 +102,7 @@ public class UsersView extends Main {
         var subtitle = new Span("Account status, role assignments, and administrator controls.");
         subtitle.addClassName("products-subtitle");
         header.add(title, subtitle);
+
         return header;
     }
 
@@ -119,6 +118,7 @@ public class UsersView extends Main {
 
         toolbar.add(search, activeFilter, newUser);
         toolbar.setFlexGrow(1, search);
+
         return toolbar;
     }
 
@@ -138,10 +138,16 @@ public class UsersView extends Main {
         grid.addClassName("products-grid");
         grid.setSizeFull();
         grid.addColumn(userRenderer()).setHeader("User").setAutoWidth(true).setFlexGrow(2);
-        grid.addColumn(user -> formatInstant(user.getCreatedAt())).setHeader("Created At").setAutoWidth(true);
-        grid.addColumn(new ComponentRenderer<>(this::activeBadge)).setHeader("Active").setAutoWidth(true);
+        grid.addColumn(user -> formatInstant(user.getCreatedAt()))
+                .setHeader("Created At")
+                .setAutoWidth(true);
+        grid.addColumn(new ComponentRenderer<>(this::activeBadge))
+                .setHeader("Active")
+                .setAutoWidth(true);
         grid.addColumn(user -> roleSummary(user.getRoles())).setHeader("Roles").setFlexGrow(2);
-        grid.addColumn(new ComponentRenderer<>(this::actions)).setHeader("Actions").setAutoWidth(true);
+        grid.addColumn(new ComponentRenderer<>(this::actions))
+                .setHeader("Actions")
+                .setAutoWidth(true);
         grid.addItemClickListener(event -> openView(event.getItem()));
     }
 
@@ -159,6 +165,7 @@ public class UsersView extends Main {
     private Component activeBadge(AppUser user) {
         Span badge = new Span(user.isActive() ? "Active" : "Inactive");
         badge.addClassNames("status-badge", user.isActive() ? "active-yes" : "active-no");
+
         return badge;
     }
 
@@ -167,14 +174,17 @@ public class UsersView extends Main {
         layout.addClassName("row-actions");
         Button view = new Button("View", event -> openView(user));
         layout.add(view);
+
         if (userService.canUpdateUsers()) {
             layout.add(new Button("Edit", event -> openEdit(user)));
         }
+
         if (userService.canDeleteUsers() && user.isActive()) {
             Button deactivate = new Button("Deactivate", event -> confirmDeactivate(user));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(deactivate);
         }
+
         return layout;
     }
 
@@ -232,14 +242,17 @@ public class UsersView extends Main {
     }
 
     private void bindForm() {
-        binder.forField(username).asRequired("Username is required.").bind(UserRequest::getUsername, UserRequest::setUsername);
+        binder.forField(username)
+                .asRequired("Username is required.")
+                .bind(UserRequest::getUsername, UserRequest::setUsername);
         binder.forField(email).asRequired("Email is required.").bind(UserRequest::getEmail, UserRequest::setEmail);
         binder.bind(active, UserRequest::isActive, UserRequest::setActive);
         binder.forField(roles)
                 .withValidator(value -> value != null && !value.isEmpty(), "At least one role must be selected.")
-                .bind(this::rolesFromRequest, (request, value) -> request.setRoleIds(value.stream()
-                        .map(Role::getId)
-                        .collect(Collectors.toCollection(LinkedHashSet::new))));
+                .bind(
+                        this::rolesFromRequest,
+                        (request, value) -> request.setRoleIds(
+                                value.stream().map(Role::getId).collect(Collectors.toCollection(LinkedHashSet::new))));
     }
 
     private void configureDialogs() {
@@ -248,7 +261,8 @@ public class UsersView extends Main {
         Button confirm = new Button("Deactivate", event -> deactivateSelected());
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
         Button cancelDeactivate = new Button("Cancel", event -> deactivateDialog.close());
-        deactivateDialog.add(new VerticalLayout(deactivateTitle, deactivateText, new HorizontalLayout(confirm, cancelDeactivate)));
+        deactivateDialog.add(
+                new VerticalLayout(deactivateTitle, deactivateText, new HorizontalLayout(confirm, cancelDeactivate)));
 
         var dirtyTitle = new H1("Unsaved changes");
         var dirtyText = new Span("You have unsaved changes. Discard them?");
@@ -320,10 +334,10 @@ public class UsersView extends Main {
         request.setUsername(user.getUsername());
         request.setEmail(user.getEmail());
         request.setActive(user.isActive());
-        request.setRoleIds(user.getRoles().stream()
-                .map(Role::getId)
-                .collect(Collectors.toCollection(LinkedHashSet::new)));
+        request.setRoleIds(
+                user.getRoles().stream().map(Role::getId).collect(Collectors.toCollection(LinkedHashSet::new)));
         request.setVersion(user.getVersion());
+
         return request;
     }
 
@@ -332,6 +346,7 @@ public class UsersView extends Main {
             showError("Please fix the highlighted fields.");
             return;
         }
+
         try {
             if (mode == FormMode.CREATE) {
                 userService.create(formData);
@@ -340,6 +355,7 @@ public class UsersView extends Main {
                 userService.update(selectedUser.getId(), formData);
                 showSuccess("User updated.");
             }
+
             dirty = false;
             sidebar.close();
             refreshGrid();
@@ -371,6 +387,7 @@ public class UsersView extends Main {
             dirtyDialog.open();
             return;
         }
+
         dirty = false;
         sidebar.close();
     }
@@ -396,17 +413,16 @@ public class UsersView extends Main {
         if ("Active".equals(activeFilter.getValue())) {
             return true;
         }
+
         if ("Inactive".equals(activeFilter.getValue())) {
             return false;
         }
+
         return null;
     }
 
     private String roleSummary(Set<Role> roles) {
-        return roles.stream()
-                .map(Role::getName)
-                .sorted()
-                .collect(Collectors.joining(", "));
+        return roles.stream().map(Role::getName).sorted().collect(Collectors.joining(", "));
     }
 
     private String formatInstant(Instant value) {

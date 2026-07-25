@@ -29,8 +29,11 @@ public class HomeView extends Main {
         var hero = new Div(eyebrow, title, subtitle);
         hero.addClassName("home-hero");
 
-        add(hero, pendingCard("Catalog", "Products, categories, and suppliers are available from the drawer."),
-                pendingCard("Operations", "Stock movement activity will surface here after dashboard metrics are defined."),
+        add(
+                hero,
+                pendingCard("Catalog", "Products, categories, and suppliers are available from the drawer."),
+                pendingCard(
+                        "Operations", "Stock movement activity will surface here after dashboard metrics are defined."),
                 pendingCard("Administration", "User and role management appears for authorized administrators."));
     }
 
@@ -44,6 +47,7 @@ public class HomeView extends Main {
         var body = new Paragraph(text);
         var card = new Div(header, body);
         card.addClassName("home-card");
+
         return card;
     }
 }

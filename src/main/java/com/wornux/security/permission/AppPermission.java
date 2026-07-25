@@ -64,6 +64,8 @@ public enum AppPermission {
     }
 
     public static Optional<AppPermission> fromCode(String code) {
-        return Arrays.stream(values()).filter(permission -> permission.code.equalsIgnoreCase(code)).findFirst();
+        return Arrays.stream(values())
+                .filter(permission -> permission.code.equalsIgnoreCase(code))
+                .findFirst();
     }
 }

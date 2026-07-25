@@ -37,24 +37,28 @@ public class RoleService {
     public List<Role> search(RoleFilter filter) {
         authorizationService.check(AppPermission.ROLE_VIEW);
         RoleFilter safeFilter = filter == null ? new RoleFilter("", null, null) : filter;
+
         return roleRepository.search(normalizeSearch(safeFilter.text()), safeFilter.systemRole(), safeFilter.active());
     }
 
     @Transactional(readOnly = true)
     public Role get(Long id) {
         authorizationService.check(AppPermission.ROLE_VIEW);
+
         return roleRepository.findById(id).orElseThrow(() -> new RoleException("Role was not found."));
     }
 
     @Transactional(readOnly = true)
     public List<AppPermission> assignablePermissions() {
         authorizationService.check(AppPermission.ROLE_VIEW);
+
         return Arrays.asList(AppPermission.values());
     }
 
     @Transactional(readOnly = true)
     public long userCount(Long roleId) {
         authorizationService.check(AppPermission.ROLE_VIEW);
+
         return appUserRepository.countByRolesId(roleId);
     }
 
@@ -66,9 +70,11 @@ public class RoleService {
     @Transactional(readOnly = true)
     public Map<Long, Long> userCounts(Collection<Long> roleIds) {
         authorizationService.check(AppPermission.ROLE_VIEW);
+
         if (roleIds.isEmpty()) {
             return Map.of();
         }
+
         return appUserRepository.countMembersByRoleIds(roleIds).stream()
                 .collect(Collectors.toMap(row -> (Long) row[0], row -> (Long) row[1]));
     }
@@ -76,6 +82,7 @@ public class RoleService {
     @Transactional(readOnly = true)
     public List<AppUser> members(Long roleId) {
         authorizationService.check(AppPermission.ROLE_VIEW);
+
         return appUserRepository.findDistinctByRolesIdOrderByUsernameAsc(roleId);
     }
 
@@ -91,6 +98,7 @@ public class RoleService {
                 trimToNull(request.getDescription()),
                 false);
         role.update(role.getName(), role.getDescription(), request.isActive(), permissions);
+
         return roleRepository.save(role);
     }
 
@@ -100,17 +108,21 @@ public class RoleService {
         authorizationService.check(AppPermission.ROLE_ASSIGN);
         Role role = roleRepository.findById(id).orElseThrow(() -> new RoleException("Role was not found."));
         validateCustomRole(role);
+
         if (!Objects.equals(role.getVersion(), request.getVersion())) {
             throw new RoleException("Role was updated by another administrator. Refresh the form and try again.");
         }
+
         if (!role.getCode().equalsIgnoreCase(normalizeCode(request.getCode()))) {
             throw new RoleException("Role code cannot be changed.");
         }
+
         role.update(
                 normalizeName(request.getName()),
                 trimToNull(request.getDescription()),
                 request.isActive(),
                 requireAssignablePermissions(request.getPermissions()));
+
         return roleRepository.save(role);
     }
 
@@ -151,9 +163,11 @@ public class RoleService {
         if (requested == null || requested.isEmpty()) {
             throw new RoleException("At least one permission must be selected.");
         }
+
         if (!authorizationService.canAll(requested)) {
             throw new RoleException("You cannot assign permissions that you do not have.");
         }
+
         return new LinkedHashSet<>(requested);
     }
 
@@ -171,6 +185,7 @@ public class RoleService {
 
     private String trimToNull(String value) {
         String trimmed = value == null ? "" : value.trim();
+
         return trimmed.isEmpty() ? null : trimmed;
     }
 }

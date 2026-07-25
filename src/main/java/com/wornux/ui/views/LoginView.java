@@ -11,7 +11,6 @@ import com.vaadin.flow.router.PageTitle;
 import com.vaadin.flow.router.QueryParameters;
 import com.vaadin.flow.router.Route;
 import com.vaadin.flow.server.auth.AnonymousAllowed;
-
 import java.util.List;
 import java.util.Map;
 
@@ -39,9 +38,8 @@ public class LoginView extends Div implements BeforeEnterObserver {
         Button keycloakLogin = new Button("Iniciar sesión con Keycloak");
         keycloakLogin.addClassName("auth-login-button");
 
-        keycloakLogin.addClickListener(event ->
-                UI.getCurrent().getPage().setLocation("/oauth2/authorization/keycloak")
-        );
+        keycloakLogin.addClickListener(
+                event -> UI.getCurrent().getPage().setLocation("/oauth2/authorization/keycloak"));
 
         panel.add(title, subtitle, feedback, keycloakLogin);
         add(panel);

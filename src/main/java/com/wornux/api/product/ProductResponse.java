@@ -14,5 +14,4 @@ public record ProductResponse(
         Long version,
         boolean lowStock,
         CatalogReferenceResponse category,
-        CatalogReferenceResponse supplier) {
-}
+        CatalogReferenceResponse supplier) {}

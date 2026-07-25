@@ -5,7 +5,6 @@ import com.wornux.security.permission.AppPermission;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
 import jakarta.validation.Valid;
-
 import java.time.Instant;
 import java.util.List;
 import org.springframework.dao.DataAccessException;
@@ -40,9 +39,8 @@ public class StockMovementService {
     @Transactional(readOnly = true)
     public List<StockMovement> search(StockMovementFilter filter) {
         requireRead();
-        StockMovementFilter safeFilter = filter == null
-                ? new StockMovementFilter(null, null, null, null, "")
-                : filter;
+        StockMovementFilter safeFilter = filter == null ? new StockMovementFilter(null, null, null, null, "") : filter;
+
         return stockMovementRepository.search(
                 safeFilter.createdFrom() == null ? LEDGER_START : safeFilter.createdFrom(),
                 safeFilter.createdTo() == null ? LEDGER_END : safeFilter.createdTo(),
@@ -54,12 +52,14 @@ public class StockMovementService {
     @Transactional(readOnly = true)
     public List<Product> activeProducts() {
         requireRead();
+
         return productRepository.findByActiveTrueOrderBySkuAsc();
     }
 
     @Transactional(readOnly = true)
     public List<String> movementUsernames() {
         requireRead();
+
         return stockMovementRepository.findDistinctUsernames();
     }
 
@@ -70,20 +70,24 @@ public class StockMovementService {
         String reason = normalizeReason(request.getReason());
         validateReason(request.getMovementType(), reason);
 
-        Product product = productRepository.findWithCategoryAndSupplierById(request.getProductId())
+        Product product = productRepository
+                .findWithCategoryAndSupplierById(request.getProductId())
                 .filter(Product::isActive)
                 .orElseThrow(() -> new StockMovementException("Product is no longer available."));
 
         int resultingStock = product.getQuantityOnHand() + request.getQuantityDelta();
+
         if (resultingStock < 0) {
-            throw new StockMovementException("Insufficient stock. Current stock: "
-                    + product.getQuantityOnHand() + ", requested: " + Math.abs(request.getQuantityDelta()) + ".");
+            throw new StockMovementException("Insufficient stock. Current stock: " + product.getQuantityOnHand()
+                    + ", requested: " + Math.abs(request.getQuantityDelta()) + ".");
         }
 
         AppUser user = currentUser();
+
         try {
             product.applyQuantityDelta(request.getQuantityDelta());
             productRepository.save(product);
+
             return stockMovementRepository.save(
                     new StockMovement(product, user, request.getMovementType(), request.getQuantityDelta(), reason));
         } catch (DataAccessException exception) {
@@ -107,9 +111,11 @@ public class StockMovementService {
         if (quantityDelta == null || quantityDelta == 0) {
             throw new StockMovementException("Quantity delta must not be zero.");
         }
+
         if (movementType.isPositive() && quantityDelta < 0) {
             throw new StockMovementException("Quantity delta must be positive for this movement type.");
         }
+
         if (movementType.isNegative() && quantityDelta > 0) {
             throw new StockMovementException("Quantity delta must be negative for this movement type.");
         }
@@ -123,15 +129,19 @@ public class StockMovementService {
 
     private AppUser currentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
         if (authentication == null || authentication.getName() == null) {
             return null;
         }
-        return appUserRepository.findByUsernameIgnoreCaseOrEmailIgnoreCase(authentication.getName(), authentication.getName())
+
+        return appUserRepository
+                .findByUsernameIgnoreCaseOrEmailIgnoreCase(authentication.getName(), authentication.getName())
                 .orElse(null);
     }
 
     private String normalizeReason(String value) {
         String trimmed = value == null ? "" : value.trim();
+
         return trimmed.isEmpty() ? null : trimmed;
     }
 

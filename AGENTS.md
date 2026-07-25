@@ -22,11 +22,13 @@
 - Read the affected flow from entry point to persistence before editing. Search every caller of shared code and fix the narrowest source of truth.
 - Match existing conventions before introducing a pattern, helper, DTO, exception type, or dependency. Prefer direct code while there is only one implementation.
 - Do not use fully qualified class names in Java code; import the type instead. Qualify a type only when unavoidable because two imported types share the same simple name and neither type is under our control, or when both names are intentional, strong domain names such as `Client` or `Product` and renaming either would make the domain less clear.
+- Within a method, separate distinct logical phases with one blank line—for example initialization, the action under test, conditional handling or assertions, and the return. Keep tightly related statements together; do not add a blank line between every statement.
 - Keep authorization checks in the service layer so UI and REST callers enforce the same rule. Do not rely on hidden or disabled controls for security.
 - Keep API entities behind request/response DTOs. Preserve the existing `ApiResponse` envelope and centralized exception handling.
 - Validate untrusted input at the boundary and enforce business invariants in the service or domain model. Do not infer HTTP status from exception message text in new code.
 - Never expose credentials, tokens, personal data, or full request bodies in source, tests, logs, screenshots, or responses.
 - Do not create branches, commit, squash, push, delete branches, or clean the worktree unless the user explicitly asks. Never overwrite unrelated local changes.
+- Always sign commits. Never bypass signing or create an unsigned commit; if signing fails, stop and ask the user to unlock, approve, or fix the signer instead of disabling signing.
 - When the user asks for a commit or commit message, use the `writing-commit-messages` skill. Preserve unrelated working-tree changes and follow the repository's Conventional Commit history.
 
 ## Persistence

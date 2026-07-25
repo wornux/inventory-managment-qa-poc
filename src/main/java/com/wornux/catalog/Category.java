@@ -31,8 +31,7 @@ public class Category extends Auditable {
     @Version
     private Long version;
 
-    protected Category() {
-    }
+    protected Category() {}
 
     public Category(String name, String description) {
         this.name = name;

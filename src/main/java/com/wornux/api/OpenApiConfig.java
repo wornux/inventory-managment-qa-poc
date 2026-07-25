@@ -20,9 +20,11 @@ public class OpenApiConfig {
                         .version("1.0")
                         .description("REST API for authentication and product inventory operations."))
                 .components(new Components()
-                        .addSecuritySchemes(JWT_BEARER_SCHEME, new SecurityScheme()
-                                .type(SecurityScheme.Type.HTTP)
-                                .scheme("bearer")
-                                .bearerFormat("JWT")));
+                        .addSecuritySchemes(
+                                JWT_BEARER_SCHEME,
+                                new SecurityScheme()
+                                        .type(SecurityScheme.Type.HTTP)
+                                        .scheme("bearer")
+                                        .bearerFormat("JWT")));
     }
 }

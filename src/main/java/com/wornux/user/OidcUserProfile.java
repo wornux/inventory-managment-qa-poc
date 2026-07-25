@@ -14,9 +14,11 @@ public record OidcUserProfile(String issuer, String subject, String username, St
 
     private static String require(String claim, String value) {
         String normalized = value == null ? "" : value.trim();
+
         if (normalized.isBlank()) {
             throw new OidcProvisioningException("Missing required OIDC claim: " + claim);
         }
+
         return normalized;
     }
 }

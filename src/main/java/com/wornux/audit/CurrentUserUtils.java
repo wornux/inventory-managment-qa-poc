@@ -9,23 +9,29 @@ public final class CurrentUserUtils {
 
     public static final String ANONYMOUS = "ANONYMOUS";
 
-    private CurrentUserUtils() {
-    }
+    private CurrentUserUtils() {}
 
     public static String currentUsername() {
         SecurityContext context = SecurityContextHolder.getContext();
+
         if (context == null) {
             return ANONYMOUS;
         }
+
         Authentication authentication = context.getAuthentication();
-        if (authentication == null || !authentication.isAuthenticated()
+
+        if (authentication == null
+                || !authentication.isAuthenticated()
                 || authentication instanceof AnonymousAuthenticationToken) {
             return ANONYMOUS;
         }
+
         String username = authentication.getName();
+
         if (username == null || username.isBlank()) {
             return ANONYMOUS;
         }
+
         return username;
     }
 }
