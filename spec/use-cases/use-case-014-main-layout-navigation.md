@@ -126,7 +126,7 @@ User navigates to the home route or any protected application route.
 |----|------|
 | BR-01 | `MainLayout` must be implemented as `public class MainLayout extends AppLayout`. |
 | BR-02 | Protected Vaadin Flow views must be configured to render inside `MainLayout`; public login and signup views must not use the main layout. |
-| BR-03 | Drawer navigation must follow the provided Vaadin Aura example direction: left drawer, brand area, grouped navigation, icons, active item styling, subtle borders, and polished spacing. |
+| BR-03 | Drawer navigation must follow the provided Vaadin Aura example direction: left drawer, provided custom app icon in the brand area, grouped navigation, icons, active item styling, subtle borders, and polished spacing. |
 | BR-04 | Navigation items for Products, Categories, Suppliers, Stock Movements, Users, and Roles must be visible only when the authenticated user has the matching resource VIEW permission. |
 | BR-05 | Direct URL access must be authorized separately from drawer visibility; hiding a drawer item is not sufficient security. |
 | BR-06 | Forbidden access must have a user-facing view or message for authenticated users who try to open a route without permission. |

@@ -104,7 +104,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver {
     }
 
     private Component createDrawerHeader() {
-        var mark = new Span("W");
+        var mark = new SvgIcon("/icons/app.svg");
         mark.addClassName("main-layout-brand-mark");
 
         var name = new Span("Wornux");

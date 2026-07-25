@@ -36,6 +36,10 @@ class UC014MainLayoutNavigation {
 
         assertThat(descendants).extracting(Element::getTag).contains("drawer-rail-toggle");
         assertThat(descendants.stream()
+                .filter(element -> element.getClassList().contains("main-layout-brand-mark"))
+                .map(element -> element.getAttribute("src")))
+                .containsExactly("/icons/app.svg");
+        assertThat(descendants.stream()
                 .filter(element -> element.getClassList().contains("main-layout-custom-icon"))
                 .map(element -> element.getAttribute("src")))
                 .containsExactlyInAnyOrder(

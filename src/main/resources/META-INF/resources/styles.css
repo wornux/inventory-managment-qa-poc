@@ -86,16 +86,10 @@ body {
 }
 
 .main-layout-brand-mark {
-  align-items: center;
-  background: var(--aura-accent-color-light);
-  border-radius: var(--vaadin-radius-m);
-  color: var(--aura-accent-contrast-color);
-  display: inline-flex;
-  font-size: var(--aura-font-size-l);
-  font-weight: var(--aura-font-weight-semibold);
-  height: calc(var(--aura-base-size) * 2.25px);
-  justify-content: center;
-  width: calc(var(--aura-base-size) * 2.25px);
+  color: var(--vaadin-text-color);
+  flex: 0 0 auto;
+  height: 1.5rem;
+  width: 1.5rem;
 }
 
 .main-layout-brand-copy,
