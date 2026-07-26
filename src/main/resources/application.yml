@@ -49,6 +49,8 @@ vaadin:
 spring:
   application:
     name: qa-final-project
+  profiles:
+    default: dev
   config:
     import:
       - optional:file:.env[.properties]

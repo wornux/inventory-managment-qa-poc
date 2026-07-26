@@ -11,6 +11,7 @@ services:
       - "${PORT:-8080}:${PORT:-8080}"
     environment:
       PORT: ${PORT:-8080}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/stocks
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://alloy:4318/v1/traces
       KEYCLOAK_SERVER_URL: http://keycloak:7777
