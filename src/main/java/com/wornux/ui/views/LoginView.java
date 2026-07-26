@@ -22,6 +22,7 @@ public class LoginView extends Div implements BeforeEnterObserver {
     private final Paragraph feedback = new Paragraph();
 
     public LoginView() {
+        setId("login-view");
         addClassName("auth-page");
 
         Div panel = new Div();
@@ -36,6 +37,7 @@ public class LoginView extends Div implements BeforeEnterObserver {
         feedback.setVisible(false);
 
         Button keycloakLogin = new Button("Iniciar sesión con Keycloak");
+        keycloakLogin.setId("keycloak-login");
         keycloakLogin.addClassName("auth-login-button");
 
         keycloakLogin.addClickListener(

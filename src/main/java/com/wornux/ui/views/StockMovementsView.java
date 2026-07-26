@@ -16,6 +16,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -105,6 +106,7 @@ public class StockMovementsView extends MasterDetailLayout {
 
     public StockMovementsView(StockMovementService stockMovementService) {
         this.stockMovementService = stockMovementService;
+        setId("stock-movements-view");
         setSizeFull();
         addClassName("crud-master-detail");
         setExpandMaster(true);
@@ -145,7 +147,11 @@ public class StockMovementsView extends MasterDetailLayout {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button recordMovement = new Button("Record Movement", event -> requestSwitch(this::openCreate));
+        Button recordMovement = new Button(
+                "Record Movement", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        recordMovement.setId("record-movement");
+        recordMovement.setAriaLabel("Record Movement");
+        recordMovement.setTooltipText("Record Movement");
         recordMovement.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         recordMovement.setVisible(stockMovementService.canCreateMovements());
 
@@ -155,27 +161,33 @@ public class StockMovementsView extends MasterDetailLayout {
     }
 
     private void configureFilters() {
+        fromDate.setId("movement-from-date");
         fromDate.setClearButtonVisible(true);
         fromDate.bindValue(fromDateSignal, fromDateSignal::set);
+        toDate.setId("movement-to-date");
         toDate.setClearButtonVisible(true);
         toDate.bindValue(toDateSignal, toDateSignal::set);
 
+        productFilter.setId("movement-product-filter");
         productFilter.setItems(products);
         productFilter.setItemLabelGenerator(this::productLabel);
         productFilter.setClearButtonVisible(true);
         productFilter.bindValue(productFilterSignal, productFilterSignal::set);
 
+        typeFilter.setId("movement-type-filter");
         typeFilter.setItems(MovementType.values());
         typeFilter.setItemLabelGenerator(MovementType::displayName);
         typeFilter.setClearButtonVisible(true);
         typeFilter.bindValue(typeFilterSignal, typeFilterSignal::set);
 
+        userFilter.setId("movement-user-filter");
         userFilter.setItems(usernames);
         userFilter.setClearButtonVisible(true);
         userFilter.bindValue(userFilterSignal, userFilterSignal::set);
     }
 
     private void configureGrid() {
+        grid.setId("stock-movements-grid");
         grid.addClassName("products-grid");
         grid.setSizeFull();
         var createdColumn = grid.addColumn(movement -> formatInstant(movement.getCreatedAt()))
@@ -262,19 +274,27 @@ public class StockMovementsView extends MasterDetailLayout {
     }
 
     private void configureFields() {
+        createdAt.setId("movement-created-at");
         createdAt.setReadOnly(true);
+        user.setId("movement-user");
         user.setReadOnly(true);
+        product.setId("movement-product");
         product.setItems(products);
         product.setItemLabelGenerator(this::productLabel);
         product.setRequiredIndicatorVisible(true);
+        movementType.setId("movement-type");
         movementType.setItems(MovementType.values());
         movementType.setItemLabelGenerator(MovementType::displayName);
         movementType.setRequiredIndicatorVisible(true);
         movementType.addValueChangeListener(event -> updateQuantityForType(event.getValue()));
+        quantityDelta.setId("movement-quantity");
         quantityDelta.setRequiredIndicatorVisible(true);
         quantityDelta.setValueChangeMode(ValueChangeMode.EAGER);
+        reason.setId("movement-reason");
         reason.setMaxLength(500);
         reason.setValueChangeMode(ValueChangeMode.EAGER);
+        save.setId("save-movement");
+        cancel.setId("cancel-movement");
         binder.addValueChangeListener(event -> dirty = true);
     }
 

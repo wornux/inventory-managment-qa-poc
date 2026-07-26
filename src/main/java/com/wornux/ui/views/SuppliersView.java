@@ -16,6 +16,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -124,7 +125,10 @@ public class SuppliersView extends MasterDetailLayout {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newSupplier = new Button("New Supplier", event -> requestSwitch(this::openCreate));
+        Button newSupplier = new Button(
+                "New Supplier", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        newSupplier.setAriaLabel("New Supplier");
+        newSupplier.setTooltipText("New Supplier");
         newSupplier.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newSupplier.setVisible(supplierService.canCreateSuppliers());
 

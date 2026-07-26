@@ -15,6 +15,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -100,9 +101,11 @@ public class ProductsView extends MasterDetailLayout {
     private final IntegerField quantityOnHand = new IntegerField("Quantity on hand");
     private final IntegerField minimumStock = new IntegerField("Minimum stock");
     private final ComboBox<Category> category = new ComboBox<>("Category");
-    private final Button createCategory = new Button("Create category", event -> openCategoryCreateDialog());
+    private final Button createCategory =
+            new Button(new SvgIcon("/icons/dependency-create.svg"), event -> openCategoryCreateDialog());
     private final ComboBox<Supplier> supplier = new ComboBox<>("Supplier");
-    private final Button createSupplier = new Button("Create supplier", event -> openSupplierCreateDialog());
+    private final Button createSupplier =
+            new Button(new SvgIcon("/icons/dependency-create.svg"), event -> openSupplierCreateDialog());
     private final Checkbox active = new Checkbox("Active");
     private final H2 detailTitle = new H2();
     private final Button save = new Button("Save");
@@ -122,6 +125,7 @@ public class ProductsView extends MasterDetailLayout {
         this.productService = productService;
         this.categoryService = categoryService;
         this.supplierService = supplierService;
+        setId("products-view");
         setSizeFull();
         addClassName("crud-master-detail");
         setExpandMaster(true);
@@ -162,7 +166,11 @@ public class ProductsView extends MasterDetailLayout {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newProduct = new Button("New Product", event -> requestSwitch(this::openCreate));
+        Button newProduct = new Button(
+                "New Product", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        newProduct.setId("new-product");
+        newProduct.setAriaLabel("New Product");
+        newProduct.setTooltipText("New Product");
         newProduct.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newProduct.setVisible(productService.canCreateProducts());
 
@@ -173,29 +181,35 @@ public class ProductsView extends MasterDetailLayout {
     }
 
     private void configureFilters() {
+        search.setId("product-search");
         search.setPlaceholder("Search SKU or name");
         search.setClearButtonVisible(true);
         search.setValueChangeMode(ValueChangeMode.LAZY);
         search.bindValue(searchSignal, searchSignal::set);
 
+        categoryFilter.setId("product-category-filter");
         categoryFilter.setItems(categories);
         categoryFilter.setItemLabelGenerator(Category::getName);
         categoryFilter.setClearButtonVisible(true);
         categoryFilter.bindValue(categoryFilterSignal, categoryFilterSignal::set);
 
+        supplierFilter.setId("product-supplier-filter");
         supplierFilter.setItems(suppliers);
         supplierFilter.setItemLabelGenerator(Supplier::getName);
         supplierFilter.setClearButtonVisible(true);
         supplierFilter.bindValue(supplierFilterSignal, supplierFilterSignal::set);
 
+        activeFilter.setId("product-status-filter");
         activeFilter.setItems("Active", "Inactive", "All");
         activeFilter.setClearButtonVisible(false);
         activeFilter.bindValue(activeStatusSignal, activeStatusSignal::set);
 
+        lowStockFilter.setId("product-low-stock-filter");
         lowStockFilter.bindValue(lowStockSignal, lowStockSignal::set);
     }
 
     private void configureGrid() {
+        grid.setId("products-grid");
         grid.addClassName("products-grid");
         grid.setSizeFull();
         var productColumn = grid.addColumn(productRenderer())
@@ -316,30 +330,45 @@ public class ProductsView extends MasterDetailLayout {
     }
 
     private void configureFields() {
+        sku.setId("product-sku");
         sku.setRequiredIndicatorVisible(true);
         sku.setValueChangeMode(ValueChangeMode.EAGER);
+        name.setId("product-name");
         name.setRequiredIndicatorVisible(true);
         name.setValueChangeMode(ValueChangeMode.EAGER);
+        description.setId("product-description");
         description.setMaxLength(1000);
         description.setValueChangeMode(ValueChangeMode.EAGER);
+        unitPrice.setId("product-unit-price");
         unitPrice.setRequiredIndicatorVisible(true);
         unitPrice.setValueChangeMode(ValueChangeMode.EAGER);
+        quantityOnHand.setId("product-quantity");
         quantityOnHand.setRequiredIndicatorVisible(true);
         quantityOnHand.setValueChangeMode(ValueChangeMode.EAGER);
         quantityOnHand.setMin(0);
+        minimumStock.setId("product-minimum-stock");
         minimumStock.setRequiredIndicatorVisible(true);
         minimumStock.setValueChangeMode(ValueChangeMode.EAGER);
         minimumStock.setMin(0);
+        category.setId("product-category");
         category.setItems(categories);
         category.setItemLabelGenerator(Category::getName);
         category.setRequiredIndicatorVisible(true);
-        createCategory.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        createCategory.setAriaLabel("Create category");
+        createCategory.setTooltipText("Create category");
+        createCategory.addThemeVariants(ButtonVariant.TERTIARY);
         createCategory.setVisible(false);
+        supplier.setId("product-supplier");
         supplier.setItems(suppliers);
         supplier.setItemLabelGenerator(Supplier::getName);
         supplier.setClearButtonVisible(true);
-        createSupplier.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        createSupplier.setAriaLabel("Create supplier");
+        createSupplier.setTooltipText("Create supplier");
+        createSupplier.addThemeVariants(ButtonVariant.TERTIARY);
         createSupplier.setVisible(false);
+        active.setId("product-active");
+        save.setId("save-product");
+        cancel.setId("cancel-product");
         binder.addValueChangeListener(event -> dirty = true);
     }
 
@@ -377,6 +406,7 @@ public class ProductsView extends MasterDetailLayout {
         var deleteTitle = new H1("Delete product?");
         var deleteText = new Span("Are you sure you want to delete this product?");
         Button confirm = new Button("Delete", event -> deleteSelected());
+        confirm.setId("confirm-product-delete");
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
         Button cancelDelete = new Button("Cancel", event -> {
             deleteTarget = null;
@@ -606,7 +636,8 @@ public class ProductsView extends MasterDetailLayout {
     private void deleteSelected() {
         try {
             Long deletedId = deleteTarget.getId();
-            boolean deletedDetailOpen = selectedProduct != null && selectedProduct.getId().equals(deletedId);
+            boolean deletedDetailOpen =
+                    selectedProduct != null && selectedProduct.getId().equals(deletedId);
             productService.delete(deletedId);
             deleteDialog.close();
             deleteTarget = null;

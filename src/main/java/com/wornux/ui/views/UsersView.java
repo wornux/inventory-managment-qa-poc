@@ -17,6 +17,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -136,7 +137,10 @@ public class UsersView extends MasterDetailLayout {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newUser = new Button("New User", event -> requestSwitch(this::openCreate));
+        Button newUser =
+                new Button("New User", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        newUser.setAriaLabel("New User");
+        newUser.setTooltipText("New User");
         newUser.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newUser.setVisible(userService.canCreateUsers());
 
@@ -209,8 +213,7 @@ public class UsersView extends MasterDetailLayout {
         }
 
         if (userService.canDeleteUsers() && user.isActive()) {
-            Button deactivate =
-                    new Button("Deactivate", event -> requestDestructive(() -> confirmDeactivate(user)));
+            Button deactivate = new Button("Deactivate", event -> requestDestructive(() -> confirmDeactivate(user)));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(deactivate);
         }

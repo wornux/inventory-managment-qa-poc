@@ -16,6 +16,7 @@ import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -122,7 +123,10 @@ public class CategoriesView extends MasterDetailLayout {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newCategory = new Button("New Category", event -> requestSwitch(this::openCreate));
+        Button newCategory = new Button(
+                "New Category", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        newCategory.setAriaLabel("New Category");
+        newCategory.setTooltipText("New Category");
         newCategory.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newCategory.setVisible(categoryService.canCreateCategories());
 

@@ -16,6 +16,7 @@ import com.vaadin.flow.component.html.H3;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Paragraph;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
 import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
@@ -142,7 +143,10 @@ public class RolesView extends MasterDetailLayout {
         filters.setWidthFull();
         filters.setFlexGrow(1, typeFilter, activeFilter);
 
-        var createRole = new Button("Create role", event -> requestSwitch(this::openCreate));
+        var createRole = new Button(
+                "Create role", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        createRole.setAriaLabel("Create role");
+        createRole.setTooltipText("Create role");
         createRole.addThemeVariants(ButtonVariant.PRIMARY);
         createRole.setVisible(roleService.canCreateRoles());
 
@@ -245,8 +249,7 @@ public class RolesView extends MasterDetailLayout {
         String searchValue = roleSearch.getValue();
         String typeValue = typeFilter.getValue();
         String activeStatusValue = activeFilter.getValue();
-        var filter = new RoleFilter(
-                searchValue, typeFilterValue(typeValue), activeFilterValue(activeStatusValue));
+        var filter = new RoleFilter(searchValue, typeFilterValue(typeValue), activeFilterValue(activeStatusValue));
         List<Role> refreshedRoles = roleService.search(filter);
         Map<Long, Long> refreshedMemberCounts =
                 roleService.userCounts(refreshedRoles.stream().map(Role::getId).toList());
@@ -339,8 +342,7 @@ public class RolesView extends MasterDetailLayout {
         }
 
         if (!role.isSystemRole() && role.isActive() && roleService.canDeleteRoles()) {
-            var deactivate =
-                    new Button("Deactivate", event -> requestDestructive(() -> confirmDeactivate(role)));
+            var deactivate = new Button("Deactivate", event -> requestDestructive(() -> confirmDeactivate(role)));
             deactivate.addThemeVariants(ButtonVariant.ERROR);
             actions.add(deactivate);
         }
