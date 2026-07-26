@@ -1,0 +1,26 @@
+INVENTORY MANAGEMENT QA POC █
+FINAL PROJECT [JAVA / VAADIN / SPRING BOOT]
+
+~~~
+
+AUTHORS: MANUEL RODRIGUEZ + CRISTIAN DE LA HOZ
+PURPOSE: QUALITY-ASSURED INVENTORY MANAGEMENT
+STATUS: IN DEVELOPMENT
+
+~~~
+
+ABOUT:
+
+Inventory Management QA POC is our final project: an inventory platform for
+managing products, categories, suppliers, users, and stock movements.
+
+It combines a Vaadin workspace, REST APIs, Keycloak security, PostgreSQL
+persistence, automated tests, and correlated operational telemetry.
+
+~~~
+
+FOCUS:
+ - Inventory catalog and stock ledger
+ - Role-based access control
+ - Vaadin and REST workflows
+ - Automated testing and observability
