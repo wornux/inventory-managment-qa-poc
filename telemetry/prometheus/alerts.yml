@@ -26,3 +26,11 @@ groups:
         for: 2m
         labels:
           severity: warning
+      - alert: LowStockProducts
+        expr: wornux_inventory_low_stock_products{job="application"} > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Products are at or below minimum stock
+          description: "{{ $value }} active products require inventory attention."

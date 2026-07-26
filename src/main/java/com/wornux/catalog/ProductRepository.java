@@ -40,6 +40,14 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
     @EntityGraph(attributePaths = {"category", "supplier"})
     List<Product> findByActiveTrueOrderBySkuAsc();
 
+    @Query("""
+            select count(product)
+            from Product product
+            where product.active = true
+                and product.quantityOnHand <= product.minimumStock
+            """)
+    long countActiveLowStockProducts();
+
     @Override
     @EntityGraph(attributePaths = {"category", "supplier"})
     Page<Product> findAll(Specification<Product> specification, Pageable pageable);

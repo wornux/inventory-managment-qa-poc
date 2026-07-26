@@ -15,7 +15,7 @@ scrape_configs:
     metrics_path: /actuator/prometheus
     follow_redirects: false
     static_configs:
-      - targets: ["host.docker.internal:8080"]
+      - targets: ["__APP_HOST__:__APP_PORT__"]
         labels:
           application: qa-final-project
   - job_name: prometheus

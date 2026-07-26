@@ -1,6 +1,7 @@
 package com.wornux.ui.views;
 
 import com.vaadin.flow.component.Component;
+import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -482,7 +483,7 @@ public class RolesView extends Div {
 
     private void configureSidebar() {
         sidebar.addClassName("product-sidebar");
-        sidebar.setModal(false);
+        sidebar.setModality(ModalityMode.MODELESS);
         sidebar.setDraggable(false);
         sidebar.setResizable(false);
         sidebar.setCloseOnEsc(true);

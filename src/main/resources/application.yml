@@ -60,14 +60,19 @@ spring:
             client-id: inventory-management
             client-secret: ${KEYCLOAK_CLIENT_SECRET:}
             authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope: openid,profile,email
         provider:
           keycloak:
-            issuer-uri: http://localhost:7777/realms/wornux
+            authorization-uri: ${KEYCLOAK_PUBLIC_URL:http://localhost:7777}/realms/wornux/protocol/openid-connect/auth
+            token-uri: ${KEYCLOAK_INTERNAL_URL:${KEYCLOAK_PUBLIC_URL:http://localhost:7777}}/realms/wornux/protocol/openid-connect/token
+            jwk-set-uri: ${KEYCLOAK_INTERNAL_URL:${KEYCLOAK_PUBLIC_URL:http://localhost:7777}}/realms/wornux/protocol/openid-connect/certs
+            user-info-uri: ${KEYCLOAK_INTERNAL_URL:${KEYCLOAK_PUBLIC_URL:http://localhost:7777}}/realms/wornux/protocol/openid-connect/userinfo
             user-name-attribute: preferred_username
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:7777/realms/wornux
+          issuer-uri: ${KEYCLOAK_PUBLIC_URL:http://localhost:7777}/realms/wornux
+          jwk-set-uri: ${KEYCLOAK_INTERNAL_URL:${KEYCLOAK_PUBLIC_URL:http://localhost:7777}}/realms/wornux/protocol/openid-connect/certs
   datasource:
     url: jdbc:postgresql://localhost:5432/stocks
     username: ${DB_USERNAME:postgres}
