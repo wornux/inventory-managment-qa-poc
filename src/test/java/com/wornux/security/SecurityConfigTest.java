@@ -91,11 +91,7 @@ class SecurityConfigTest {
         var authenticationFailureCounter = mock(Counter.class);
 
         assertThat(config.securityFilterChainApi(
-                        http,
-                        jwtConverter,
-                        authenticationEntryPoint,
-                        accessDeniedHandler,
-                        canonicalRequestFilter))
+                        http, jwtConverter, authenticationEntryPoint, accessDeniedHandler, canonicalRequestFilter))
                 .isSameAs(apiChain);
         assertThat(config.securityFilterChain(
                         http, oidcUserService, canonicalRequestFilter, authenticationFailureCounter))

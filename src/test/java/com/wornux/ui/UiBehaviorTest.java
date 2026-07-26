@@ -140,11 +140,18 @@ class UiBehaviorTest {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         var layout = new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class));
-        var profile = descendants(layout).filter(Details.class::isInstance).map(Details.class::cast).findFirst().orElseThrow();
+        var profile = descendants(layout)
+                .filter(Details.class::isInstance)
+                .map(Details.class::cast)
+                .findFirst()
+                .orElseThrow();
 
         assertThat(textOf(profile)).contains("Alice Example", "alice@example.com", "Sign out");
         assertThat(profile.isOpened()).isFalse();
-        assertThat(descendants(profile).filter(Button.class::isInstance).map(Button.class::cast).map(Button::getText))
+        assertThat(descendants(profile)
+                        .filter(Button.class::isInstance)
+                        .map(Button.class::cast)
+                        .map(Button::getText))
                 .containsExactly("Sign out");
     }
 
