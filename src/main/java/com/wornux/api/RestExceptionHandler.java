@@ -2,6 +2,8 @@ package com.wornux.api;
 
 import com.wornux.catalog.ProductException;
 import com.wornux.catalog.StockMovementException;
+import com.wornux.observability.CanonicalRequestContext;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import java.util.List;
 import org.springframework.dao.DataAccessException;
@@ -20,70 +22,96 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 public class RestExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    ResponseEntity<ApiResponse<Void>> methodArgumentNotValid(MethodArgumentNotValidException exception) {
+    ResponseEntity<ApiResponse<Void>> methodArgumentNotValid(
+            MethodArgumentNotValidException exception, HttpServletRequest request) {
         List<ApiErrorResponse> errors = exception.getBindingResult().getFieldErrors().stream()
                 .map(this::toError)
                 .toList();
 
-        return failure(HttpStatus.BAD_REQUEST, "Request validation failed.", errors);
+        return failure(request, exception, HttpStatus.BAD_REQUEST, "Request validation failed.", errors);
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    ResponseEntity<ApiResponse<Void>> constraintViolation(ConstraintViolationException exception) {
+    ResponseEntity<ApiResponse<Void>> constraintViolation(
+            ConstraintViolationException exception, HttpServletRequest request) {
         List<ApiErrorResponse> errors = exception.getConstraintViolations().stream()
                 .map(violation ->
                         new ApiErrorResponse(violation.getPropertyPath().toString(), violation.getMessage()))
                 .toList();
 
-        return failure(HttpStatus.BAD_REQUEST, "Request validation failed.", errors);
+        return failure(request, exception, HttpStatus.BAD_REQUEST, "Request validation failed.", errors);
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    ResponseEntity<ApiResponse<Void>> methodArgumentTypeMismatch(MethodArgumentTypeMismatchException exception) {
+    ResponseEntity<ApiResponse<Void>> methodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException exception, HttpServletRequest request) {
         return failure(
+                request,
+                exception,
                 HttpStatus.BAD_REQUEST,
                 "Request validation failed.",
                 List.of(new ApiErrorResponse(exception.getName(), "Invalid value.")));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    ResponseEntity<ApiResponse<Void>> httpMessageNotReadable(HttpMessageNotReadableException exception) {
+    ResponseEntity<ApiResponse<Void>> httpMessageNotReadable(
+            HttpMessageNotReadableException exception, HttpServletRequest request) {
         return failure(
+                request,
+                exception,
                 HttpStatus.BAD_REQUEST,
                 "Request validation failed.",
                 List.of(new ApiErrorResponse(null, "Request body is not valid JSON.")));
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    ResponseEntity<ApiResponse<Void>> authentication(AuthenticationException exception) {
-        return failure(HttpStatus.UNAUTHORIZED, "Authentication failed.", List.of(error(exception.getMessage())));
+    ResponseEntity<ApiResponse<Void>> authentication(AuthenticationException exception, HttpServletRequest request) {
+        CanonicalRequestContext.authenticationFailure(request, "api_authentication");
+
+        return failure(
+                request,
+                exception,
+                HttpStatus.UNAUTHORIZED,
+                "Authentication failed.",
+                List.of(error("A valid bearer token is required.")));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    ResponseEntity<ApiResponse<Void>> accessDenied(AccessDeniedException exception) {
-        return failure(HttpStatus.FORBIDDEN, "Access denied.", List.of(error(exception.getMessage())));
+    ResponseEntity<ApiResponse<Void>> accessDenied(AccessDeniedException exception, HttpServletRequest request) {
+        CanonicalRequestContext.authorizationFailure(request);
+
+        return failure(
+                request,
+                exception,
+                HttpStatus.FORBIDDEN,
+                "Access denied.",
+                List.of(error("Permission is required.")));
     }
 
     @ExceptionHandler(ProductException.class)
-    ResponseEntity<ApiResponse<Void>> product(ProductException exception) {
+    ResponseEntity<ApiResponse<Void>> product(ProductException exception, HttpServletRequest request) {
         HttpStatus status = productStatus(exception.getMessage());
 
-        return failure(status, exception.getMessage(), List.of(error(exception.getMessage())));
+        return failure(request, exception, status, exception.getMessage(), List.of(error(exception.getMessage())));
     }
 
     @ExceptionHandler(StockMovementException.class)
-    ResponseEntity<ApiResponse<Void>> stockMovement(StockMovementException exception) {
+    ResponseEntity<ApiResponse<Void>> stockMovement(StockMovementException exception, HttpServletRequest request) {
         HttpStatus status = exception.getCause() instanceof DataAccessException
                 ? HttpStatus.INTERNAL_SERVER_ERROR
                 : HttpStatus.BAD_REQUEST;
 
-        return failure(status, exception.getMessage(), List.of(error(exception.getMessage())));
+        return failure(request, exception, status, exception.getMessage(), List.of(error(exception.getMessage())));
     }
 
     @ExceptionHandler(RuntimeException.class)
-    ResponseEntity<ApiResponse<Void>> runtime(RuntimeException exception) {
+    ResponseEntity<ApiResponse<Void>> runtime(RuntimeException exception, HttpServletRequest request) {
         return failure(
-                HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected API error.", List.of(error(exception.getMessage())));
+                request,
+                exception,
+                HttpStatus.INTERNAL_SERVER_ERROR,
+                "Unexpected API error.",
+                List.of(error("The request could not be completed.")));
     }
 
     private ApiErrorResponse toError(FieldError error) {
@@ -95,7 +123,13 @@ public class RestExceptionHandler {
     }
 
     private ResponseEntity<ApiResponse<Void>> failure(
-            HttpStatus status, String message, List<ApiErrorResponse> errors) {
+            HttpServletRequest request,
+            Throwable exception,
+            HttpStatus status,
+            String message,
+            List<ApiErrorResponse> errors) {
+        CanonicalRequestContext.error(request, exception);
+
         return ResponseEntity.status(status).body(ApiResponse.failure(message, errors));
     }
 

@@ -2,6 +2,7 @@ package com.wornux.api.security;
 
 import com.wornux.api.ApiErrorResponse;
 import com.wornux.api.ApiResponse;
+import com.wornux.observability.CanonicalRequestContext;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -26,11 +27,13 @@ public class ApiAccessDeniedHandler implements AccessDeniedHandler {
     public void handle(
             HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException)
             throws IOException {
+        CanonicalRequestContext.authorizationFailure(request);
+
         response.setStatus(HttpStatus.FORBIDDEN.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 
-        ApiResponse<Void> body = ApiResponse.failure(
-                "Access denied.", List.of(new ApiErrorResponse(null, accessDeniedException.getMessage())));
+        ApiResponse<Void> body =
+                ApiResponse.failure("Access denied.", List.of(new ApiErrorResponse(null, "Permission is required.")));
 
         jsonMapper.writeValue(response.getOutputStream(), body);
     }

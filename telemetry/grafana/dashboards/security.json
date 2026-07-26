@@ -1,0 +1,11 @@
+{
+  "editable": false,
+  "panels": [
+    {"type":"stat","title":"Authentication Failures","gridPos":{"h":8,"w":8,"x":0,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"sum(increase(wornux_security_authentication_failures_total[1h]))","legendFormat":"last hour"}]},
+    {"type":"timeseries","title":"Authentication Failure Rate","gridPos":{"h":8,"w":8,"x":8,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"fieldConfig":{"defaults":{"unit":"reqps"},"overrides":[]},"targets":[{"expr":"sum(rate(wornux_security_authentication_failures_total[5m]))","legendFormat":"failures/s"}]},
+    {"type":"timeseries","title":"HTTP 401 and 403","gridPos":{"h":8,"w":8,"x":16,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"fieldConfig":{"defaults":{"unit":"reqps"},"overrides":[]},"targets":[{"expr":"sum by (status) (rate(http_server_requests_seconds_count{job=\"application\",status=~\"401|403\"}[5m]))","legendFormat":"{{status}}"}]},
+    {"type":"logs","title":"Authentication and OIDC Events","gridPos":{"h":10,"w":12,"x":0,"y":8},"datasource":{"type":"loki","uid":"loki"},"targets":[{"expr":"{service_name=\"qa-final-project\"} | json | authenticationFailure != ``","refId":"A"}]},
+    {"type":"logs","title":"Security Errors and Trace Links","gridPos":{"h":10,"w":12,"x":12,"y":8},"datasource":{"type":"loki","uid":"loki"},"targets":[{"expr":"{service_name=\"qa-final-project\"} |~ `\\\"authorizationFailure\\\":true|\\\"authenticationFailure\\\":\\\"oidc_failure\\\"`","refId":"A"}]}
+  ],
+  "refresh":"15s","schemaVersion":41,"tags":["observability","security"],"time":{"from":"now-6h","to":"now"},"timezone":"browser","title":"Security","uid":"security","version":1
+}

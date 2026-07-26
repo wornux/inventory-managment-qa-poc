@@ -4,6 +4,7 @@ import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
+import io.micrometer.observation.annotation.Observed;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
@@ -60,6 +61,7 @@ public class StockMovementService {
         return stockMovementRepository.findDistinctUsernames();
     }
 
+    @Observed(name = "wornux.stock.movement", contextualName = "record-stock-movement")
     @Transactional
     public StockMovement recordStockMovement(@Valid StockMovementRequest request) {
         requireCreate();
