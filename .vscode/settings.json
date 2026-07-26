@@ -1,0 +1,7 @@
+{
+    "java.autobuild.enabled": true,
+    "java.configuration.updateBuildConfiguration": "automatic",
+    "java.compile.nullAnalysis.mode": "disabled",
+    "java.debug.settings.hotCodeReplace": "auto",
+    "java.debug.settings.onBuildFailureProceed": true
+}
