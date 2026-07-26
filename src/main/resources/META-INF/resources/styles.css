@@ -456,30 +456,36 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
 }
 
 .status-badge {
-  border-radius: var(--vaadin-radius-s);
+  align-items: center;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 14%, transparent);
+  box-sizing: border-box;
   display: inline-flex;
   font-size: var(--aura-font-size-xs);
-  font-weight: var(--aura-font-weight-semibold);
-  padding: var(--vaadin-padding-xs) var(--vaadin-padding-s);
+  font-weight: var(--aura-font-weight-medium);
+  line-height: var(--aura-line-height-xs);
+  min-height: 1.375rem;
+  padding: 0.125rem 0.5rem;
+  white-space: nowrap;
 }
 
 .stock-ok {
-  background: var(--aura-green);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-green) 14%, transparent);
+  color: var(--aura-green-text);
 }
 
 .stock-low {
-  background: var(--aura-orange);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-orange) 16%, transparent);
+  color: var(--aura-orange-text);
 }
 
 .active-yes {
-  background: var(--aura-blue);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-blue) 14%, transparent);
+  color: var(--aura-blue-text);
 }
 
 .active-no {
-  background: var(--vaadin-background-container-strong);
+  background: var(--vaadin-background-container);
   color: var(--vaadin-text-color-secondary);
 }
 
@@ -497,8 +503,8 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
 .movement-return_in,
 .movement-adjustment_in,
 .movement-initial_stock {
-  background: var(--aura-green);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-green) 14%, transparent);
+  color: var(--aura-green-text);
 }
 
 .movement-sale,
@@ -506,8 +512,8 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
 .movement-adjustment_out,
 .movement-damaged,
 .movement-lost {
-  background: var(--aura-red);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-red) 14%, transparent);
+  color: var(--aura-red-text);
 }
 
 .row-actions {
@@ -565,7 +571,7 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
 }
 
 vaadin-dialog.dependency-create-dialog {
-  --vaadin-dialog-background: var(--aura-surface-color);
+  --vaadin-dialog-background: var(--aura-surface-color-solid);
   --vaadin-dialog-border-color: var(--vaadin-text-color);
   --vaadin-dialog-border-radius: var(--vaadin-radius-s);
   --vaadin-dialog-border-width: 1px;
