@@ -9,6 +9,9 @@
       "mainClass": "com.wornux.Application",
       "cwd": "${workspaceFolder}",
       "console": "internalConsole",
+      "env": {
+        "SPRING_PROFILES_ACTIVE": "dev"
+      },
       "vmArgs": "--add-opens java.base/sun.nio.ch=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED --add-opens java.base/java.io=ALL-UNNAMED --add-opens java.base/sun.security.action=ALL-UNNAMED --add-opens java.desktop/java.beans=ALL-UNNAMED --add-opens java.desktop/com.sun.beans=ALL-UNNAMED --add-opens java.desktop/com.sun.beans.introspect=ALL-UNNAMED --add-opens java.desktop/com.sun.beans.util=ALL-UNNAMED --add-opens java.base/jdk.internal.loader=ALL-UNNAMED -XX:+AllowEnhancedClassRedefinition -XX:+ClassUnloading -javaagent:${env:HOME}/.vaadin/vscode-plugin/hotswap-agent.jar",
       "stepFilters": {
         "skipClasses": [
