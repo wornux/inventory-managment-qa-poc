@@ -8,6 +8,8 @@ import static org.mockito.Mockito.when;
 
 import com.wornux.api.security.ApiAccessDeniedHandler;
 import com.wornux.api.security.ApiAuthenticationEntryPoint;
+import com.wornux.observability.CanonicalRequestFilter;
+import io.micrometer.core.instrument.Counter;
 import java.util.ArrayList;
 import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
@@ -76,6 +78,7 @@ class SecurityConfigTest {
 
             return customize(invocation, oauthLogin, http);
         });
+        when(http.addFilterAfter(any(), any())).thenReturn(http);
         when(http.with(any(), any())).thenAnswer(invocation -> customize(invocation, invocation.getArgument(0), http));
         when(http.build()).thenReturn(apiChain);
 
@@ -84,10 +87,19 @@ class SecurityConfigTest {
         var authenticationEntryPoint = mock(ApiAuthenticationEntryPoint.class);
         var accessDeniedHandler = mock(ApiAccessDeniedHandler.class);
         var oidcUserService = mock(AppOidcUserService.class);
+        var canonicalRequestFilter = mock(CanonicalRequestFilter.class);
+        var authenticationFailureCounter = mock(Counter.class);
 
-        assertThat(config.securityFilterChainApi(http, jwtConverter, authenticationEntryPoint, accessDeniedHandler))
+        assertThat(config.securityFilterChainApi(
+                        http,
+                        jwtConverter,
+                        authenticationEntryPoint,
+                        accessDeniedHandler,
+                        canonicalRequestFilter))
                 .isSameAs(apiChain);
-        assertThat(config.securityFilterChain(http, oidcUserService)).isSameAs(apiChain);
+        assertThat(config.securityFilterChain(
+                        http, oidcUserService, canonicalRequestFilter, authenticationFailureCounter))
+                .isSameAs(apiChain);
 
         verify(http)
                 .securityMatcher(
@@ -103,7 +115,7 @@ class SecurityConfigTest {
         verify(exceptions).accessDeniedHandler(accessDeniedHandler);
         verify(jwt).jwtAuthenticationConverter(jwtConverter);
         verify(oauthLogin).loginPage("/login");
-        verify(oauthLogin).failureUrl("/login?error");
+        verify(oauthLogin).failureHandler(any());
         verify(userInfo).oidcUserService(oidcUserService);
 
         var apiAuthorization = authorizationRegistries.get(0);
@@ -120,7 +132,8 @@ class SecurityConfigTest {
 
         var browserAuthorization = authorizationRegistries.get(1);
 
-        verify(browserAuthorization).requestMatchers("/styles/**", "/icons/**");
+        verify(browserAuthorization)
+                .requestMatchers("/styles/**", "/icons/**", "/actuator/health", "/actuator/prometheus");
         verify(permittedRequests.get(1)).permitAll();
     }
 

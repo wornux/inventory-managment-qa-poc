@@ -1,0 +1,14 @@
+{
+  "editable": false,
+  "panels": [
+    {"type":"timeseries","title":"Process CPU","gridPos":{"h":8,"w":8,"x":0,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"fieldConfig":{"defaults":{"unit":"percentunit"},"overrides":[]},"targets":[{"expr":"process_cpu_usage{job=\"application\"}","legendFormat":"process"},{"expr":"system_cpu_usage{job=\"application\"}","legendFormat":"system"}]},
+    {"type":"timeseries","title":"JVM Memory","gridPos":{"h":8,"w":8,"x":8,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"fieldConfig":{"defaults":{"unit":"bytes"},"overrides":[]},"targets":[{"expr":"sum by (area) (jvm_memory_used_bytes{job=\"application\"})","legendFormat":"used {{area}}"},{"expr":"sum by (area) (jvm_memory_max_bytes{job=\"application\"})","legendFormat":"max {{area}}"}]},
+    {"type":"timeseries","title":"GC Pause Rate","gridPos":{"h":8,"w":8,"x":16,"y":0},"datasource":{"type":"prometheus","uid":"prometheus"},"fieldConfig":{"defaults":{"unit":"s"},"overrides":[]},"targets":[{"expr":"sum(rate(jvm_gc_pause_seconds_sum{job=\"application\"}[5m]))","legendFormat":"pause seconds/s"}]},
+    {"type":"timeseries","title":"Threads and Classes","gridPos":{"h":8,"w":8,"x":0,"y":8},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"jvm_threads_live_threads{job=\"application\"}","legendFormat":"live threads"},{"expr":"jvm_classes_loaded_classes{job=\"application\"}","legendFormat":"loaded classes"}]},
+    {"type":"stat","title":"Application Uptime","gridPos":{"h":8,"w":8,"x":8,"y":8},"datasource":{"type":"prometheus","uid":"prometheus"},"fieldConfig":{"defaults":{"unit":"s"},"overrides":[]},"targets":[{"expr":"process_uptime_seconds{job=\"application\"}"}]},
+    {"type":"timeseries","title":"Hikari Connections","gridPos":{"h":8,"w":8,"x":16,"y":8},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"hikaricp_connections_active{job=\"application\"}","legendFormat":"active"},{"expr":"hikaricp_connections_idle{job=\"application\"}","legendFormat":"idle"},{"expr":"hikaricp_connections_pending{job=\"application\"}","legendFormat":"pending"},{"expr":"hikaricp_connections_max{job=\"application\"}","legendFormat":"max"}]},
+    {"type":"stat","title":"Scrape Targets","gridPos":{"h":7,"w":12,"x":0,"y":16},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"up","legendFormat":"{{job}}"}]},
+    {"type":"timeseries","title":"Hikari Timeouts","gridPos":{"h":7,"w":12,"x":12,"y":16},"datasource":{"type":"prometheus","uid":"prometheus"},"targets":[{"expr":"rate(hikaricp_connections_timeout_total{job=\"application\"}[5m])","legendFormat":"timeouts/s"}]}
+  ],
+  "refresh":"15s","schemaVersion":41,"tags":["observability","infrastructure"],"time":{"from":"now-1h","to":"now"},"timezone":"browser","title":"Infrastructure","uid":"infrastructure","version":1
+}
