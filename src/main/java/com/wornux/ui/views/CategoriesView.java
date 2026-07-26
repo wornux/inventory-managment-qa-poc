@@ -2,7 +2,6 @@ package com.wornux.ui.views;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Key;
-import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -13,9 +12,11 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -43,7 +44,7 @@ import org.springframework.security.access.AccessDeniedException;
 @Route("categories")
 @PageTitle("Categories")
 @PermitAll
-public class CategoriesView extends Main {
+public class CategoriesView extends MasterDetailLayout {
 
     private enum FormMode {
         CREATE,
@@ -59,7 +60,7 @@ public class CategoriesView extends Main {
     private final ValueSignal<String> activeStatusSignal = new ValueSignal<>("Active");
     private final Signal<CategoryFilter> filterSignal =
             Signal.computed(() -> new CategoryFilter(searchSignal.get(), activeFilterValue(activeStatusSignal.get())));
-    private final Dialog sidebar = new Dialog();
+    private final VerticalLayout detailContent = new VerticalLayout();
     private final Dialog deactivateDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
     private final BeanValidationBinder<CategoryRequest> binder = new BeanValidationBinder<>(CategoryRequest.class);
@@ -67,7 +68,7 @@ public class CategoriesView extends Main {
     private final TextField name = new TextField("Name");
     private final TextArea description = new TextArea("Description");
     private final Checkbox active = new Checkbox("Active");
-    private final H1 sidebarTitle = new H1();
+    private final H2 detailTitle = new H2();
     private final Button save = new Button("Save");
     private final Button cancel = new Button("Cancel");
     private final Button close = new Button("Close");
@@ -75,21 +76,33 @@ public class CategoriesView extends Main {
     private final H1 deactivateTitle = new H1("Deactivate this category?");
     private final Span deactivateText = new Span();
     private Category selectedCategory;
+    private Category deactivateTarget;
     private GridLazyDataView<Category> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
+    private Runnable deferredAction;
 
     public CategoriesView(CategoryService categoryService) {
         this.categoryService = categoryService;
         setSizeFull();
-        addClassName("products-view");
+        addClassName("crud-master-detail");
+        setExpandMaster(true);
+        setMasterSize("32rem");
+        setDetailSize("30rem");
+        setOverlaySize("min(30rem, 100%)");
         configureFilters();
         configureGrid();
         gridDataView = PageableGridBinding.bind(grid, filterSignal, categoryService::search);
-        configureSidebar();
+        configureDetail();
         configureDialogs();
 
-        add(buildHeader(), buildToolbar(), grid);
+        var master = new Main();
+        master.setSizeFull();
+        master.addClassName("products-view");
+        master.add(buildHeader(), buildToolbar(), grid);
+        setMaster(master);
+        addBackdropClickListener(event -> requestClose());
+        addDetailEscapePressListener(event -> requestClose());
     }
 
     private Component buildHeader() {
@@ -109,7 +122,7 @@ public class CategoriesView extends Main {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newCategory = new Button("New Category", event -> openCreate());
+        Button newCategory = new Button("New Category", event -> requestSwitch(this::openCreate));
         newCategory.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newCategory.setVisible(categoryService.canCreateCategories());
 
@@ -147,7 +160,7 @@ public class CategoriesView extends Main {
         grid.addColumn(new ComponentRenderer<>(this::actions))
                 .setHeader("Actions")
                 .setAutoWidth(true);
-        grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.addItemClickListener(event -> requestSwitch(() -> openView(event.getItem())));
         grid.sort(List.of(new GridSortOrder<>(categoryColumn, SortDirection.ASCENDING)));
     }
 
@@ -174,15 +187,16 @@ public class CategoriesView extends Main {
     private Component actions(Category category) {
         var layout = new HorizontalLayout();
         layout.addClassName("row-actions");
-        Button view = new Button("View", event -> openView(category));
+        Button view = new Button("View", event -> requestSwitch(() -> openView(category)));
         layout.add(view);
 
         if (categoryService.canUpdateCategories()) {
-            layout.add(new Button("Edit", event -> openEdit(category)));
+            layout.add(new Button("Edit", event -> requestSwitch(() -> openEdit(category))));
         }
 
         if (categoryService.canDeleteCategories() && category.isActive()) {
-            Button deactivate = new Button("Deactivate", event -> confirmDeactivate(category));
+            Button deactivate =
+                    new Button("Deactivate", event -> requestDestructive(() -> confirmDeactivate(category)));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(deactivate);
         }
@@ -190,20 +204,7 @@ public class CategoriesView extends Main {
         return layout;
     }
 
-    private void configureSidebar() {
-        sidebar.addClassName("product-sidebar");
-        sidebar.setModality(ModalityMode.MODELESS);
-        sidebar.setDraggable(false);
-        sidebar.setResizable(false);
-        sidebar.setCloseOnEsc(true);
-        sidebar.setCloseOnOutsideClick(true);
-        sidebar.addOpenedChangeListener(event -> {
-            if (!event.isOpened() && dirty && mode != FormMode.VIEW) {
-                sidebar.open();
-                dirtyDialog.open();
-            }
-        });
-
+    private void configureDetail() {
         configureFields();
         bindForm();
 
@@ -218,16 +219,18 @@ public class CategoriesView extends Main {
         close.addClickListener(event -> requestClose());
         edit.addClickListener(event -> {
             if (selectedCategory != null) {
-                openEdit(selectedCategory);
+                requestSwitch(() -> openEdit(selectedCategory));
             }
         });
 
         var footer = new HorizontalLayout(save, cancel, close, edit);
-        footer.addClassName("sidebar-footer");
+        footer.addClassName("crud-detail-footer");
 
-        var content = new VerticalLayout(sidebarTitle, form, footer);
-        content.addClassName("sidebar-content");
-        sidebar.add(content);
+        detailTitle.setId("category-detail-title");
+        detailContent.add(detailTitle, form, footer);
+        detailContent.addClassName("crud-detail-content");
+        detailContent.getElement().setAttribute("aria-labelledby", "category-detail-title");
+        detailContent.getElement().setAttribute("role", "region");
     }
 
     private void configureFields() {
@@ -250,7 +253,10 @@ public class CategoriesView extends Main {
     private void configureDialogs() {
         Button confirm = new Button("Deactivate", event -> deactivateSelected());
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        Button cancelDeactivate = new Button("Cancel", event -> deactivateDialog.close());
+        Button cancelDeactivate = new Button("Cancel", event -> {
+            deactivateTarget = null;
+            deactivateDialog.close();
+        });
         deactivateDialog.add(
                 new VerticalLayout(deactivateTitle, deactivateText, new HorizontalLayout(confirm, cancelDeactivate)));
 
@@ -259,17 +265,27 @@ public class CategoriesView extends Main {
         Button discard = new Button("Discard", event -> {
             dirty = false;
             dirtyDialog.close();
-            sidebar.close();
+            if (deferredAction != null) {
+                Runnable action = deferredAction;
+                deferredAction = null;
+                action.run();
+                return;
+            }
+
+            setDetail(null);
         });
         discard.addThemeVariants(ButtonVariant.LUMO_ERROR);
-        Button stay = new Button("Cancel", event -> dirtyDialog.close());
+        Button stay = new Button("Cancel", event -> {
+            deferredAction = null;
+            dirtyDialog.close();
+        });
         dirtyDialog.add(new VerticalLayout(dirtyTitle, dirtyText, new HorizontalLayout(discard, stay)));
     }
 
     private void openCreate() {
         mode = FormMode.CREATE;
         selectedCategory = null;
-        sidebarTitle.setText("New Category");
+        detailTitle.setText("New Category");
         resetForm(new CategoryRequest());
         setReadOnly(false);
         save.setVisible(true);
@@ -277,13 +293,13 @@ public class CategoriesView extends Main {
         close.setVisible(false);
         edit.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openEdit(Category category) {
         selectedCategory = categoryService.get(category.getId());
         mode = FormMode.EDIT;
-        sidebarTitle.setText("Edit Category");
+        detailTitle.setText("Edit Category");
         resetForm(fromCategory(selectedCategory));
         setReadOnly(false);
         save.setVisible(true);
@@ -291,13 +307,13 @@ public class CategoriesView extends Main {
         close.setVisible(false);
         edit.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openView(Category category) {
         selectedCategory = categoryService.get(category.getId());
         mode = FormMode.VIEW;
-        sidebarTitle.setText("Category Details");
+        detailTitle.setText("Category Details");
         resetForm(fromCategory(selectedCategory));
         setReadOnly(true);
         save.setVisible(false);
@@ -305,7 +321,7 @@ public class CategoriesView extends Main {
         close.setVisible(true);
         edit.setVisible(categoryService.canUpdateCategories());
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void resetForm(CategoryRequest request) {
@@ -344,7 +360,7 @@ public class CategoriesView extends Main {
             }
 
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             refreshGrid();
         } catch (CategoryException | AccessDeniedException exception) {
             showError(exception.getMessage());
@@ -352,7 +368,7 @@ public class CategoriesView extends Main {
     }
 
     private void confirmDeactivate(Category category) {
-        selectedCategory = category;
+        deactivateTarget = category;
         long activeProducts = categoryService.activeProductCount(category.getId());
 
         if (activeProducts > 0) {
@@ -369,10 +385,11 @@ public class CategoriesView extends Main {
 
     private void deactivateSelected() {
         try {
-            categoryService.deactivate(selectedCategory.getId());
+            categoryService.deactivate(deactivateTarget.getId());
             deactivateDialog.close();
+            deactivateTarget = null;
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             showSuccess("Category deactivated.");
             refreshGrid();
         } catch (CategoryException | AccessDeniedException exception) {
@@ -380,14 +397,38 @@ public class CategoriesView extends Main {
         }
     }
 
+    private void requestDestructive(Runnable action) {
+        boolean discardDetail = dirty && mode != FormMode.VIEW;
+        requestSwitch(() -> {
+            if (discardDetail) {
+                selectedCategory = null;
+                setDetail(null);
+            }
+
+            action.run();
+        });
+    }
+
+    private void requestSwitch(Runnable action) {
+        if (dirty && mode != FormMode.VIEW) {
+            deferredAction = action;
+            dirtyDialog.open();
+            return;
+        }
+
+        deferredAction = null;
+        action.run();
+    }
+
     private void requestClose() {
+        deferredAction = null;
         if (dirty && mode != FormMode.VIEW) {
             dirtyDialog.open();
             return;
         }
 
         dirty = false;
-        sidebar.close();
+        setDetail(null);
     }
 
     private void setReadOnly(boolean readOnly) {

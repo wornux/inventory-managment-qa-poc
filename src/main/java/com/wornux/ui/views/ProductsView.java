@@ -2,7 +2,6 @@ package com.wornux.ui.views;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Key;
-import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -13,9 +12,11 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -49,7 +50,7 @@ import org.springframework.security.access.AccessDeniedException;
 @Route("products")
 @PageTitle("Products")
 @PermitAll
-public class ProductsView extends Main {
+public class ProductsView extends MasterDetailLayout {
 
     private enum FormMode {
         CREATE,
@@ -79,7 +80,7 @@ public class ProductsView extends Main {
                     : supplierFilterSignal.get().getId(),
             activeFilterValue(activeStatusSignal.get()),
             lowStockSignal.get()));
-    private final Dialog sidebar = new Dialog();
+    private final VerticalLayout detailContent = new VerticalLayout();
     private final Dialog deleteDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
     private final BeanValidationBinder<ProductRequest> binder = new BeanValidationBinder<>(ProductRequest.class);
@@ -93,30 +94,42 @@ public class ProductsView extends Main {
     private final ComboBox<Category> category = new ComboBox<>("Category");
     private final ComboBox<Supplier> supplier = new ComboBox<>("Supplier");
     private final Checkbox active = new Checkbox("Active");
-    private final H1 sidebarTitle = new H1();
+    private final H2 detailTitle = new H2();
     private final Button save = new Button("Save");
     private final Button cancel = new Button("Cancel");
     private final Button close = new Button("Close");
     private List<Category> categories = new ArrayList<>();
     private List<Supplier> suppliers = new ArrayList<>();
     private Product selectedProduct;
+    private Product deleteTarget;
     private GridLazyDataView<Product> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
+    private Runnable deferredAction;
 
     public ProductsView(ProductService productService) {
         this.productService = productService;
         setSizeFull();
-        addClassName("products-view");
+        addClassName("crud-master-detail");
+        setExpandMaster(true);
+        setMasterSize("44rem");
+        setDetailSize("30rem");
+        setOverlaySize("min(30rem, 100%)");
         categories = productService.activeCategories();
         suppliers = productService.activeSuppliers();
         configureFilters();
         configureGrid();
         gridDataView = PageableGridBinding.bind(grid, filterSignal, productService::search);
-        configureSidebar();
+        configureDetail();
         configureDialogs();
 
-        add(buildHeader(), buildToolbar(), grid);
+        var master = new Main();
+        master.setSizeFull();
+        master.addClassName("products-view");
+        master.add(buildHeader(), buildToolbar(), grid);
+        setMaster(master);
+        addBackdropClickListener(event -> requestClose());
+        addDetailEscapePressListener(event -> requestClose());
     }
 
     private Component buildHeader() {
@@ -136,7 +149,7 @@ public class ProductsView extends Main {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newProduct = new Button("New Product", event -> openCreate());
+        Button newProduct = new Button("New Product", event -> requestSwitch(this::openCreate));
         newProduct.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newProduct.setVisible(productService.canCreateProducts());
 
@@ -197,7 +210,7 @@ public class ProductsView extends Main {
         grid.addColumn(new ComponentRenderer<>(this::actions))
                 .setHeader("Actions")
                 .setAutoWidth(true);
-        grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.addItemClickListener(event -> requestSwitch(() -> openView(event.getItem())));
         grid.sort(List.of(new GridSortOrder<>(productColumn, SortDirection.ASCENDING)));
     }
 
@@ -229,15 +242,15 @@ public class ProductsView extends Main {
     private Component actions(Product product) {
         var layout = new HorizontalLayout();
         layout.addClassName("row-actions");
-        Button view = new Button("View", event -> openView(product));
+        Button view = new Button("View", event -> requestSwitch(() -> openView(product)));
         layout.add(view);
 
         if (productService.canUpdateProducts()) {
-            layout.add(new Button("Edit", event -> openEdit(product)));
+            layout.add(new Button("Edit", event -> requestSwitch(() -> openEdit(product))));
         }
 
         if (productService.canDeleteProducts()) {
-            Button delete = new Button("Delete", event -> confirmDelete(product));
+            Button delete = new Button("Delete", event -> requestDestructive(() -> confirmDelete(product)));
             delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(delete);
         }
@@ -245,20 +258,7 @@ public class ProductsView extends Main {
         return layout;
     }
 
-    private void configureSidebar() {
-        sidebar.addClassName("product-sidebar");
-        sidebar.setModality(ModalityMode.MODELESS);
-        sidebar.setDraggable(false);
-        sidebar.setResizable(false);
-        sidebar.setCloseOnEsc(true);
-        sidebar.setCloseOnOutsideClick(true);
-        sidebar.addOpenedChangeListener(event -> {
-            if (!event.isOpened() && dirty) {
-                sidebar.open();
-                dirtyDialog.open();
-            }
-        });
-
+    private void configureDetail() {
         configureFields();
         bindForm();
 
@@ -273,11 +273,13 @@ public class ProductsView extends Main {
         close.addClickListener(event -> requestClose());
 
         var footer = new HorizontalLayout(save, cancel, close);
-        footer.addClassName("sidebar-footer");
+        footer.addClassName("crud-detail-footer");
 
-        var content = new VerticalLayout(sidebarTitle, form, footer);
-        content.addClassName("sidebar-content");
-        sidebar.add(content);
+        detailTitle.setId("product-detail-title");
+        detailContent.add(detailTitle, form, footer);
+        detailContent.addClassName("crud-detail-content");
+        detailContent.getElement().setAttribute("aria-labelledby", "product-detail-title");
+        detailContent.getElement().setAttribute("role", "region");
     }
 
     private void configureFields() {
@@ -339,7 +341,10 @@ public class ProductsView extends Main {
         var deleteText = new Span("Are you sure you want to delete this product?");
         Button confirm = new Button("Delete", event -> deleteSelected());
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        Button cancelDelete = new Button("Cancel", event -> deleteDialog.close());
+        Button cancelDelete = new Button("Cancel", event -> {
+            deleteTarget = null;
+            deleteDialog.close();
+        });
         deleteDialog.add(new VerticalLayout(deleteTitle, deleteText, new HorizontalLayout(confirm, cancelDelete)));
 
         var dirtyTitle = new H1("Unsaved changes");
@@ -347,50 +352,60 @@ public class ProductsView extends Main {
         Button discard = new Button("Discard", event -> {
             dirty = false;
             dirtyDialog.close();
-            sidebar.close();
+            if (deferredAction != null) {
+                Runnable action = deferredAction;
+                deferredAction = null;
+                action.run();
+                return;
+            }
+
+            setDetail(null);
         });
         discard.addThemeVariants(ButtonVariant.LUMO_ERROR);
-        Button stay = new Button("Cancel", event -> dirtyDialog.close());
+        Button stay = new Button("Cancel", event -> {
+            deferredAction = null;
+            dirtyDialog.close();
+        });
         dirtyDialog.add(new VerticalLayout(dirtyTitle, dirtyText, new HorizontalLayout(discard, stay)));
     }
 
     private void openCreate() {
         mode = FormMode.CREATE;
         selectedProduct = null;
-        sidebarTitle.setText("New Product");
+        detailTitle.setText("New Product");
         resetForm(new ProductRequest());
         setReadOnly(false);
         save.setVisible(true);
         cancel.setVisible(true);
         close.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openEdit(Product product) {
         selectedProduct = productService.get(product.getId());
         mode = FormMode.EDIT;
-        sidebarTitle.setText("Edit Product");
+        detailTitle.setText("Edit Product");
         resetForm(fromProduct(selectedProduct));
         setReadOnly(false);
         save.setVisible(true);
         cancel.setVisible(true);
         close.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openView(Product product) {
         selectedProduct = productService.get(product.getId());
         mode = FormMode.VIEW;
-        sidebarTitle.setText("Product Details");
+        detailTitle.setText("Product Details");
         resetForm(fromProduct(selectedProduct));
         setReadOnly(true);
         save.setVisible(false);
         cancel.setVisible(false);
         close.setVisible(true);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void resetForm(ProductRequest request) {
@@ -423,7 +438,7 @@ public class ProductsView extends Main {
             }
 
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             refreshGrid();
         } catch (ProductException | AccessDeniedException exception) {
             showError(exception.getMessage());
@@ -431,14 +446,24 @@ public class ProductsView extends Main {
     }
 
     private void confirmDelete(Product product) {
-        selectedProduct = product;
+        deleteTarget = product;
         deleteDialog.open();
     }
 
     private void deleteSelected() {
         try {
-            productService.delete(selectedProduct.getId());
+            Long deletedId = deleteTarget.getId();
+            boolean deletedDetailOpen = selectedProduct != null && selectedProduct.getId().equals(deletedId);
+            productService.delete(deletedId);
             deleteDialog.close();
+            deleteTarget = null;
+
+            if (deletedDetailOpen) {
+                selectedProduct = null;
+                dirty = false;
+                setDetail(null);
+            }
+
             showSuccess("Product removed.");
             refreshGrid();
         } catch (ProductException | AccessDeniedException exception) {
@@ -446,14 +471,38 @@ public class ProductsView extends Main {
         }
     }
 
+    private void requestDestructive(Runnable action) {
+        boolean discardDetail = dirty && mode != FormMode.VIEW;
+        requestSwitch(() -> {
+            if (discardDetail) {
+                selectedProduct = null;
+                setDetail(null);
+            }
+
+            action.run();
+        });
+    }
+
+    private void requestSwitch(Runnable action) {
+        if (dirty && mode != FormMode.VIEW) {
+            deferredAction = action;
+            dirtyDialog.open();
+            return;
+        }
+
+        deferredAction = null;
+        action.run();
+    }
+
     private void requestClose() {
+        deferredAction = null;
         if (dirty && mode != FormMode.VIEW) {
             dirtyDialog.open();
             return;
         }
 
         dirty = false;
-        sidebar.close();
+        setDetail(null);
     }
 
     private void setReadOnly(boolean readOnly) {

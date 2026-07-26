@@ -2,7 +2,6 @@ package com.wornux.ui.views;
 
 import com.vaadin.flow.component.Component;
 import com.vaadin.flow.component.Key;
-import com.vaadin.flow.component.ModalityMode;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -14,9 +13,11 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -52,7 +53,7 @@ import org.springframework.security.access.AccessDeniedException;
 @Route("users")
 @PageTitle("Users")
 @PermitAll
-public class UsersView extends Main {
+public class UsersView extends MasterDetailLayout {
 
     private enum FormMode {
         CREATE,
@@ -71,7 +72,7 @@ public class UsersView extends Main {
     private final ValueSignal<String> activeStatusSignal = new ValueSignal<>("Active");
     private final Signal<UserFilter> filterSignal =
             Signal.computed(() -> new UserFilter(searchSignal.get(), activeFilterValue(activeStatusSignal.get())));
-    private final Dialog sidebar = new Dialog();
+    private final VerticalLayout detailContent = new VerticalLayout();
     private final Dialog deactivateDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
     private final BeanValidationBinder<UserRequest> binder = new BeanValidationBinder<>(UserRequest.class);
@@ -81,29 +82,41 @@ public class UsersView extends Main {
     private final Checkbox active = new Checkbox("Active");
     private final TextField createdAt = new TextField("Created at");
     private final MultiSelectComboBox<Role> roles = new MultiSelectComboBox<>("Roles");
-    private final H1 sidebarTitle = new H1();
+    private final H2 detailTitle = new H2();
     private final Button save = new Button("Save");
     private final Button cancel = new Button("Cancel");
     private final Button close = new Button("Close");
     private final Button edit = new Button("Edit");
     private List<Role> availableRoles = new ArrayList<>();
     private AppUser selectedUser;
+    private AppUser deactivateTarget;
     private GridLazyDataView<AppUser> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
+    private Runnable deferredAction;
 
     public UsersView(UserService userService) {
         this.userService = userService;
         setSizeFull();
-        addClassName("products-view");
+        addClassName("crud-master-detail");
+        setExpandMaster(true);
+        setMasterSize("36rem");
+        setDetailSize("30rem");
+        setOverlaySize("min(30rem, 100%)");
         availableRoles = userService.activeRoles();
         configureFilters();
         configureGrid();
         gridDataView = PageableGridBinding.bind(grid, filterSignal, userService::search);
-        configureSidebar();
+        configureDetail();
         configureDialogs();
 
-        add(buildHeader(), buildToolbar(), grid);
+        var master = new Main();
+        master.setSizeFull();
+        master.addClassName("products-view");
+        master.add(buildHeader(), buildToolbar(), grid);
+        setMaster(master);
+        addBackdropClickListener(event -> requestClose());
+        addDetailEscapePressListener(event -> requestClose());
     }
 
     private Component buildHeader() {
@@ -123,7 +136,7 @@ public class UsersView extends Main {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newUser = new Button("New User", event -> openCreate());
+        Button newUser = new Button("New User", event -> requestSwitch(this::openCreate));
         newUser.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newUser.setVisible(userService.canCreateUsers());
 
@@ -163,7 +176,7 @@ public class UsersView extends Main {
         grid.addColumn(new ComponentRenderer<>(this::actions))
                 .setHeader("Actions")
                 .setAutoWidth(true);
-        grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.addItemClickListener(event -> requestSwitch(() -> openView(event.getItem())));
         grid.sort(List.of(new GridSortOrder<>(userColumn, SortDirection.ASCENDING)));
     }
 
@@ -188,15 +201,16 @@ public class UsersView extends Main {
     private Component actions(AppUser user) {
         var layout = new HorizontalLayout();
         layout.addClassName("row-actions");
-        Button view = new Button("View", event -> openView(user));
+        Button view = new Button("View", event -> requestSwitch(() -> openView(user)));
         layout.add(view);
 
         if (userService.canUpdateUsers()) {
-            layout.add(new Button("Edit", event -> openEdit(user)));
+            layout.add(new Button("Edit", event -> requestSwitch(() -> openEdit(user))));
         }
 
         if (userService.canDeleteUsers() && user.isActive()) {
-            Button deactivate = new Button("Deactivate", event -> confirmDeactivate(user));
+            Button deactivate =
+                    new Button("Deactivate", event -> requestDestructive(() -> confirmDeactivate(user)));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(deactivate);
         }
@@ -204,20 +218,7 @@ public class UsersView extends Main {
         return layout;
     }
 
-    private void configureSidebar() {
-        sidebar.addClassName("product-sidebar");
-        sidebar.setModality(ModalityMode.MODELESS);
-        sidebar.setDraggable(false);
-        sidebar.setResizable(false);
-        sidebar.setCloseOnEsc(true);
-        sidebar.setCloseOnOutsideClick(true);
-        sidebar.addOpenedChangeListener(event -> {
-            if (!event.isOpened() && dirty && mode != FormMode.VIEW) {
-                sidebar.open();
-                dirtyDialog.open();
-            }
-        });
-
+    private void configureDetail() {
         configureFields();
         bindForm();
 
@@ -232,16 +233,18 @@ public class UsersView extends Main {
         close.addClickListener(event -> requestClose());
         edit.addClickListener(event -> {
             if (selectedUser != null) {
-                openEdit(selectedUser);
+                requestSwitch(() -> openEdit(selectedUser));
             }
         });
 
         var footer = new HorizontalLayout(save, cancel, close, edit);
-        footer.addClassName("sidebar-footer");
+        footer.addClassName("crud-detail-footer");
 
-        var content = new VerticalLayout(sidebarTitle, form, footer);
-        content.addClassName("sidebar-content");
-        sidebar.add(content);
+        detailTitle.setId("user-detail-title");
+        detailContent.add(detailTitle, form, footer);
+        detailContent.addClassName("crud-detail-content");
+        detailContent.getElement().setAttribute("aria-labelledby", "user-detail-title");
+        detailContent.getElement().setAttribute("role", "region");
     }
 
     private void configureFields() {
@@ -276,7 +279,10 @@ public class UsersView extends Main {
         var deactivateText = new Span("They will not be able to log in.");
         Button confirm = new Button("Deactivate", event -> deactivateSelected());
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        Button cancelDeactivate = new Button("Cancel", event -> deactivateDialog.close());
+        Button cancelDeactivate = new Button("Cancel", event -> {
+            deactivateTarget = null;
+            deactivateDialog.close();
+        });
         deactivateDialog.add(
                 new VerticalLayout(deactivateTitle, deactivateText, new HorizontalLayout(confirm, cancelDeactivate)));
 
@@ -285,17 +291,27 @@ public class UsersView extends Main {
         Button discard = new Button("Discard", event -> {
             dirty = false;
             dirtyDialog.close();
-            sidebar.close();
+            if (deferredAction != null) {
+                Runnable action = deferredAction;
+                deferredAction = null;
+                action.run();
+                return;
+            }
+
+            setDetail(null);
         });
         discard.addThemeVariants(ButtonVariant.LUMO_ERROR);
-        Button stay = new Button("Cancel", event -> dirtyDialog.close());
+        Button stay = new Button("Cancel", event -> {
+            deferredAction = null;
+            dirtyDialog.close();
+        });
         dirtyDialog.add(new VerticalLayout(dirtyTitle, dirtyText, new HorizontalLayout(discard, stay)));
     }
 
     private void openCreate() {
         mode = FormMode.CREATE;
         selectedUser = null;
-        sidebarTitle.setText("New User");
+        detailTitle.setText("New User");
         resetForm(new UserRequest(), null);
         setReadOnly(false);
         save.setVisible(true);
@@ -303,13 +319,13 @@ public class UsersView extends Main {
         close.setVisible(false);
         edit.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openEdit(AppUser user) {
         selectedUser = userService.get(user.getId());
         mode = FormMode.EDIT;
-        sidebarTitle.setText("Edit User");
+        detailTitle.setText("Edit User");
         resetForm(fromUser(selectedUser), selectedUser.getCreatedAt());
         setReadOnly(false);
         save.setVisible(true);
@@ -317,13 +333,13 @@ public class UsersView extends Main {
         close.setVisible(false);
         edit.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openView(AppUser user) {
         selectedUser = userService.get(user.getId());
         mode = FormMode.VIEW;
-        sidebarTitle.setText("User Details");
+        detailTitle.setText("User Details");
         resetForm(fromUser(selectedUser), selectedUser.getCreatedAt());
         setReadOnly(true);
         save.setVisible(false);
@@ -331,7 +347,7 @@ public class UsersView extends Main {
         close.setVisible(true);
         edit.setVisible(userService.canUpdateUsers());
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void resetForm(UserRequest request, Instant createdAtValue) {
@@ -373,7 +389,7 @@ public class UsersView extends Main {
             }
 
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             refreshGrid();
         } catch (UserException | AccessDeniedException exception) {
             showError(exception.getMessage());
@@ -381,16 +397,17 @@ public class UsersView extends Main {
     }
 
     private void confirmDeactivate(AppUser user) {
-        selectedUser = user;
+        deactivateTarget = user;
         deactivateDialog.open();
     }
 
     private void deactivateSelected() {
         try {
-            userService.deactivate(selectedUser.getId());
+            userService.deactivate(deactivateTarget.getId());
             deactivateDialog.close();
+            deactivateTarget = null;
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             showSuccess("User deactivated.");
             refreshGrid();
         } catch (UserException | AccessDeniedException exception) {
@@ -398,14 +415,38 @@ public class UsersView extends Main {
         }
     }
 
+    private void requestDestructive(Runnable action) {
+        boolean discardDetail = dirty && mode != FormMode.VIEW;
+        requestSwitch(() -> {
+            if (discardDetail) {
+                selectedUser = null;
+                setDetail(null);
+            }
+
+            action.run();
+        });
+    }
+
+    private void requestSwitch(Runnable action) {
+        if (dirty && mode != FormMode.VIEW) {
+            deferredAction = action;
+            dirtyDialog.open();
+            return;
+        }
+
+        deferredAction = null;
+        action.run();
+    }
+
     private void requestClose() {
+        deferredAction = null;
         if (dirty && mode != FormMode.VIEW) {
             dirtyDialog.open();
             return;
         }
 
         dirty = false;
-        sidebar.close();
+        setDetail(null);
     }
 
     private void setReadOnly(boolean readOnly) {
