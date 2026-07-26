@@ -1,7 +1,6 @@
 package com.wornux.ui.views;
 
 import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -35,15 +34,22 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 import com.wornux.catalog.Category;
+import com.wornux.catalog.CategoryException;
+import com.wornux.catalog.CategoryRequest;
+import com.wornux.catalog.CategoryService;
 import com.wornux.catalog.Product;
 import com.wornux.catalog.ProductException;
 import com.wornux.catalog.ProductFilter;
 import com.wornux.catalog.ProductRequest;
 import com.wornux.catalog.ProductService;
 import com.wornux.catalog.Supplier;
+import com.wornux.catalog.SupplierException;
+import com.wornux.catalog.SupplierRequest;
+import com.wornux.catalog.SupplierService;
 import jakarta.annotation.security.PermitAll;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.security.access.AccessDeniedException;
 
@@ -59,6 +65,8 @@ public class ProductsView extends MasterDetailLayout {
     }
 
     private final ProductService productService;
+    private final CategoryService categoryService;
+    private final SupplierService supplierService;
     private final Grid<Product> grid = new Grid<>(Product.class, false);
     private final TextField search = new TextField();
     private final ComboBox<Category> categoryFilter = new ComboBox<>("Category");
@@ -92,7 +100,9 @@ public class ProductsView extends MasterDetailLayout {
     private final IntegerField quantityOnHand = new IntegerField("Quantity on hand");
     private final IntegerField minimumStock = new IntegerField("Minimum stock");
     private final ComboBox<Category> category = new ComboBox<>("Category");
+    private final Button createCategory = new Button("Create category", event -> openCategoryCreateDialog());
     private final ComboBox<Supplier> supplier = new ComboBox<>("Supplier");
+    private final Button createSupplier = new Button("Create supplier", event -> openSupplierCreateDialog());
     private final Checkbox active = new Checkbox("Active");
     private final H2 detailTitle = new H2();
     private final Button save = new Button("Save");
@@ -107,8 +117,11 @@ public class ProductsView extends MasterDetailLayout {
     private boolean dirty;
     private Runnable deferredAction;
 
-    public ProductsView(ProductService productService) {
+    public ProductsView(
+            ProductService productService, CategoryService categoryService, SupplierService supplierService) {
         this.productService = productService;
+        this.categoryService = categoryService;
+        this.supplierService = supplierService;
         setSizeFull();
         addClassName("crud-master-detail");
         setExpandMaster(true);
@@ -262,12 +275,32 @@ public class ProductsView extends MasterDetailLayout {
         configureFields();
         bindForm();
 
+        var categoryAssignment = new HorizontalLayout(category, createCategory);
+        categoryAssignment.addClassName("product-dependency-field");
+        categoryAssignment.setAlignItems(HorizontalLayout.Alignment.END);
+        categoryAssignment.setWidthFull();
+        categoryAssignment.setFlexGrow(1, category);
+
+        var supplierAssignment = new HorizontalLayout(supplier, createSupplier);
+        supplierAssignment.addClassName("product-dependency-field");
+        supplierAssignment.setAlignItems(HorizontalLayout.Alignment.END);
+        supplierAssignment.setWidthFull();
+        supplierAssignment.setFlexGrow(1, supplier);
+
         var form = new FormLayout();
-        form.add(sku, name, description, unitPrice, quantityOnHand, minimumStock, category, supplier, active);
+        form.add(
+                sku,
+                name,
+                description,
+                unitPrice,
+                quantityOnHand,
+                minimumStock,
+                categoryAssignment,
+                supplierAssignment,
+                active);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        save.addClickShortcut(Key.ENTER);
         save.addClickListener(event -> saveProduct());
         cancel.addClickListener(event -> requestClose());
         close.addClickListener(event -> requestClose());
@@ -300,9 +333,13 @@ public class ProductsView extends MasterDetailLayout {
         category.setItems(categories);
         category.setItemLabelGenerator(Category::getName);
         category.setRequiredIndicatorVisible(true);
+        createCategory.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        createCategory.setVisible(false);
         supplier.setItems(suppliers);
         supplier.setItemLabelGenerator(Supplier::getName);
         supplier.setClearButtonVisible(true);
+        createSupplier.addThemeVariants(ButtonVariant.TERTIARY, ButtonVariant.SMALL);
+        createSupplier.setVisible(false);
         binder.addValueChangeListener(event -> dirty = true);
     }
 
@@ -367,6 +404,122 @@ public class ProductsView extends MasterDetailLayout {
             dirtyDialog.close();
         });
         dirtyDialog.add(new VerticalLayout(dirtyTitle, dirtyText, new HorizontalLayout(discard, stay)));
+    }
+
+    private void openCategoryCreateDialog() {
+        var dialog = new Dialog();
+        dialog.addClassName("dependency-create-dialog");
+        dialog.getElement().setProperty("ariaLabel", "Create category");
+
+        var chip = new Span("catalog.category.create");
+        chip.addClassName("dependency-dialog-chip");
+        var heading = new H2("Create category");
+        var description = new Span("Add a category without leaving the product form.");
+        description.addClassName("dependency-dialog-description");
+        var nameField = new TextField("Name");
+        nameField.setWidthFull();
+
+        var request = new CategoryRequest();
+        var dialogBinder = new BeanValidationBinder<>(CategoryRequest.class);
+        dialogBinder.bind(nameField, "name");
+
+        var content = new VerticalLayout(chip, heading, description, nameField);
+        content.addClassName("dependency-dialog-content");
+        content.setPadding(false);
+        content.setSpacing(false);
+        dialog.add(content);
+
+        var cancelButton = new Button("Cancel", event -> dialog.close());
+        cancelButton.addClassName("dependency-dialog-action");
+        cancelButton.addThemeVariants(ButtonVariant.TERTIARY);
+        var createButton = new Button("Create", event -> {
+            if (!dialogBinder.writeBeanIfValid(request)) {
+                return;
+            }
+
+            try {
+                Category created = categoryService.create(request);
+                Category filteredCategory = categoryFilter.getValue();
+                categories = new ArrayList<>(categories);
+                categories.removeIf(item -> created.getId().equals(item.getId()));
+                categories.add(created);
+                categories.sort(Comparator.comparing(Category::getName, String.CASE_INSENSITIVE_ORDER));
+                category.setItems(categories);
+                categoryFilter.setItems(categories);
+                categoryFilter.setValue(filteredCategory);
+                category.setValue(created);
+                dialog.close();
+            } catch (CategoryException | AccessDeniedException exception) {
+                showError(exception.getMessage());
+            }
+        });
+        createButton.addClassName("dependency-dialog-action");
+        createButton.addThemeVariants(ButtonVariant.PRIMARY);
+        dialog.getFooter().add(cancelButton, createButton);
+        dialog.addOpenedChangeListener(event -> {
+            if (event.isOpened()) {
+                nameField.focus();
+            }
+        });
+        dialog.open();
+    }
+
+    private void openSupplierCreateDialog() {
+        var dialog = new Dialog();
+        dialog.addClassName("dependency-create-dialog");
+        dialog.getElement().setProperty("ariaLabel", "Create supplier");
+
+        var chip = new Span("catalog.supplier.create");
+        chip.addClassName("dependency-dialog-chip");
+        var heading = new H2("Create supplier");
+        var description = new Span("Add a supplier without leaving the product form.");
+        description.addClassName("dependency-dialog-description");
+        var nameField = new TextField("Name");
+        nameField.setWidthFull();
+
+        var request = new SupplierRequest();
+        var dialogBinder = new BeanValidationBinder<>(SupplierRequest.class);
+        dialogBinder.bind(nameField, "name");
+
+        var content = new VerticalLayout(chip, heading, description, nameField);
+        content.addClassName("dependency-dialog-content");
+        content.setPadding(false);
+        content.setSpacing(false);
+        dialog.add(content);
+
+        var cancelButton = new Button("Cancel", event -> dialog.close());
+        cancelButton.addClassName("dependency-dialog-action");
+        cancelButton.addThemeVariants(ButtonVariant.TERTIARY);
+        var createButton = new Button("Create", event -> {
+            if (!dialogBinder.writeBeanIfValid(request)) {
+                return;
+            }
+
+            try {
+                Supplier created = supplierService.create(request);
+                Supplier filteredSupplier = supplierFilter.getValue();
+                suppliers = new ArrayList<>(suppliers);
+                suppliers.removeIf(item -> created.getId().equals(item.getId()));
+                suppliers.add(created);
+                suppliers.sort(Comparator.comparing(Supplier::getName, String.CASE_INSENSITIVE_ORDER));
+                supplier.setItems(suppliers);
+                supplierFilter.setItems(suppliers);
+                supplierFilter.setValue(filteredSupplier);
+                supplier.setValue(created);
+                dialog.close();
+            } catch (SupplierException | AccessDeniedException exception) {
+                showError(exception.getMessage());
+            }
+        });
+        createButton.addClassName("dependency-dialog-action");
+        createButton.addThemeVariants(ButtonVariant.PRIMARY);
+        dialog.getFooter().add(cancelButton, createButton);
+        dialog.addOpenedChangeListener(event -> {
+            if (event.isOpened()) {
+                nameField.focus();
+            }
+        });
+        dialog.open();
     }
 
     private void openCreate() {
@@ -513,7 +666,9 @@ public class ProductsView extends MasterDetailLayout {
         quantityOnHand.setReadOnly(readOnly);
         minimumStock.setReadOnly(readOnly);
         category.setReadOnly(readOnly);
+        createCategory.setVisible(!readOnly && categoryService.canCreateCategories());
         supplier.setReadOnly(readOnly);
+        createSupplier.setVisible(!readOnly && supplierService.canCreateSuppliers());
         active.setReadOnly(readOnly);
     }
 

@@ -556,6 +556,63 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
   width: 100%;
 }
 
+.product-dependency-field {
+  gap: var(--vaadin-gap-xs);
+}
+
+.product-dependency-field vaadin-combo-box {
+  min-width: 0;
+}
+
+vaadin-dialog.dependency-create-dialog {
+  --vaadin-dialog-background: var(--aura-surface-color);
+  --vaadin-dialog-border-color: var(--vaadin-text-color);
+  --vaadin-dialog-border-radius: var(--vaadin-radius-s);
+  --vaadin-dialog-border-width: 1px;
+  --vaadin-dialog-max-width: min(42rem, calc(100vw - var(--vaadin-padding-m) - var(--vaadin-padding-m)));
+  --vaadin-dialog-min-width: min(42rem, calc(100vw - var(--vaadin-padding-m) - var(--vaadin-padding-m)));
+  --vaadin-dialog-padding: clamp(var(--vaadin-padding-m), 4vw, var(--vaadin-padding-xl));
+  --vaadin-dialog-shadow: 0.55rem 0.55rem 0 var(--vaadin-text-color);
+  --vaadin-overlay-backdrop-background: rgb(0 0 0 / 90%);
+  --vaadin-overlay-viewport-inset: var(--vaadin-padding-m);
+}
+
+vaadin-dialog.dependency-create-dialog::part(footer) {
+  gap: var(--vaadin-gap-s);
+  justify-content: flex-end;
+}
+
+.dependency-dialog-content {
+  gap: var(--vaadin-gap-m);
+  width: 100%;
+}
+
+.dependency-dialog-content h2 {
+  font-size: var(--aura-font-size-l);
+  font-weight: var(--aura-font-weight-semibold);
+  line-height: var(--aura-line-height-l);
+  margin: 0;
+}
+
+.dependency-dialog-chip {
+  align-self: flex-start;
+  background: var(--vaadin-background-container-strong);
+  border: 1px solid var(--vaadin-text-color);
+  border-radius: var(--vaadin-radius-s);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: var(--aura-font-size-xs);
+  padding: var(--vaadin-padding-xs) var(--vaadin-padding-s);
+}
+
+.dependency-dialog-description {
+  color: var(--vaadin-text-color-secondary);
+  line-height: var(--aura-line-height-m);
+}
+
+.dependency-dialog-action {
+  min-height: 2.75rem;
+}
+
 @media (min-width: 800px) {
   .main-layout {
     --vaadin-app-layout-transition-duration: 0s;
