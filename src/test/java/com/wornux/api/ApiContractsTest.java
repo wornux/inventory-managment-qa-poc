@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.validation.BeanPropertyBindingResult;
@@ -75,10 +76,11 @@ class ApiContractsTest extends AbstractRestController {
     @Test
     void exceptionHandlerMapsValidationAndSecurityFailures() {
         var handler = new RestExceptionHandler();
+        var request = new MockHttpServletRequest();
         var binding = new BeanPropertyBindingResult(new Object(), "request");
         binding.addError(new FieldError("request", "sku", "required"));
 
-        var validation = handler.methodArgumentNotValid(new MethodArgumentNotValidException(null, binding));
+        var validation = handler.methodArgumentNotValid(new MethodArgumentNotValidException(null, binding), request);
 
         assertThat(validation.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(validation.getBody().errors()).containsExactly(new ApiErrorResponse("sku", "required"));
@@ -90,35 +92,39 @@ class ApiContractsTest extends AbstractRestController {
         when(violation.getPropertyPath()).thenReturn(path);
         when(violation.getMessage()).thenReturn("positive");
 
-        var constrained = handler.constraintViolation(new ConstraintViolationException(Set.of(violation)));
+        var constrained = handler.constraintViolation(new ConstraintViolationException(Set.of(violation)), request);
 
         assertThat(constrained.getBody().errors()).containsExactly(new ApiErrorResponse("quantity", "positive"));
-        assertThat(handler.authentication(new BadCredentialsException("bad")).getStatusCode())
+        assertThat(handler.authentication(new BadCredentialsException("bad"), request).getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(handler.accessDenied(new AccessDeniedException("no")).getStatusCode())
+        assertThat(handler.accessDenied(new AccessDeniedException("no"), request).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(handler.runtime(new RuntimeException("boom")).getBody().message())
+        assertThat(handler.runtime(new RuntimeException("boom"), request).getBody().message())
                 .isEqualTo("Unexpected API error.");
     }
 
     @Test
     void exceptionHandlerMapsMalformedRequestsAndStockMovementFailures() {
         var handler = new RestExceptionHandler();
+        var request = new MockHttpServletRequest();
         var mismatch = new MethodArgumentTypeMismatchException(
                 "bad", Instant.class, "createdFrom", null, new IllegalArgumentException("bad"));
 
-        assertThat(handler.methodArgumentTypeMismatch(mismatch).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(handler.methodArgumentTypeMismatch(mismatch).getBody().errors().getFirst().field())
+        assertThat(handler.methodArgumentTypeMismatch(mismatch, request).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(handler.methodArgumentTypeMismatch(mismatch, request).getBody().errors().getFirst().field())
                 .isEqualTo("createdFrom");
 
         var unreadable = new HttpMessageNotReadableException("bad json", mock(HttpInputMessage.class));
 
-        assertThat(handler.httpMessageNotReadable(unreadable).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(handler.stockMovement(new StockMovementException("Invalid movement."))
+        assertThat(handler.httpMessageNotReadable(unreadable, request).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(handler.stockMovement(new StockMovementException("Invalid movement."), request)
                         .getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
         assertThat(handler.stockMovement(new StockMovementException(
-                                "Failed to save movement.", new DataIntegrityViolationException("database")))
+                                "Failed to save movement.", new DataIntegrityViolationException("database")),
+                                request)
                         .getStatusCode())
                 .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
     }
@@ -126,16 +132,18 @@ class ApiContractsTest extends AbstractRestController {
     @Test
     void productErrorsSelectNotFoundConflictAndBadRequestWithoutCaseSensitivity() {
         var handler = new RestExceptionHandler();
+        var request = new MockHttpServletRequest();
 
-        assertThat(handler.product(new ProductException("Product NOT FOUND")).getStatusCode())
+        assertThat(handler.product(new ProductException("Product NOT FOUND"), request).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(handler.product(new ProductException("SKU already exists")).getStatusCode())
+        assertThat(handler.product(new ProductException("SKU already exists"), request).getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
-        assertThat(handler.product(new ProductException("Updated by another user"))
+        assertThat(handler.product(new ProductException("Updated by another user"), request)
                         .getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
-        assertThat(handler.product(new ProductException("invalid")).getStatusCode())
+        assertThat(handler.product(new ProductException("invalid"), request).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(handler.product(new ProductException(null)).getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(handler.product(new ProductException(null), request).getStatusCode())
+                .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 }

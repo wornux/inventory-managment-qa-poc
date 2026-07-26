@@ -110,7 +110,11 @@ class AppOidcUserServiceTest {
         assertThatThrownBy(() -> service.loadUser(request))
                 .isInstanceOfSatisfying(OAuth2AuthenticationException.class, exception -> {
                     assertThat(exception.getError().getErrorCode()).isEqualTo("oidc_provisioning_failed");
-                    assertThat(exception).hasMessage(message).hasCauseInstanceOf(cause);
+                    assertThat(exception)
+                            .hasMessage("OIDC provisioning failed.")
+                            .hasCauseInstanceOf(cause)
+                            .cause()
+                            .hasMessage(message);
                 });
     }
 

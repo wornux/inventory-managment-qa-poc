@@ -1,8 +1,10 @@
 package com.wornux.api.security;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import com.wornux.api.ApiResponse;
+import io.micrometer.core.instrument.Counter;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -26,14 +28,14 @@ class ApiSecurityWritersTest {
         assertThat(response.getContentType()).isEqualTo("application/json");
         assertThat(body.success()).isFalse();
         assertThat(body.message()).isEqualTo("Access denied.");
-        assertThat(body.errors().getFirst().message()).isEqualTo("missing");
+        assertThat(body.errors().getFirst().message()).isEqualTo("Permission is required.");
     }
 
     @Test
     void entryPointWritesStableUnauthorizedMessageWithoutLeakingException() throws Exception {
         var response = new MockHttpServletResponse();
 
-        new ApiAuthenticationEntryPoint(mapper)
+        new ApiAuthenticationEntryPoint(mapper, mock(Counter.class))
                 .commence(new MockHttpServletRequest(), response, new BadCredentialsException("secret"));
         ApiResponse<Object> body = mapper.readValue(response.getContentAsByteArray(), new TypeReference<>() {});
 

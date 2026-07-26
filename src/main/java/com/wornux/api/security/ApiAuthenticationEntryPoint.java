@@ -2,6 +2,8 @@ package com.wornux.api.security;
 
 import com.wornux.api.ApiErrorResponse;
 import com.wornux.api.ApiResponse;
+import com.wornux.observability.CanonicalRequestContext;
+import io.micrometer.core.instrument.Counter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
@@ -17,15 +19,22 @@ import tools.jackson.databind.json.JsonMapper;
 public class ApiAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final JsonMapper jsonMapper;
+    private final Counter authenticationFailureCounter;
 
-    public ApiAuthenticationEntryPoint(JsonMapper jsonMapper) {
+    public ApiAuthenticationEntryPoint(JsonMapper jsonMapper, Counter authenticationFailureCounter) {
         this.jsonMapper = jsonMapper;
+        this.authenticationFailureCounter = authenticationFailureCounter;
     }
 
     @Override
     public void commence(
             HttpServletRequest request, HttpServletResponse response, AuthenticationException authException)
             throws IOException {
+        CanonicalRequestContext.authenticationFailure(request, "api_authentication");
+        if (CanonicalRequestContext.countAuthenticationFailure(request)) {
+            authenticationFailureCounter.increment();
+        }
+
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
 

@@ -39,7 +39,7 @@ public class AppOidcUserService implements OAuth2UserService<OidcUserRequest, Oi
 
             return new DefaultOidcUser(authorities, oidcUser.getIdToken(), oidcUser.getUserInfo(), USERNAME_CLAIM);
         } catch (AuthenticationException | OidcProvisioningException exception) {
-            throw oauthFailure(exception.getMessage(), exception);
+            throw oauthFailure(exception);
         }
     }
 
@@ -51,8 +51,8 @@ public class AppOidcUserService implements OAuth2UserService<OidcUserRequest, Oi
                 oidcUser.getEmail());
     }
 
-    private OAuth2AuthenticationException oauthFailure(String message, RuntimeException cause) {
+    private OAuth2AuthenticationException oauthFailure(RuntimeException cause) {
         return new OAuth2AuthenticationException(
-                new OAuth2Error("oidc_provisioning_failed", message, null), message, cause);
+                new OAuth2Error("oidc_provisioning_failed"), "OIDC provisioning failed.", cause);
     }
 }
