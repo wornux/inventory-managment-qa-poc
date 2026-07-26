@@ -4,7 +4,8 @@ description: >-
   Creates GitHub pull requests for the Inventory Management QA POC using the
   complete remote branch diff, staging as the base, Conventional Commit titles,
   focused implementation details, optional Mermaid diagrams, and a review
-  request for Manuel. Use when asked to create, open, or draft a pull request.
+  request for the author's counterpart. Use when asked to create, open, or
+  draft a pull request.
 argument-hint: "[--draft]"
 ---
 
@@ -134,14 +135,22 @@ Add `--draft` when requested.
 
 ### 7. Request review
 
-For a ready PR, request Manuel directly:
+For a ready PR, request the other repository owner based on the PR author:
 
 ```bash
-gh pr edit <pr-number> --add-reviewer manuujrodcruz
+author="$(gh pr view <pr-number> --json author --jq '.author.login')"
+
+case "$author" in
+  manuujrodcruz) reviewer="cristiandlahoz" ;;
+  cristiandlahoz) reviewer="manuujrodcruz" ;;
+  *) echo "No reviewer rule configured for $author"; exit 1 ;;
+esac
+
+gh pr edit <pr-number> --add-reviewer "$reviewer"
 ```
 
-Do not request reviewers on drafts. Do not tag Clima Call reviewers such as
-Fred or Hector in this repository.
+This prevents self-review: Manuel's PRs go to Cristian, and Cristian's PRs go
+to Manuel. Do not request reviewers on drafts or request any other reviewers.
 
 ### 8. Verify and return
 
