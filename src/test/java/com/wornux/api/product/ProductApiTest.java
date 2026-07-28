@@ -16,12 +16,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class ProductApiTest {
@@ -33,7 +33,7 @@ class ProductApiTest {
 
     @Test
     void mapperConvertsRequestsAndCompleteAndNullableReferences() {
-        var real = new ProductApiMapper(JsonMapper.builderWithJackson2Defaults().build());
+        var real = Mappers.getMapper(ProductApiMapper.class);
         var request = request();
 
         var domain = real.toDomainRequest(request);

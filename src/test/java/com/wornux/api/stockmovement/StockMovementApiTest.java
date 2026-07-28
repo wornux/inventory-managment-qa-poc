@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,7 +31,7 @@ class StockMovementApiTest {
     @Mock
     private StockMovementService service;
 
-    private final StockMovementApiMapper mapper = new StockMovementApiMapper();
+    private final StockMovementApiMapper mapper = Mappers.getMapper(StockMovementApiMapper.class);
 
     @Test
     void mapperPreservesRequestAndLedgerResponseFields() {
