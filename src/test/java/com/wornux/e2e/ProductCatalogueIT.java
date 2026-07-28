@@ -28,7 +28,7 @@ class ProductCatalogueIT extends AbstractInventoryIT {
 
     @BrowserTest
     void catalogue_sorting_and_lazy_paging_reach_the_complete_result_set() {
-        givenNumberedProducts(55);
+        givenNumberedProducts();
         var application = signInAs(INVENTORY_VIEWER);
         application.navigateTo("products");
         var products = new ProductsPage(this);

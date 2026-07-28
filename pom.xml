@@ -170,7 +170,6 @@
                         <includes>
                             <include>src/main/java/**/*.java</include>
                             <include>src/test/java/**/*.java</include>
-                            <include>src/e2e/java/**/*.java</include>
                         </includes>
                         <palantirJavaFormat>
                             <version>2.96.0</version>
@@ -290,29 +289,6 @@
                     <scope>test</scope>
                 </dependency>
             </dependencies>
-            <build>
-                <plugins>
-                    <plugin>
-                        <groupId>org.codehaus.mojo</groupId>
-                        <artifactId>build-helper-maven-plugin</artifactId>
-                        <version>3.6.1</version>
-                        <executions>
-                            <execution>
-                                <id>add-e2e-test-source</id>
-                                <phase>generate-test-sources</phase>
-                                <goals>
-                                    <goal>add-test-source</goal>
-                                </goals>
-                                <configuration>
-                                    <sources>
-                                        <source>src/e2e/java</source>
-                                    </sources>
-                                </configuration>
-                            </execution>
-                        </executions>
-                    </plugin>
-                </plugins>
-            </build>
         </profile>
     </profiles>
     
