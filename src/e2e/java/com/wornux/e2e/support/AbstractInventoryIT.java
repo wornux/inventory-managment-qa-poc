@@ -69,6 +69,7 @@ public abstract class AbstractInventoryIT extends BrowserTestBase {
         properties.add(
                 "spring.security.oauth2.resourceserver.jwt.jwk-set-uri",
                 () -> keycloak("/protocol/openid-connect/certs"));
+        properties.add("app.keycloak.end-session-uri", () -> keycloak("/protocol/openid-connect/logout"));
         properties.add("app.keycloak.admin-bootstrap.enabled", () -> true);
         properties.add("app.keycloak.admin-bootstrap.server-url", E2eEnvironment::keycloakUrl);
         properties.add("app.keycloak.admin-bootstrap.admin-username", () -> "admin");

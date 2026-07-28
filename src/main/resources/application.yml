@@ -106,6 +106,7 @@ app:
   observability:
     grafana-url: ${GRAFANA_URL:http://localhost:3000}
   keycloak:
+    end-session-uri: ${KEYCLOAK_PUBLIC_URL:http://localhost:7777}/realms/wornux/protocol/openid-connect/logout
     admin-bootstrap:
       enabled: ${KEYCLOAK_BOOTSTRAP_ENABLED:true}
       server-url: ${KEYCLOAK_SERVER_URL:http://localhost:7777}

@@ -49,6 +49,6 @@ public final class ApplicationShell {
                 browser.$("vaadin-details").withId("profile-drawer").waitForFirst();
         profile.setProperty("opened", true);
         browser.$(ButtonElement.class).id("sign-out").click();
-        browser.waitUntil(ExpectedConditions.urlContains("?continue"));
+        browser.waitUntil(ExpectedConditions.urlMatches(".*/login$"));
     }
 }
