@@ -1,5 +1,6 @@
 package com.wornux.e2e.support;
 
+import com.wornux.security.authorization.AuthorizationService;
 import org.springframework.jdbc.core.JdbcTemplate;
 
 public final class E2eFixtures {
@@ -8,9 +9,11 @@ public final class E2eFixtures {
     public static final String SUPPLIER = "E2E Supplies";
 
     private final JdbcTemplate jdbc;
+    private final AuthorizationService authorizationService;
 
-    E2eFixtures(JdbcTemplate jdbc) {
+    E2eFixtures(JdbcTemplate jdbc, AuthorizationService authorizationService) {
         this.jdbc = jdbc;
+        this.authorizationService = authorizationService;
     }
 
     void resetScenarioData() {
@@ -43,6 +46,7 @@ public final class E2eFixtures {
                 cross join role
                 where app_user.username = ? and role.code = ?
                 """, E2eEnvironment.ADMIN_USERNAME, roleCode);
+        authorizationService.invalidateAll();
     }
 
     void createProduct(String sku, String name, int quantity, int minimumStock) {

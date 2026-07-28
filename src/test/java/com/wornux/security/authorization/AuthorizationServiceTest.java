@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -37,7 +38,7 @@ class AuthorizationServiceTest {
     }
 
     @Test
-    void can_afterRoleDeactivation_revokesPermissionImmediately() {
+    void can_reusesSnapshotUntilRoleChangeInvalidatesIt() {
         Role role = new Role("VIEWER", "Viewer", null);
         role.update(role.getName(), role.getDescription(), true, Set.of(AppPermission.PRODUCT_VIEW));
         AppUser user = new AppUser("viewer", "viewer@example.com", "issuer", "subject");
@@ -51,7 +52,12 @@ class AuthorizationServiceTest {
 
         role.deactivate();
 
+        assertThat(authorizationService.can(AppPermission.PRODUCT_VIEW)).isTrue();
+
+        authorizationService.invalidateAll();
+
         assertThat(authorizationService.can(AppPermission.PRODUCT_VIEW)).isFalse();
+        verify(appUserRepository, times(2)).findForAuthorization("viewer");
     }
 
     @Test

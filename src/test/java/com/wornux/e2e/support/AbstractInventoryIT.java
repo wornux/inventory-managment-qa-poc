@@ -7,6 +7,7 @@ import com.vaadin.testbench.annotations.RunLocally;
 import com.vaadin.testbench.parallel.Browser;
 import com.wornux.e2e.page.ApplicationShell;
 import com.wornux.e2e.page.LoginPage;
+import com.wornux.security.authorization.AuthorizationService;
 import java.util.List;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +32,7 @@ import org.springframework.test.context.DynamicPropertySource;
         properties = {
             "spring.flyway.locations=classpath:db/migration/prod",
             "vaadin.launch-browser=false",
-            "management.tracing.enabled=false"
+            "management.tracing.export.enabled=false"
         })
 public abstract class AbstractInventoryIT extends BrowserTestBase {
 
@@ -45,6 +46,9 @@ public abstract class AbstractInventoryIT extends BrowserTestBase {
 
     @Autowired
     private JdbcTemplate jdbc;
+
+    @Autowired
+    private AuthorizationService authorizationService;
 
     private E2eFixtures fixtures;
 
@@ -89,10 +93,10 @@ public abstract class AbstractInventoryIT extends BrowserTestBase {
 
     @BeforeAll
     void configureEnvironment() {
-        fixtures = new E2eFixtures(jdbc);
+        fixtures = new E2eFixtures(jdbc, authorizationService);
         KeycloakClientConfigurer.allowApplicationCallback(applicationUrl());
         Parameters.setScreenshotErrorDirectory("target/e2e/screenshots/failures");
-        Parameters.setScreenshotReferenceDirectory("src/e2e/screenshots/reference");
+        Parameters.setScreenshotReferenceDirectory("src/test/screenshots/reference");
     }
 
     @BeforeEach
@@ -117,8 +121,8 @@ public abstract class AbstractInventoryIT extends BrowserTestBase {
         fixtures.createProduct(sku, name, quantity, minimumStock);
     }
 
-    protected void givenNumberedProducts(int count) {
-        for (int index = 0; index < count; index++) {
+    protected void givenNumberedProducts() {
+        for (int index = 0; index < 55; index++) {
             givenProduct("E2E-PAGE-%03d".formatted(index), "Paged Product %03d".formatted(index), 20, 5);
         }
     }

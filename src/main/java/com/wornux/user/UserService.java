@@ -92,8 +92,10 @@ public class UserService {
                 normalizeEmail(request.getEmail()),
                 request.isActive(),
                 requireActiveRoles(request.getRoleIds()));
+        AppUser saved = appUserRepository.save(user);
+        authorizationService.invalidateUser(id);
 
-        return appUserRepository.save(user);
+        return saved;
     }
 
     @Transactional
@@ -108,6 +110,7 @@ public class UserService {
 
         user.deactivate();
         appUserRepository.save(user);
+        authorizationService.invalidateUser(id);
     }
 
     public boolean canCreateUsers() {

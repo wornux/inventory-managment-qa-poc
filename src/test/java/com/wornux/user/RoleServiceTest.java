@@ -1,6 +1,5 @@
 package com.wornux.user;
 
-import static com.wornux.SpecificationTestSupport.predicateCount;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,6 +9,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.wornux.SpecificationTestSupport;
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
 import java.util.Arrays;
@@ -119,7 +119,7 @@ class RoleServiceTest {
         ArgumentCaptor<Specification<Role>> specifications = ArgumentCaptor.captor();
         verify(roleRepository, times(3)).findAll(specifications.capture(), any(Sort.class));
         assertThat(specifications.getAllValues())
-                .extracting(specification -> predicateCount(specification))
+                .extracting(SpecificationTestSupport::predicateCount)
                 .containsExactly(3, 0, 0);
 
         when(roleRepository.findById(1L)).thenReturn(Optional.empty());
@@ -207,7 +207,7 @@ class RoleServiceTest {
     @Test
     void update_enforcesExistenceCustomRoleVersionAndImmutableCode() throws Exception {
         Role role = new Role("CODE", "Old", null, false);
-        set(role, "version", 2L);
+        set(role);
         RoleRequest request = request(AppPermission.PRODUCT_VIEW);
         request.setCode(" code ");
         request.setName(" New ");
@@ -217,6 +217,7 @@ class RoleServiceTest {
         when(roleRepository.save(role)).thenReturn(role);
 
         assertThat(directService().update(1L, request).getName()).isEqualTo("New");
+        verify(authorizationService).invalidateAll();
 
         request.setVersion(3L);
 
@@ -251,6 +252,7 @@ class RoleServiceTest {
 
         assertThat(custom.isActive()).isFalse();
         verify(roleRepository).save(custom);
+        verify(authorizationService).invalidateAll();
 
         when(roleRepository.findById(2L)).thenReturn(Optional.empty());
 
@@ -282,11 +284,11 @@ class RoleServiceTest {
         return new RoleService(roleRepository, appUserRepository, authorizationService);
     }
 
-    private static void set(Object target, String field, Object value) throws Exception {
-        var declared = target.getClass().getDeclaredField(field);
+    private static void set(Object target) throws Exception {
+        var declared = target.getClass().getDeclaredField("version");
         declared.setAccessible(true);
 
-        declared.set(target, value);
+        declared.set(target, (Object) 2L);
     }
 
     private RoleRequest request(AppPermission... permissions) {

@@ -31,22 +31,19 @@ public final class ApplicationShell {
     }
 
     public void openMobileNavigation() {
-        browser.$("vaadin-drawer-toggle")
-                .withId("main-layout-toggle")
-                .waitForFirst()
-                .click();
+        browser.$("vaadin-drawer-toggle").withId("main-layout-toggle").single().click();
     }
 
     public boolean mobileNavigationButtonIsVisible() {
         return browser.$("vaadin-drawer-toggle")
                 .withId("main-layout-toggle")
-                .waitForFirst()
+                .single()
                 .isDisplayed();
     }
 
     public void signOut() {
         TestBenchElement profile =
-                browser.$("vaadin-details").withId("profile-drawer").waitForFirst();
+                browser.$("vaadin-details").withId("profile-drawer").single();
         profile.setProperty("opened", true);
         browser.$(ButtonElement.class).id("sign-out").click();
         browser.waitUntil(ExpectedConditions.urlMatches(".*/login$"));

@@ -126,8 +126,10 @@ public class RoleService {
                 trimToNull(request.getDescription()),
                 request.isActive(),
                 requireAssignablePermissions(request.getPermissions()));
+        Role saved = roleRepository.save(role);
+        authorizationService.invalidateAll();
 
-        return roleRepository.save(role);
+        return saved;
     }
 
     @Transactional
@@ -137,6 +139,7 @@ public class RoleService {
         validateCustomRole(role);
         role.deactivate();
         roleRepository.save(role);
+        authorizationService.invalidateAll();
     }
 
     public boolean canCreateRoles() {
