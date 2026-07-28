@@ -76,13 +76,14 @@ class StockMovementApiTest {
         when(service.search(any(), any())).thenReturn(new PageImpl<>(List.of(movement), pageable, 21));
         var controller = new StockMovementController(service, mapper);
 
-        var response = controller.search(from, to, 4L, MovementType.SALE, "operator", pageable).getBody();
+        var response = controller
+                .search(from, to, 4L, MovementType.SALE, "operator", pageable)
+                .getBody();
 
         assertThat(response.page().number()).isEqualTo(1);
         ArgumentCaptor<StockMovementFilter> filter = ArgumentCaptor.forClass(StockMovementFilter.class);
         verify(service).search(filter.capture(), eq(pageable));
-        assertThat(filter.getValue())
-                .isEqualTo(new StockMovementFilter(from, to, 4L, MovementType.SALE, "operator"));
+        assertThat(filter.getValue()).isEqualTo(new StockMovementFilter(from, to, 4L, MovementType.SALE, "operator"));
     }
 
     @Test

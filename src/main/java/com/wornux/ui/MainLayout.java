@@ -62,6 +62,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
         this.authenticationContext = authenticationContext;
         this.accessService = accessService;
 
+        setId("main-layout");
         addClassName("main-layout");
         setHeightFull();
         setPrimarySection(Section.DRAWER);
@@ -113,6 +114,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
 
     private DrawerToggle createMobileDrawerToggle(String className, String ariaLabel) {
         var toggle = new DrawerToggle();
+        toggle.setId(className);
         toggle.addThemeVariants(ButtonVariant.TERTIARY);
         toggle.addClassName(className);
         toggle.setAriaLabel(ariaLabel);
@@ -188,6 +190,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
 
     private SideNavItem navItem(String label, String path, Component icon) {
         var item = new SideNavItem(label, path);
+        item.setId(path.isBlank() ? "nav-overview" : "nav-" + path);
         item.setPrefixComponent(icon);
         item.setMatchNested(true);
 
@@ -225,10 +228,12 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
         summary.addClassName("profile-drawer-card__summary");
 
         var logout = new Button("Sign out", VaadinIcon.SIGN_OUT.create(), event -> authenticationContext.logout());
+        logout.setId("sign-out");
         logout.addThemeVariants(ButtonVariant.TERTIARY);
         logout.addClassName("profile-drawer-card__logout");
 
         var details = new Details(summary, logout);
+        details.setId("profile-drawer");
         details.addClassName("profile-drawer-card");
 
         return details;

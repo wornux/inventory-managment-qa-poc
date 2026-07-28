@@ -1,5 +1,6 @@
 package com.wornux.catalog;
 
+import static com.wornux.SpecificationTestSupport.predicateCount;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -81,7 +82,13 @@ class StockMovementServiceTest {
 
         assertThat(service.search(filter, pageable)).isSameAs(expected);
         assertThat(service.search(null, pageable)).isSameAs(expected);
-        verify(stockMovementRepository, times(2)).findAll(any(Specification.class), eq(pageable));
+        assertThat(service.search(new StockMovementFilter(null, null, null, null, null), pageable))
+                .isSameAs(expected);
+        ArgumentCaptor<Specification<StockMovement>> specifications = ArgumentCaptor.captor();
+        verify(stockMovementRepository, times(3)).findAll(specifications.capture(), eq(pageable));
+        assertThat(specifications.getAllValues())
+                .extracting(specification -> predicateCount(specification))
+                .containsExactly(5, 0, 0);
     }
 
     @Test

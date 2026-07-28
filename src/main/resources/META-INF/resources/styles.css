@@ -456,30 +456,36 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
 }
 
 .status-badge {
-  border-radius: var(--vaadin-radius-s);
+  align-items: center;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, currentColor 14%, transparent);
+  box-sizing: border-box;
   display: inline-flex;
   font-size: var(--aura-font-size-xs);
-  font-weight: var(--aura-font-weight-semibold);
-  padding: var(--vaadin-padding-xs) var(--vaadin-padding-s);
+  font-weight: var(--aura-font-weight-medium);
+  line-height: var(--aura-line-height-xs);
+  min-height: 1.375rem;
+  padding: 0.125rem 0.5rem;
+  white-space: nowrap;
 }
 
 .stock-ok {
-  background: var(--aura-green);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-green) 14%, transparent);
+  color: var(--aura-green-text);
 }
 
 .stock-low {
-  background: var(--aura-orange);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-orange) 16%, transparent);
+  color: var(--aura-orange-text);
 }
 
 .active-yes {
-  background: var(--aura-blue);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-blue) 14%, transparent);
+  color: var(--aura-blue-text);
 }
 
 .active-no {
-  background: var(--vaadin-background-container-strong);
+  background: var(--vaadin-background-container);
   color: var(--vaadin-text-color-secondary);
 }
 
@@ -497,8 +503,8 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
 .movement-return_in,
 .movement-adjustment_in,
 .movement-initial_stock {
-  background: var(--aura-green);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-green) 14%, transparent);
+  color: var(--aura-green-text);
 }
 
 .movement-sale,
@@ -506,43 +512,111 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
 .movement-adjustment_out,
 .movement-damaged,
 .movement-lost {
-  background: var(--aura-red);
-  color: var(--aura-accent-contrast-color);
+  background: color-mix(in srgb, var(--aura-red) 14%, transparent);
+  color: var(--aura-red-text);
 }
 
 .row-actions {
   gap: var(--vaadin-gap-xs);
 }
 
-.product-sidebar::part(overlay) {
-  border-radius: 0;
-  height: 100vh;
-  inset: 0 0 0 auto;
-  max-height: none;
-  max-width: min(30rem, 100vw);
-  width: min(30rem, 100vw);
+.crud-master-detail {
+  --aura-master-detail-layout-detail-inset: 0;
+  --vaadin-master-detail-layout-border-color: var(--vaadin-border-color-secondary);
+  --vaadin-master-detail-layout-border-width: 1px;
+  --vaadin-master-detail-layout-detail-background: var(--aura-surface-color);
+  --vaadin-master-detail-layout-detail-shadow: var(--aura-shadow-s);
+  min-height: 0;
 }
 
-.product-sidebar::part(content) {
-  padding: 0;
+.crud-master-detail::part(master),
+.crud-master-detail::part(detail) {
+  min-height: 0;
 }
 
-.sidebar-content {
+.crud-master-detail::part(detail) {
+  overflow: hidden;
+}
+
+.crud-detail-content {
   box-sizing: border-box;
   gap: var(--vaadin-gap-m);
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
   padding: var(--vaadin-padding-l);
   width: 100%;
 }
 
-.sidebar-content h1 {
+.crud-detail-content h2 {
   font-size: var(--aura-font-size-l);
+  font-weight: var(--aura-font-weight-semibold);
+  line-height: var(--aura-line-height-l);
   margin: 0;
 }
 
-.sidebar-footer {
+.crud-detail-footer {
+  flex-wrap: wrap;
   gap: var(--vaadin-gap-s);
   margin-top: auto;
+  width: 100%;
+}
+
+.product-dependency-field {
+  gap: var(--vaadin-gap-xs);
+}
+
+.product-dependency-field vaadin-combo-box {
+  min-width: 0;
+}
+
+vaadin-dialog.dependency-create-dialog {
+  --vaadin-dialog-background: var(--aura-surface-color-solid);
+  --vaadin-dialog-border-color: var(--vaadin-text-color);
+  --vaadin-dialog-border-radius: var(--vaadin-radius-s);
+  --vaadin-dialog-border-width: 1px;
+  --vaadin-dialog-max-width: min(42rem, calc(100vw - var(--vaadin-padding-m) - var(--vaadin-padding-m)));
+  --vaadin-dialog-min-width: min(42rem, calc(100vw - var(--vaadin-padding-m) - var(--vaadin-padding-m)));
+  --vaadin-dialog-padding: clamp(var(--vaadin-padding-m), 4vw, var(--vaadin-padding-xl));
+  --vaadin-dialog-shadow: 0.55rem 0.55rem 0 var(--vaadin-text-color);
+  --vaadin-overlay-backdrop-background: rgb(0 0 0 / 90%);
+  --vaadin-overlay-viewport-inset: var(--vaadin-padding-m);
+}
+
+vaadin-dialog.dependency-create-dialog::part(footer) {
+  gap: var(--vaadin-gap-s);
+  justify-content: flex-end;
+}
+
+.dependency-dialog-content {
+  gap: var(--vaadin-gap-m);
+  width: 100%;
+}
+
+.dependency-dialog-content h2 {
+  font-size: var(--aura-font-size-l);
+  font-weight: var(--aura-font-weight-semibold);
+  line-height: var(--aura-line-height-l);
+  margin: 0;
+}
+
+.dependency-dialog-chip {
+  align-self: flex-start;
+  background: var(--vaadin-background-container-strong);
+  border: 1px solid var(--vaadin-text-color);
+  border-radius: var(--vaadin-radius-s);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: var(--aura-font-size-xs);
+  padding: var(--vaadin-padding-xs) var(--vaadin-padding-s);
+}
+
+.dependency-dialog-description {
+  color: var(--vaadin-text-color-secondary);
+  line-height: var(--aura-line-height-m);
+}
+
+.dependency-dialog-action {
+  min-height: 2.75rem;
 }
 
 @media (min-width: 800px) {
@@ -714,7 +788,8 @@ vaadin-details.profile-drawer-card[opened] .profile-drawer-card__chevron {
     padding: 1.25rem;
   }
 
-  .products-view {
+  .products-view,
+  .crud-detail-content {
     padding: var(--vaadin-padding-m);
   }
 

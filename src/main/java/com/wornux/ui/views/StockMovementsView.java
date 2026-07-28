@@ -12,9 +12,12 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
+import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -50,7 +53,7 @@ import org.springframework.security.access.AccessDeniedException;
 @Route("stock-movements")
 @PageTitle("Stock Movements")
 @PermitAll
-public class StockMovementsView extends Main {
+public class StockMovementsView extends MasterDetailLayout {
 
     private enum FormMode {
         CREATE,
@@ -78,7 +81,7 @@ public class StockMovementsView extends Main {
             productFilterSignal.get() == null ? null : productFilterSignal.get().getId(),
             typeFilterSignal.get(),
             userFilterSignal.get()));
-    private final Dialog sidebar = new Dialog();
+    private final VerticalLayout detailContent = new VerticalLayout();
     private final Dialog dirtyDialog = new Dialog();
     private final BeanValidationBinder<StockMovementRequest> binder =
             new BeanValidationBinder<>(StockMovementRequest.class);
@@ -90,7 +93,7 @@ public class StockMovementsView extends Main {
     private final IntegerField quantityDelta = new IntegerField("Quantity delta");
     private final TextArea reason = new TextArea("Reason");
     private final Span noProductsMessage = new Span("No products available.");
-    private final H1 sidebarTitle = new H1();
+    private final H2 detailTitle = new H2();
     private final Button save = new Button("Save");
     private final Button cancel = new Button("Cancel");
     private final Button close = new Button("Close");
@@ -99,20 +102,32 @@ public class StockMovementsView extends Main {
     private GridLazyDataView<StockMovement> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
+    private Runnable deferredAction;
 
     public StockMovementsView(StockMovementService stockMovementService) {
         this.stockMovementService = stockMovementService;
+        setId("stock-movements-view");
         setSizeFull();
-        addClassNames("products-view", "movements-view");
+        addClassName("crud-master-detail");
+        setExpandMaster(true);
+        setMasterSize("44rem");
+        setDetailSize("30rem");
+        setOverlaySize("min(30rem, 100%)");
         products = stockMovementService.activeProducts();
         usernames = stockMovementService.movementUsernames();
         configureFilters();
         configureGrid();
         gridDataView = PageableGridBinding.bind(grid, filterSignal, stockMovementService::search);
-        configureSidebar();
+        configureDetail();
         configureDialogs();
 
-        add(buildHeader(), buildToolbar(), grid);
+        var master = new Main();
+        master.setSizeFull();
+        master.addClassNames("products-view", "movements-view");
+        master.add(buildHeader(), buildToolbar(), grid);
+        setMaster(master);
+        addBackdropClickListener(event -> requestClose());
+        addDetailEscapePressListener(event -> requestClose());
     }
 
     private Component buildHeader() {
@@ -132,7 +147,11 @@ public class StockMovementsView extends Main {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button recordMovement = new Button("Record Movement", event -> openCreate());
+        Button recordMovement = new Button(
+                "Record Movement", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        recordMovement.setId("record-movement");
+        recordMovement.setAriaLabel("Record Movement");
+        recordMovement.setTooltipText("Record Movement");
         recordMovement.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         recordMovement.setVisible(stockMovementService.canCreateMovements());
 
@@ -142,27 +161,33 @@ public class StockMovementsView extends Main {
     }
 
     private void configureFilters() {
+        fromDate.setId("movement-from-date");
         fromDate.setClearButtonVisible(true);
         fromDate.bindValue(fromDateSignal, fromDateSignal::set);
+        toDate.setId("movement-to-date");
         toDate.setClearButtonVisible(true);
         toDate.bindValue(toDateSignal, toDateSignal::set);
 
+        productFilter.setId("movement-product-filter");
         productFilter.setItems(products);
         productFilter.setItemLabelGenerator(this::productLabel);
         productFilter.setClearButtonVisible(true);
         productFilter.bindValue(productFilterSignal, productFilterSignal::set);
 
+        typeFilter.setId("movement-type-filter");
         typeFilter.setItems(MovementType.values());
         typeFilter.setItemLabelGenerator(MovementType::displayName);
         typeFilter.setClearButtonVisible(true);
         typeFilter.bindValue(typeFilterSignal, typeFilterSignal::set);
 
+        userFilter.setId("movement-user-filter");
         userFilter.setItems(usernames);
         userFilter.setClearButtonVisible(true);
         userFilter.bindValue(userFilterSignal, userFilterSignal::set);
     }
 
     private void configureGrid() {
+        grid.setId("stock-movements-grid");
         grid.addClassName("products-grid");
         grid.setSizeFull();
         var createdColumn = grid.addColumn(movement -> formatInstant(movement.getCreatedAt()))
@@ -192,7 +217,7 @@ public class StockMovementsView extends Main {
                 .setHeader("Reason")
                 .setSortProperty("reason", "id")
                 .setFlexGrow(2);
-        grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.addItemClickListener(event -> requestSwitch(() -> openView(event.getItem())));
         grid.sort(List.of(new GridSortOrder<>(createdColumn, SortDirection.DESCENDING)));
     }
 
@@ -222,20 +247,7 @@ public class StockMovementsView extends Main {
         return label;
     }
 
-    private void configureSidebar() {
-        sidebar.addClassName("product-sidebar");
-        sidebar.setModal(false);
-        sidebar.setDraggable(false);
-        sidebar.setResizable(false);
-        sidebar.setCloseOnEsc(true);
-        sidebar.setCloseOnOutsideClick(true);
-        sidebar.addOpenedChangeListener(event -> {
-            if (!event.isOpened() && dirty && mode == FormMode.CREATE) {
-                sidebar.open();
-                dirtyDialog.open();
-            }
-        });
-
+    private void configureDetail() {
         configureFields();
         bindForm();
 
@@ -252,27 +264,37 @@ public class StockMovementsView extends Main {
         close.addClickListener(event -> requestClose());
 
         var footer = new HorizontalLayout(save, cancel, close);
-        footer.addClassName("sidebar-footer");
+        footer.addClassName("crud-detail-footer");
 
-        var content = new VerticalLayout(sidebarTitle, metadata, noProductsMessage, form, footer);
-        content.addClassName("sidebar-content");
-        sidebar.add(content);
+        detailTitle.setId("stock-movement-detail-title");
+        detailContent.add(detailTitle, metadata, noProductsMessage, form, footer);
+        detailContent.addClassName("crud-detail-content");
+        detailContent.getElement().setAttribute("aria-labelledby", "stock-movement-detail-title");
+        detailContent.getElement().setAttribute("role", "region");
     }
 
     private void configureFields() {
+        createdAt.setId("movement-created-at");
         createdAt.setReadOnly(true);
+        user.setId("movement-user");
         user.setReadOnly(true);
+        product.setId("movement-product");
         product.setItems(products);
         product.setItemLabelGenerator(this::productLabel);
         product.setRequiredIndicatorVisible(true);
+        movementType.setId("movement-type");
         movementType.setItems(MovementType.values());
         movementType.setItemLabelGenerator(MovementType::displayName);
         movementType.setRequiredIndicatorVisible(true);
         movementType.addValueChangeListener(event -> updateQuantityForType(event.getValue()));
+        quantityDelta.setId("movement-quantity");
         quantityDelta.setRequiredIndicatorVisible(true);
         quantityDelta.setValueChangeMode(ValueChangeMode.EAGER);
+        reason.setId("movement-reason");
         reason.setMaxLength(500);
         reason.setValueChangeMode(ValueChangeMode.EAGER);
+        save.setId("save-movement");
+        cancel.setId("cancel-movement");
         binder.addValueChangeListener(event -> dirty = true);
     }
 
@@ -302,16 +324,26 @@ public class StockMovementsView extends Main {
         Button discard = new Button("Discard", event -> {
             dirty = false;
             dirtyDialog.close();
-            sidebar.close();
+            if (deferredAction != null) {
+                Runnable action = deferredAction;
+                deferredAction = null;
+                action.run();
+                return;
+            }
+
+            setDetail(null);
         });
         discard.addThemeVariants(ButtonVariant.LUMO_ERROR);
-        Button stay = new Button("Cancel", event -> dirtyDialog.close());
+        Button stay = new Button("Cancel", event -> {
+            deferredAction = null;
+            dirtyDialog.close();
+        });
         dirtyDialog.add(new VerticalLayout(dirtyTitle, dirtyText, new HorizontalLayout(discard, stay)));
     }
 
     private void openCreate() {
         mode = FormMode.CREATE;
-        sidebarTitle.setText("Record Movement");
+        detailTitle.setText("Record Movement");
         createdAt.clear();
         user.clear();
         noProductsMessage.setVisible(products.isEmpty());
@@ -322,12 +354,12 @@ public class StockMovementsView extends Main {
         cancel.setVisible(true);
         close.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openView(StockMovement movement) {
         mode = FormMode.VIEW;
-        sidebarTitle.setText("Movement Details");
+        detailTitle.setText("Movement Details");
         createdAt.setValue(formatInstant(movement.getCreatedAt()));
         user.setValue(movement.getUser() == null ? "System" : movement.getUser().getUsername());
         noProductsMessage.setVisible(false);
@@ -337,7 +369,7 @@ public class StockMovementsView extends Main {
         cancel.setVisible(false);
         close.setVisible(true);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void resetForm(StockMovementRequest request) {
@@ -375,21 +407,33 @@ public class StockMovementsView extends Main {
             usernames = stockMovementService.movementUsernames();
             userFilter.setItems(usernames);
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             refreshGrid();
         } catch (StockMovementException | AccessDeniedException exception) {
             showError(exception.getMessage());
         }
     }
 
+    private void requestSwitch(Runnable action) {
+        if (dirty && mode == FormMode.CREATE) {
+            deferredAction = action;
+            dirtyDialog.open();
+            return;
+        }
+
+        deferredAction = null;
+        action.run();
+    }
+
     private void requestClose() {
+        deferredAction = null;
         if (dirty && mode == FormMode.CREATE) {
             dirtyDialog.open();
             return;
         }
 
         dirty = false;
-        sidebar.close();
+        setDetail(null);
     }
 
     private void setReadOnly(boolean readOnly) {

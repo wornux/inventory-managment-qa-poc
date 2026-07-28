@@ -1,5 +1,6 @@
 package com.wornux.catalog;
 
+import static com.wornux.SpecificationTestSupport.predicateCount;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -10,6 +11,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -46,6 +48,11 @@ class SupplierServiceTest {
         assertThat(service.search(null)).isEmpty();
         assertThat(service.search(new SupplierFilter(" ACME ", true))).containsExactly(supplier);
         assertThat(service.search(new SupplierFilter(null, false))).containsExactly(inactive);
+        ArgumentCaptor<Specification<Supplier>> specifications = ArgumentCaptor.captor();
+        verify(suppliers, times(3)).findAll(specifications.capture(), eq(order));
+        assertThat(specifications.getAllValues())
+                .extracting(specification -> predicateCount(specification))
+                .containsExactly(0, 2, 1);
 
         var pageable = PageRequest.of(1, 10);
         var page = new PageImpl<>(List.of(supplier), pageable, 11);

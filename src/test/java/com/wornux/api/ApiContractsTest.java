@@ -95,11 +95,15 @@ class ApiContractsTest extends AbstractRestController {
         var constrained = handler.constraintViolation(new ConstraintViolationException(Set.of(violation)), request);
 
         assertThat(constrained.getBody().errors()).containsExactly(new ApiErrorResponse("quantity", "positive"));
-        assertThat(handler.authentication(new BadCredentialsException("bad"), request).getStatusCode())
+        assertThat(handler.authentication(new BadCredentialsException("bad"), request)
+                        .getStatusCode())
                 .isEqualTo(HttpStatus.UNAUTHORIZED);
-        assertThat(handler.accessDenied(new AccessDeniedException("no"), request).getStatusCode())
+        assertThat(handler.accessDenied(new AccessDeniedException("no"), request)
+                        .getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
-        assertThat(handler.runtime(new RuntimeException("boom"), request).getBody().message())
+        assertThat(handler.runtime(new RuntimeException("boom"), request)
+                        .getBody()
+                        .message())
                 .isEqualTo("Unexpected API error.");
     }
 
@@ -112,7 +116,11 @@ class ApiContractsTest extends AbstractRestController {
 
         assertThat(handler.methodArgumentTypeMismatch(mismatch, request).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(handler.methodArgumentTypeMismatch(mismatch, request).getBody().errors().getFirst().field())
+        assertThat(handler.methodArgumentTypeMismatch(mismatch, request)
+                        .getBody()
+                        .errors()
+                        .getFirst()
+                        .field())
                 .isEqualTo("createdFrom");
 
         var unreadable = new HttpMessageNotReadableException("bad json", mock(HttpInputMessage.class));
@@ -122,8 +130,9 @@ class ApiContractsTest extends AbstractRestController {
         assertThat(handler.stockMovement(new StockMovementException("Invalid movement."), request)
                         .getStatusCode())
                 .isEqualTo(HttpStatus.BAD_REQUEST);
-        assertThat(handler.stockMovement(new StockMovementException(
-                                "Failed to save movement.", new DataIntegrityViolationException("database")),
+        assertThat(handler.stockMovement(
+                                new StockMovementException(
+                                        "Failed to save movement.", new DataIntegrityViolationException("database")),
                                 request)
                         .getStatusCode())
                 .isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
@@ -134,9 +143,11 @@ class ApiContractsTest extends AbstractRestController {
         var handler = new RestExceptionHandler();
         var request = new MockHttpServletRequest();
 
-        assertThat(handler.product(new ProductException("Product NOT FOUND"), request).getStatusCode())
+        assertThat(handler.product(new ProductException("Product NOT FOUND"), request)
+                        .getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
-        assertThat(handler.product(new ProductException("SKU already exists"), request).getStatusCode())
+        assertThat(handler.product(new ProductException("SKU already exists"), request)
+                        .getStatusCode())
                 .isEqualTo(HttpStatus.CONFLICT);
         assertThat(handler.product(new ProductException("Updated by another user"), request)
                         .getStatusCode())
