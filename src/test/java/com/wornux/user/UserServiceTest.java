@@ -163,6 +163,7 @@ class UserServiceTest {
         when(appUserRepository.save(user)).thenReturn(user);
 
         assertThat(service().update(7L, request).getUsername()).isEqualTo("new");
+        verify(authorizationService).invalidateUser(7L);
 
         request.setVersion(3L);
 
@@ -218,6 +219,7 @@ class UserServiceTest {
 
         service().deactivate(1L);
 
+        verify(authorizationService, times(3)).invalidateUser(1L);
         when(appUserRepository.findWithRolesById(2L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().deactivate(2L)).isInstanceOf(UserException.class);
