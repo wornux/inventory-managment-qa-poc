@@ -1,9 +1,11 @@
 package com.wornux.user;
 
+import static com.wornux.SpecificationTestSupport.predicateCount;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -20,6 +22,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Sort;
@@ -113,6 +116,11 @@ class RoleServiceTest {
         assertThat(service.search(new RoleFilter(" QUERY ", true, false))).isEmpty();
         assertThat(service.search(null)).isEmpty();
         assertThat(service.search(new RoleFilter(null, null, null))).isEmpty();
+        ArgumentCaptor<Specification<Role>> specifications = ArgumentCaptor.captor();
+        verify(roleRepository, times(3)).findAll(specifications.capture(), any(Sort.class));
+        assertThat(specifications.getAllValues())
+                .extracting(specification -> predicateCount(specification))
+                .containsExactly(3, 0, 0);
 
         when(roleRepository.findById(1L)).thenReturn(Optional.empty());
 
