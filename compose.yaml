@@ -239,12 +239,19 @@ services:
     entrypoint: ["/bin/sh", "-c"]
     command:
       - >-
+        test -n "$${AUTH_CLIENT_SECRET}" ||
+        { echo "Set KEYCLOAK_AUTOMATION_CLIENT_SECRET before running JMeter"; exit 1; };
         rm -rf /results/* &&
         jmeter -n
         -t /tests/load-and-stress-test.jmx
         -Jhost=$${APP_HOST}
         -Jport=$${APP_PORT}
         -Jprotocol=http
+        -JauthHost=$${AUTH_HOST}
+        -JauthPort=$${AUTH_PORT}
+        -JauthProtocol=$${AUTH_PROTOCOL}
+        -JauthRealm=$${AUTH_REALM}
+        -JauthClientId=$${AUTH_CLIENT_ID}
         -JloadUsers=$${LOAD_USERS:-10}
         -JloadRampSeconds=$${LOAD_RAMP_SECONDS:-30}
         -JloadDurationSeconds=$${LOAD_DURATION_SECONDS:-90}
@@ -255,6 +262,12 @@ services:
         -e -o /results/report
     environment:
       <<: *application-target
+      AUTH_HOST: ${JMETER_AUTH_HOST:-host.docker.internal}
+      AUTH_PORT: ${JMETER_AUTH_PORT:-7777}
+      AUTH_PROTOCOL: ${JMETER_AUTH_PROTOCOL:-http}
+      AUTH_REALM: ${JMETER_AUTH_REALM:-wornux}
+      AUTH_CLIENT_ID: ${JMETER_AUTH_CLIENT_ID:-inventory-automation}
+      AUTH_CLIENT_SECRET: ${KEYCLOAK_AUTOMATION_CLIENT_SECRET:-}
       LOAD_USERS: ${JMETER_LOAD_USERS:-10}
       LOAD_RAMP_SECONDS: ${JMETER_LOAD_RAMP_SECONDS:-30}
       LOAD_DURATION_SECONDS: ${JMETER_LOAD_DURATION_SECONDS:-90}
