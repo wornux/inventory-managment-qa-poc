@@ -4,6 +4,7 @@ import com.wornux.catalog.ProductRepository;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.binder.MeterBinder;
+import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,11 +17,11 @@ public class InventoryMetrics implements MeterBinder {
     }
 
     @Override
-    public void bindTo(MeterRegistry registry) {
+    public void bindTo(@NonNull MeterRegistry registry) {
         Gauge.builder(
                         "wornux.inventory.low.stock.products",
                         productRepository,
-                        repository -> repository.countActiveLowStockProducts())
+                        ProductRepository::countActiveLowStockProducts)
                 .description("Active products at or below their minimum stock")
                 .register(registry);
     }

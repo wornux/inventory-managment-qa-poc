@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
+import org.jspecify.annotations.NonNull;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
@@ -25,7 +26,9 @@ public class ApiAccessDeniedHandler implements AccessDeniedHandler {
 
     @Override
     public void handle(
-            HttpServletRequest request, HttpServletResponse response, AccessDeniedException accessDeniedException)
+            @NonNull HttpServletRequest request,
+            HttpServletResponse response,
+            @NonNull AccessDeniedException accessDeniedException)
             throws IOException {
         CanonicalRequestContext.authorizationFailure(request);
 
