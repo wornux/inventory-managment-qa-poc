@@ -1,0 +1,43 @@
+{
+  "realm": "wrong-issuer-test",
+  "displayName": "Wrong Issuer Integration Tests",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "clients": [
+    {
+      "clientId": "wrong-issuer-tests",
+      "name": "Wrong issuer JWT integration tests",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles",
+        "basic"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "wrong-issuer-user",
+      "firstName": "Wrong",
+      "lastName": "Issuer",
+      "email": "wrong-issuer-user@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${TEST_WRONG_ISSUER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
