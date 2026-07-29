@@ -16,4 +16,8 @@ public class UiAccessService {
     public boolean canRead(AppPermission permission) {
         return authorizationService.can(permission);
     }
+
+    public boolean hasAnyAccess() {
+        return !authorizationService.effectivePermissions().isEmpty();
+    }
 }
