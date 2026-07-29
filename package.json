@@ -1,0 +1,66 @@
+{
+  "name": "no-name",
+  "license": "UNLICENSED",
+  "type": "module",
+  "dependencies": {
+    "@vaadin/common-frontend": "0.0.23",
+    "react-dom": "19.2.7",
+    "lit": "3.3.3",
+    "react": "19.2.7",
+    "react-router": "7.18.1"
+  },
+  "devDependencies": {
+    "strip-css-comments": "5.0.0",
+    "@babel/plugin-transform-react-jsx-development": "7.29.7",
+    "rollup-plugin-visualizer": "7.0.1",
+    "@rolldown/plugin-babel": "0.2.3",
+    "@preact/signals-react-transform": "0.8.1",
+    "@rollup/plugin-replace": "6.0.3",
+    "@babel/preset-react": "7.29.7",
+    "@types/react-dom": "19.2.3",
+    "vite": "8.0.16",
+    "@babel/core": "7.29.7",
+    "rollup-plugin-brotli": "3.1.0",
+    "@types/node": "25.9.5",
+    "@rollup/pluginutils": "5.4.0",
+    "@babel/types": "7.29.7",
+    "vite-plugin-checker": "0.14.4",
+    "@types/react": "19.2.17",
+    "transform-ast": "2.4.4",
+    "magic-string": "0.30.21",
+    "typescript": "6.0.3",
+    "@vitejs/plugin-react": "6.0.3"
+  },
+  "vaadin": {
+    "dependencies": {
+      "@vaadin/common-frontend": "0.0.23",
+      "react-dom": "19.2.7",
+      "lit": "3.3.3",
+      "react": "19.2.7",
+      "react-router": "7.18.1"
+    },
+    "devDependencies": {
+      "strip-css-comments": "5.0.0",
+      "@babel/plugin-transform-react-jsx-development": "7.29.7",
+      "rollup-plugin-visualizer": "7.0.1",
+      "@rolldown/plugin-babel": "0.2.3",
+      "@preact/signals-react-transform": "0.8.1",
+      "@rollup/plugin-replace": "6.0.3",
+      "@babel/preset-react": "7.29.7",
+      "@types/react-dom": "19.2.3",
+      "vite": "8.0.16",
+      "@babel/core": "7.29.7",
+      "rollup-plugin-brotli": "3.1.0",
+      "@types/node": "25.9.5",
+      "@rollup/pluginutils": "5.4.0",
+      "@babel/types": "7.29.7",
+      "vite-plugin-checker": "0.14.4",
+      "@types/react": "19.2.17",
+      "transform-ast": "2.4.4",
+      "magic-string": "0.30.21",
+      "typescript": "6.0.3",
+      "@vitejs/plugin-react": "6.0.3"
+    },
+    "hash": ""
+  }
+}
