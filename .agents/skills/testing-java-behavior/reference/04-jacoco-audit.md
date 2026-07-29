@@ -35,6 +35,6 @@ Audit line and branch coverage first, then inspect instruction/method misses. A 
 - Keep exclusions narrow and visible in `pom.xml`.
 - Never exclude a difficult class after seeing it red.
 - Bind `jacoco:check` to `verify` so CI enforces the same target developers inspect.
-- This repository requires 100% line and branch coverage outside `com/wornux/ui/views/**`.
+- This repository requires 100% line and branch coverage outside `com/wornux/ui/views/**` and generated `**/*MapperImpl*` classes.
 
 Coverage is evidence of exercised bytecode, not proof of correct assertions. Review test contracts even when every counter is green.

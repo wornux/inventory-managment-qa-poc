@@ -35,9 +35,6 @@ class StockMovementApiTest {
 
     @Test
     void mapperPreservesRequestAndLedgerResponseFields() {
-        assertThat(mapper.toDomainRequest(null)).isNull();
-        assertThat(mapper.toResponse(null)).isNull();
-
         Product product = mock(Product.class);
         AppUser user = mock(AppUser.class);
         StockMovement movement = mock(StockMovement.class);

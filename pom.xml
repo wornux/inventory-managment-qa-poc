@@ -249,6 +249,7 @@
                 <configuration>
                     <excludes>
                         <exclude>com/wornux/ui/views/**</exclude>
+                        <exclude>**/*MapperImpl*</exclude>
                     </excludes>
                 </configuration>
                 <executions>

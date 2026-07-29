@@ -13,9 +13,11 @@ import com.wornux.security.permission.AppPermission;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
 import com.wornux.user.Role;
+
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -188,8 +190,7 @@ class AuthorizationServiceTest {
 
         assertThat(service.cached("editor")).contains(snapshot);
 
-        TransactionSynchronizationManager.getSynchronizations()
-                .forEach(TransactionSynchronization::afterCommit);
+        TransactionSynchronizationManager.getSynchronizations().forEach(TransactionSynchronization::afterCommit);
 
         assertThat(service.cached("editor")).isEmpty();
     }

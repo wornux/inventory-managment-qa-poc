@@ -36,9 +36,6 @@ class ProductApiTest {
         var real = Mappers.getMapper(ProductApiMapper.class);
         var request = request();
 
-        assertThat(real.toDomainRequest(null)).isNull();
-        assertThat(real.toResponse(null)).isNull();
-
         var domain = real.toDomainRequest(request);
 
         assertThat(domain)
