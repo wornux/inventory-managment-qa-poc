@@ -93,7 +93,6 @@ public class RoleService {
     @Transactional
     public Role create(@Valid RoleRequest request) {
         authorizationService.check(AppPermission.ROLE_CREATE);
-        authorizationService.check(AppPermission.ROLE_ASSIGN);
         validateUniqueCode(request.getCode());
         Set<AppPermission> permissions = requireAssignablePermissions(request.getPermissions());
         Role role = new Role(
@@ -109,7 +108,6 @@ public class RoleService {
     @Transactional
     public Role update(Long id, @Valid RoleRequest request) {
         authorizationService.check(AppPermission.ROLE_UPDATE);
-        authorizationService.check(AppPermission.ROLE_ASSIGN);
         Role role = roleRepository.findById(id).orElseThrow(() -> new RoleException("Role was not found."));
         validateCustomRole(role);
 
@@ -143,11 +141,11 @@ public class RoleService {
     }
 
     public boolean canCreateRoles() {
-        return authorizationService.canAll(Set.of(AppPermission.ROLE_CREATE, AppPermission.ROLE_ASSIGN));
+        return authorizationService.can(AppPermission.ROLE_CREATE);
     }
 
     public boolean canUpdateRoles() {
-        return authorizationService.canAll(Set.of(AppPermission.ROLE_UPDATE, AppPermission.ROLE_ASSIGN));
+        return authorizationService.can(AppPermission.ROLE_UPDATE);
     }
 
     public boolean canDeleteRoles() {

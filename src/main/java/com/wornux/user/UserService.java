@@ -61,7 +61,7 @@ public class UserService {
     @Transactional
     public AppUser create(@Valid UserRequest request) {
         authorizationService.check(AppPermission.USER_CREATE);
-        authorizationService.check(AppPermission.USER_ASSIGN);
+        authorizationService.check(AppPermission.ROLE_ASSIGN);
         validateUniqueUsername(request.getUsername(), null);
         validateUniqueEmail(request.getEmail(), null);
         Set<Role> roles = requireActiveRoles(request.getRoleIds());
@@ -77,7 +77,6 @@ public class UserService {
     @Transactional
     public AppUser update(Long id, @Valid UserRequest request) {
         authorizationService.check(AppPermission.USER_UPDATE);
-        authorizationService.check(AppPermission.USER_ASSIGN);
         AppUser user =
                 appUserRepository.findWithRolesById(id).orElseThrow(() -> new UserException("User was not found."));
 
@@ -85,13 +84,14 @@ public class UserService {
             throw new UserException("User was updated by another administrator. Refresh the form and try again.");
         }
 
+        Set<Role> roles = rolesForUpdate(user, request.getRoleIds());
         validateUniqueUsername(request.getUsername(), id);
         validateUniqueEmail(request.getEmail(), id);
         user.update(
                 normalizeUsername(request.getUsername()),
                 normalizeEmail(request.getEmail()),
                 request.isActive(),
-                requireActiveRoles(request.getRoleIds()));
+                roles);
         AppUser saved = appUserRepository.save(user);
         authorizationService.invalidateUser(id);
 
@@ -114,11 +114,15 @@ public class UserService {
     }
 
     public boolean canCreateUsers() {
-        return authorizationService.canAll(Set.of(AppPermission.USER_CREATE, AppPermission.USER_ASSIGN));
+        return authorizationService.canAll(Set.of(AppPermission.USER_CREATE, AppPermission.ROLE_ASSIGN));
     }
 
     public boolean canUpdateUsers() {
-        return authorizationService.canAll(Set.of(AppPermission.USER_UPDATE, AppPermission.USER_ASSIGN));
+        return authorizationService.can(AppPermission.USER_UPDATE);
+    }
+
+    public boolean canAssignRoles() {
+        return authorizationService.can(AppPermission.ROLE_ASSIGN);
     }
 
     public boolean canDeleteUsers() {
@@ -147,6 +151,18 @@ public class UserService {
         if (exists) {
             throw new UserException("Email already registered. Please use a different one.");
         }
+    }
+
+    private Set<Role> rolesForUpdate(AppUser user, Set<Long> requestedRoleIds) {
+        Set<Long> currentRoleIds = user.getRoles().stream().map(Role::getId).collect(Collectors.toSet());
+
+        if (currentRoleIds.equals(requestedRoleIds)) {
+            return new LinkedHashSet<>(user.getRoles());
+        }
+
+        authorizationService.check(AppPermission.ROLE_ASSIGN);
+
+        return requireActiveRoles(requestedRoleIds);
     }
 
     private Set<Role> requireActiveRoles(Set<Long> roleIds) {

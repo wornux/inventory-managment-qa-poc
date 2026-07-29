@@ -17,6 +17,8 @@ class AppPermissionTest {
         assertThat(AppPermission.PRODUCT_UPDATE.code()).isEqualTo("product:update");
         assertThat(AppPermission.PRODUCT_UPDATE.label()).isEqualTo("Product · Update");
         assertThat(AppPermission.fromCode("PrOdUcT:UpDaTe")).contains(AppPermission.PRODUCT_UPDATE);
+        assertThat(AppPermission.fromCode("role:assign")).contains(AppPermission.ROLE_ASSIGN);
+        assertThat(AppPermission.fromCode("user:assign")).isEmpty();
         assertThat(AppPermission.fromCode("unknown")).isEmpty();
     }
 

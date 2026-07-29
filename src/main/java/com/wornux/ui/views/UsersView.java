@@ -456,7 +456,7 @@ public class UsersView extends MasterDetailLayout {
         username.setReadOnly(readOnly);
         email.setReadOnly(readOnly);
         active.setReadOnly(readOnly);
-        roles.setReadOnly(readOnly);
+        roles.setReadOnly(readOnly || !userService.canAssignRoles());
     }
 
     private Set<Role> rolesFromRequest(UserRequest request) {

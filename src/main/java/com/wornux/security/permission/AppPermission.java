@@ -22,7 +22,6 @@ public enum AppPermission {
     USER_CREATE(AppResource.USER, AppAction.CREATE),
     USER_UPDATE(AppResource.USER, AppAction.UPDATE),
     USER_DELETE(AppResource.USER, AppAction.DELETE),
-    USER_ASSIGN(AppResource.USER, AppAction.ASSIGN),
     ROLE_VIEW(AppResource.ROLE, AppAction.VIEW),
     ROLE_CREATE(AppResource.ROLE, AppAction.CREATE),
     ROLE_UPDATE(AppResource.ROLE, AppAction.UPDATE),

@@ -58,7 +58,7 @@ class RoleServiceTest {
 
     @Test
     void create_persistsCustomRoleWithTypedPermissions() {
-        authenticate("role:create", "role:assign", "product:update");
+        authenticate("role:create", "product:update");
         RoleRequest request = request(AppPermission.PRODUCT_VIEW, AppPermission.PRODUCT_UPDATE);
         when(roleRepository.save(any(Role.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -91,7 +91,7 @@ class RoleServiceTest {
 
     @Test
     void create_withoutCreatePermission_throwsAccessDeniedException() {
-        authenticate("role:view", "role:assign", "product:update");
+        authenticate("role:view", "product:update");
 
         assertThatThrownBy(() -> roleService.create(request(AppPermission.PRODUCT_UPDATE)))
                 .isInstanceOf(AccessDeniedException.class)
@@ -101,7 +101,7 @@ class RoleServiceTest {
 
     @Test
     void create_withUnassignablePermission_throwsRoleException() {
-        authenticate("role:create", "role:assign", "product:view");
+        authenticate("role:create", "product:view");
 
         assertThatThrownBy(() -> roleService.create(request(AppPermission.PRODUCT_DELETE)))
                 .isInstanceOf(RoleException.class)
@@ -267,17 +267,15 @@ class RoleServiceTest {
 
     @Test
     void capabilitiesDelegateToAuthorization() {
-        var create = Set.of(AppPermission.ROLE_CREATE, AppPermission.ROLE_ASSIGN);
-        var update = Set.of(AppPermission.ROLE_UPDATE, AppPermission.ROLE_ASSIGN);
-        when(authorizationService.canAll(create)).thenReturn(true);
-        when(authorizationService.canAll(update)).thenReturn(false);
+        when(authorizationService.can(AppPermission.ROLE_CREATE)).thenReturn(true);
+        when(authorizationService.can(AppPermission.ROLE_UPDATE)).thenReturn(false);
         when(authorizationService.can(AppPermission.ROLE_DELETE)).thenReturn(true);
 
         assertThat(directService().canCreateRoles()).isTrue();
         assertThat(directService().canUpdateRoles()).isFalse();
         assertThat(directService().canDeleteRoles()).isTrue();
-        verify(authorizationService).canAll(create);
-        verify(authorizationService).canAll(update);
+        verify(authorizationService).can(AppPermission.ROLE_CREATE);
+        verify(authorizationService).can(AppPermission.ROLE_UPDATE);
     }
 
     private RoleService directService() {

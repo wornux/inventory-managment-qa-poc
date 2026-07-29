@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -48,7 +49,7 @@ class UserServiceTest {
 
     @Test
     void create_rejectsRoleWithPermissionsActorDoesNotHave() {
-        authenticateActor(AppPermission.USER_CREATE, AppPermission.USER_ASSIGN);
+        authenticateActor(AppPermission.USER_CREATE, AppPermission.ROLE_ASSIGN);
         Role elevatedRole = role(AppPermission.PRODUCT_DELETE);
         when(roleRepository.findAllById(Set.of(7L))).thenReturn(List.of(elevatedRole));
 
@@ -163,6 +164,7 @@ class UserServiceTest {
         when(appUserRepository.save(user)).thenReturn(user);
 
         assertThat(service().update(7L, request).getUsername()).isEqualTo("new");
+        verify(authorizationService).check(AppPermission.ROLE_ASSIGN);
         verify(authorizationService).invalidateUser(7L);
 
         request.setVersion(3L);
@@ -187,6 +189,24 @@ class UserServiceTest {
         assertThatThrownBy(() -> service().update(8L, request))
                 .isInstanceOf(UserException.class)
                 .hasMessage("User was not found.");
+    }
+
+    @Test
+    void update_withoutRoleChanges_doesNotRequireRoleAssignment() throws Exception {
+        Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
+        set(role, "id", 1L);
+        AppUser user = new AppUser("old", "old@e.com", null, null);
+        user.addRole(role);
+        set(user, "version", 2L);
+        UserRequest request = request("new", "new@e.com", 1L);
+        request.setVersion(2L);
+        when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
+        when(appUserRepository.save(user)).thenReturn(user);
+
+        assertThat(service().update(7L, request).getUsername()).isEqualTo("new");
+        verify(authorizationService).check(AppPermission.USER_UPDATE);
+        verify(authorizationService, never()).check(AppPermission.ROLE_ASSIGN);
+        verify(authorizationService).invalidateUser(7L);
     }
 
     @Test
@@ -227,17 +247,19 @@ class UserServiceTest {
 
     @Test
     void capabilityQueriesDelegateToAuthorization() {
-        var create = Set.of(AppPermission.USER_CREATE, AppPermission.USER_ASSIGN);
-        var update = Set.of(AppPermission.USER_UPDATE, AppPermission.USER_ASSIGN);
+        var create = Set.of(AppPermission.USER_CREATE, AppPermission.ROLE_ASSIGN);
         when(authorizationService.canAll(create)).thenReturn(true);
-        when(authorizationService.canAll(update)).thenReturn(false);
+        when(authorizationService.can(AppPermission.USER_UPDATE)).thenReturn(false);
+        when(authorizationService.can(AppPermission.ROLE_ASSIGN)).thenReturn(true);
         when(authorizationService.can(AppPermission.USER_DELETE)).thenReturn(true);
 
         assertThat(service().canCreateUsers()).isTrue();
         assertThat(service().canUpdateUsers()).isFalse();
+        assertThat(service().canAssignRoles()).isTrue();
         assertThat(service().canDeleteUsers()).isTrue();
         verify(authorizationService).canAll(create);
-        verify(authorizationService).canAll(update);
+        verify(authorizationService).can(AppPermission.USER_UPDATE);
+        verify(authorizationService).can(AppPermission.ROLE_ASSIGN);
     }
 
     private UserService service() {
