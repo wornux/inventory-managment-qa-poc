@@ -1,4 +1,45 @@
+x-application-target: &application-target
+  APP_HOST: ${APP_HOST:-host.docker.internal}
+  APP_PORT: ${PORT:-8080}
+
 services:
+  app:
+    profiles: [production]
+    build:
+      context: .
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    environment:
+      PORT: ${PORT:-8080}
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/stocks
+      SPRING_DATASOURCE_USERNAME: ${DB_USERNAME:-postgres}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-qa-final-project}
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://alloy:4318/v1/traces
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://alloy:4318/v1/metrics
+      OTEL_METRICS_EXPORT_STEP: ${OTEL_METRICS_EXPORT_STEP:-15s}
+      KEYCLOAK_SERVER_URL: http://keycloak:7777
+      KEYCLOAK_PUBLIC_URL: http://localhost:7777
+      KEYCLOAK_INTERNAL_URL: http://keycloak:7777
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD}
+      KEYCLOAK_BOOTSTRAP_ADMIN_USER_PASSWORD: ${KEYCLOAK_BOOTSTRAP_ADMIN_USER_PASSWORD:?Set KEYCLOAK_BOOTSTRAP_ADMIN_USER_PASSWORD}
+    volumes:
+      - ./logs:/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:$${PORT}/actuator/health >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+    networks: [observability]
+
   postgres:
     image: postgres:18.1
     volumes:
@@ -6,11 +47,11 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: ${DB_USERNAME:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD}
       POSTGRES_DB: stocks
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d stocks"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -21,11 +62,11 @@ services:
     volumes:
       - keycloak_postgres:/var/lib/postgresql
     environment:
-      POSTGRES_USER: keycloak
-      POSTGRES_PASSWORD: keycloak
+      POSTGRES_USER: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
       POSTGRES_DB: keycloak
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak"]
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -41,7 +82,6 @@ services:
       - --spi-theme--cache-templates=false
     ports:
       - "7777:7777"
-      - "9000:9000"
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro
       - ./keycloak/themes:/opt/keycloak/themes:ro
@@ -51,12 +91,14 @@ services:
       KC_HOSTNAME_ADMIN: http://localhost:7777
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:?Set KEYCLOAK_CLIENT_SECRET}
+      KEYCLOAK_AUTOMATION_CLIENT_SECRET: ${KEYCLOAK_AUTOMATION_CLIENT_SECRET:?Set KEYCLOAK_AUTOMATION_CLIENT_SECRET}
       KC_BOOTSTRAP_ADMIN_USERNAME: admin
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:?Set KEYCLOAK_ADMIN_PASSWORD}
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://keycloak-postgres:5432/keycloak
-      KC_DB_USERNAME: keycloak
-      KC_DB_PASSWORD: keycloak
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME:-keycloak}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD:?Set KEYCLOAK_DB_PASSWORD}
       KC_HTTP_RELATIVE_PATH: /
       KC_HTTP_ENABLED: "true"
       KC_HEALTH_ENABLED: "true"
@@ -74,15 +116,16 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.8.1
-    command: ["--config.file=/etc/prometheus/prometheus.yml", "--storage.tsdb.path=/prometheus"]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./telemetry/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./telemetry/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
-    extra_hosts:
-      - host.docker.internal:host-gateway
     depends_on:
       alertmanager:
         condition: service_healthy
@@ -101,6 +144,7 @@ services:
     volumes:
       - ./telemetry/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
+    secrets: [slack_webhook]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:9093/-/ready >/dev/null"]
       interval: 10s
@@ -149,6 +193,8 @@ services:
       - ./logs:/var/log/application:ro
       - alloy_data:/var/lib/alloy
     depends_on:
+      prometheus:
+        condition: service_healthy
       loki:
         condition: service_healthy
       tempo:
@@ -186,6 +232,59 @@ services:
       timeout: 5s
       retries: 10
     networks: [observability]
+
+  jmeter:
+    image: alpine/jmeter:5.6.3
+    profiles: [performance]
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >-
+        test -n "$${AUTH_CLIENT_SECRET}" ||
+        { echo "Set KEYCLOAK_AUTOMATION_CLIENT_SECRET before running JMeter"; exit 1; };
+        rm -rf /results/* &&
+        jmeter -n
+        -t /tests/load-and-stress-test.jmx
+        -Jhost=$${APP_HOST}
+        -Jport=$${APP_PORT}
+        -Jprotocol=http
+        -JauthHost=$${AUTH_HOST}
+        -JauthPort=$${AUTH_PORT}
+        -JauthProtocol=$${AUTH_PROTOCOL}
+        -JauthRealm=$${AUTH_REALM}
+        -JauthClientId=$${AUTH_CLIENT_ID}
+        -JloadUsers=$${LOAD_USERS:-10}
+        -JloadRampSeconds=$${LOAD_RAMP_SECONDS:-30}
+        -JloadDurationSeconds=$${LOAD_DURATION_SECONDS:-90}
+        -JstressUsers=$${STRESS_USERS:-100}
+        -JstressRampSeconds=$${STRESS_RAMP_SECONDS:-120}
+        -JstressDurationSeconds=$${STRESS_DURATION_SECONDS:-180}
+        -l /results/results.jtl
+        -e -o /results/report
+    environment:
+      <<: *application-target
+      AUTH_HOST: ${JMETER_AUTH_HOST:-host.docker.internal}
+      AUTH_PORT: ${JMETER_AUTH_PORT:-7777}
+      AUTH_PROTOCOL: ${JMETER_AUTH_PROTOCOL:-http}
+      AUTH_REALM: ${JMETER_AUTH_REALM:-wornux}
+      AUTH_CLIENT_ID: ${JMETER_AUTH_CLIENT_ID:-inventory-automation}
+      AUTH_CLIENT_SECRET: ${KEYCLOAK_AUTOMATION_CLIENT_SECRET:-}
+      LOAD_USERS: ${JMETER_LOAD_USERS:-10}
+      LOAD_RAMP_SECONDS: ${JMETER_LOAD_RAMP_SECONDS:-30}
+      LOAD_DURATION_SECONDS: ${JMETER_LOAD_DURATION_SECONDS:-90}
+      STRESS_USERS: ${JMETER_STRESS_USERS:-100}
+      STRESS_RAMP_SECONDS: ${JMETER_STRESS_RAMP_SECONDS:-120}
+      STRESS_DURATION_SECONDS: ${JMETER_STRESS_DURATION_SECONDS:-180}
+      JVM_ARGS: ${JMETER_JVM_ARGS:--Xms512m -Xmx1g}
+    volumes:
+      - ./telemetry/jmeter:/tests:ro
+      - ./reports/jmeter:/results
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks: [observability]
+
+secrets:
+  slack_webhook:
+    environment: SLACK_WEBHOOK_URL
 
 volumes:
   db_postgres:

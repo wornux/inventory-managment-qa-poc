@@ -33,11 +33,11 @@ public class CanonicalRequestFilter extends OncePerRequestFilter {
     }
 
     @Override
-    protected void doFilterInternal(
-            HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
         String requestedCorrelationId = request.getHeader(CORRELATION_HEADER);
-        String correlationId = requestedCorrelationId != null && CORRELATION_ID.matcher(requestedCorrelationId).matches()
+        String correlationId = requestedCorrelationId != null
+                        && CORRELATION_ID.matcher(requestedCorrelationId).matches()
                 ? requestedCorrelationId
                 : UUID.randomUUID().toString();
         CanonicalRequestContext context = CanonicalRequestContext.getOrCreate(request, correlationId);
@@ -149,8 +149,7 @@ public class CanonicalRequestFilter extends OncePerRequestFilter {
         return "unmatched";
     }
 
-    private void emit(
-            CanonicalRequestContext context, HttpServletRequest request, HttpServletResponse response) {
+    private void emit(CanonicalRequestContext context, HttpServletRequest request, HttpServletResponse response) {
         if (!context.markEmitted()) {
             return;
         }

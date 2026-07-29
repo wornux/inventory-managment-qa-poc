@@ -5,8 +5,7 @@ public enum AppAction {
     CREATE("create", "Create"),
     UPDATE("update", "Update"),
     DELETE("delete", "Delete"),
-    ASSIGN("assign", "Assign"),
-    EXPORT("export", "Export");
+    ASSIGN("assign", "Assign");
 
     private final String code;
     private final String label;

@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -49,20 +50,21 @@ public class StockMovementController extends AbstractRestController {
             @RequestParam(required = false) Long productId,
             @RequestParam(required = false) MovementType movementType,
             @RequestParam(defaultValue = "") String username,
-            @PageableDefault(sort = {"createdDate", "id"}, direction = Sort.Direction.DESC)
+            @PageableDefault(
+                            sort = {"createdDate", "id"},
+                            direction = Sort.Direction.DESC)
                     Pageable pageable) {
         Page<StockMovementResponseDto> movements = stockMovementService
-                .search(
-                        new StockMovementFilter(createdFrom, createdTo, productId, movementType, username), pageable)
+                .search(new StockMovementFilter(createdFrom, createdTo, productId, movementType, username), pageable)
                 .map(stockMovementApiMapper::toResponse);
 
         return ok("Stock movements retrieved.", movements);
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Record stock movement")
-    ResponseEntity<ApiResponse<StockMovementResponseDto>> record(
-            @Valid @RequestBody StockMovementRequestDto request) {
+    ResponseEntity<ApiResponse<StockMovementResponseDto>> record(@Valid @RequestBody StockMovementRequestDto request) {
         StockMovement movement =
                 stockMovementService.recordStockMovement(stockMovementApiMapper.toDomainRequest(request));
 

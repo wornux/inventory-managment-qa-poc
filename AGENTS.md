@@ -45,3 +45,10 @@
 - Prefer Mockito unit tests for isolated service rules. Use Spring context or PostgreSQL/Testcontainers only when framework wiring, security filters, transactions, mappings, or database-specific SQL are part of the behavior.
 - For UI changes, inspect the rendered page at the affected route and viewport. Do not require screenshots or exhaustive breakpoint checks for backend-only or invisible changes.
 - Report checks that actually ran and any environment blocker; do not claim unrun checks passed.
+
+## Development browser authentication
+
+- For local-only browser validation, use the disposable Keycloak admin account:
+  - Username: `admin@wornux.com`
+  - Password: `admin`
+- These credentials are development fixtures only and must never be used outside the local environment.

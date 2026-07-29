@@ -12,9 +12,12 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
+import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -42,7 +45,7 @@ import org.springframework.security.access.AccessDeniedException;
 @Route("suppliers")
 @PageTitle("Suppliers")
 @PermitAll
-public class SuppliersView extends Main {
+public class SuppliersView extends MasterDetailLayout {
 
     private enum FormMode {
         CREATE,
@@ -58,7 +61,7 @@ public class SuppliersView extends Main {
     private final ValueSignal<String> activeStatusSignal = new ValueSignal<>("Active");
     private final Signal<SupplierFilter> filterSignal =
             Signal.computed(() -> new SupplierFilter(searchSignal.get(), activeFilterValue(activeStatusSignal.get())));
-    private final Dialog sidebar = new Dialog();
+    private final VerticalLayout detailContent = new VerticalLayout();
     private final Dialog deactivateDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
     private final BeanValidationBinder<SupplierRequest> binder = new BeanValidationBinder<>(SupplierRequest.class);
@@ -68,7 +71,7 @@ public class SuppliersView extends Main {
     private final EmailField email = new EmailField("Email");
     private final TextField phone = new TextField("Phone");
     private final Checkbox active = new Checkbox("Active");
-    private final H1 sidebarTitle = new H1();
+    private final H2 detailTitle = new H2();
     private final Button save = new Button("Save");
     private final Button cancel = new Button("Cancel");
     private final Button close = new Button("Close");
@@ -76,21 +79,33 @@ public class SuppliersView extends Main {
     private final H1 deactivateTitle = new H1("Deactivate this supplier?");
     private final Span deactivateText = new Span();
     private Supplier selectedSupplier;
+    private Supplier deactivateTarget;
     private GridLazyDataView<Supplier> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
+    private Runnable deferredAction;
 
     public SuppliersView(SupplierService supplierService) {
         this.supplierService = supplierService;
         setSizeFull();
-        addClassName("products-view");
+        addClassName("crud-master-detail");
+        setExpandMaster(true);
+        setMasterSize("36rem");
+        setDetailSize("30rem");
+        setOverlaySize("min(30rem, 100%)");
         configureFilters();
         configureGrid();
         gridDataView = PageableGridBinding.bind(grid, filterSignal, supplierService::search);
-        configureSidebar();
+        configureDetail();
         configureDialogs();
 
-        add(buildHeader(), buildToolbar(), grid);
+        var master = new Main();
+        master.setSizeFull();
+        master.addClassName("products-view");
+        master.add(buildHeader(), buildToolbar(), grid);
+        setMaster(master);
+        addBackdropClickListener(event -> requestClose());
+        addDetailEscapePressListener(event -> requestClose());
     }
 
     private Component buildHeader() {
@@ -110,7 +125,10 @@ public class SuppliersView extends Main {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newSupplier = new Button("New Supplier", event -> openCreate());
+        Button newSupplier = new Button(
+                "New Supplier", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        newSupplier.setAriaLabel("New Supplier");
+        newSupplier.setTooltipText("New Supplier");
         newSupplier.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newSupplier.setVisible(supplierService.canCreateSuppliers());
 
@@ -153,7 +171,7 @@ public class SuppliersView extends Main {
         grid.addColumn(new ComponentRenderer<>(this::actions))
                 .setHeader("Actions")
                 .setAutoWidth(true);
-        grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.addItemClickListener(event -> requestSwitch(() -> openView(event.getItem())));
         grid.sort(List.of(new GridSortOrder<>(supplierColumn, SortDirection.ASCENDING)));
     }
 
@@ -191,15 +209,16 @@ public class SuppliersView extends Main {
     private Component actions(Supplier supplier) {
         var layout = new HorizontalLayout();
         layout.addClassName("row-actions");
-        Button view = new Button("View", event -> openView(supplier));
+        Button view = new Button("View", event -> requestSwitch(() -> openView(supplier)));
         layout.add(view);
 
         if (supplierService.canUpdateSuppliers()) {
-            layout.add(new Button("Edit", event -> openEdit(supplier)));
+            layout.add(new Button("Edit", event -> requestSwitch(() -> openEdit(supplier))));
         }
 
         if (supplierService.canDeleteSuppliers() && supplier.isActive()) {
-            Button deactivate = new Button("Deactivate", event -> confirmDeactivate(supplier));
+            Button deactivate =
+                    new Button("Deactivate", event -> requestDestructive(() -> confirmDeactivate(supplier)));
             deactivate.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(deactivate);
         }
@@ -207,20 +226,7 @@ public class SuppliersView extends Main {
         return layout;
     }
 
-    private void configureSidebar() {
-        sidebar.addClassName("product-sidebar");
-        sidebar.setModal(false);
-        sidebar.setDraggable(false);
-        sidebar.setResizable(false);
-        sidebar.setCloseOnEsc(true);
-        sidebar.setCloseOnOutsideClick(true);
-        sidebar.addOpenedChangeListener(event -> {
-            if (!event.isOpened() && dirty && mode != FormMode.VIEW) {
-                sidebar.open();
-                dirtyDialog.open();
-            }
-        });
-
+    private void configureDetail() {
         configureFields();
         bindForm();
 
@@ -235,16 +241,18 @@ public class SuppliersView extends Main {
         close.addClickListener(event -> requestClose());
         edit.addClickListener(event -> {
             if (selectedSupplier != null) {
-                openEdit(selectedSupplier);
+                requestSwitch(() -> openEdit(selectedSupplier));
             }
         });
 
         var footer = new HorizontalLayout(save, cancel, close, edit);
-        footer.addClassName("sidebar-footer");
+        footer.addClassName("crud-detail-footer");
 
-        var content = new VerticalLayout(sidebarTitle, form, footer);
-        content.addClassName("sidebar-content");
-        sidebar.add(content);
+        detailTitle.setId("supplier-detail-title");
+        detailContent.add(detailTitle, form, footer);
+        detailContent.addClassName("crud-detail-content");
+        detailContent.getElement().setAttribute("aria-labelledby", "supplier-detail-title");
+        detailContent.getElement().setAttribute("role", "region");
     }
 
     private void configureFields() {
@@ -271,7 +279,10 @@ public class SuppliersView extends Main {
     private void configureDialogs() {
         Button confirm = new Button("Deactivate", event -> deactivateSelected());
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        Button cancelDeactivate = new Button("Cancel", event -> deactivateDialog.close());
+        Button cancelDeactivate = new Button("Cancel", event -> {
+            deactivateTarget = null;
+            deactivateDialog.close();
+        });
         deactivateDialog.add(
                 new VerticalLayout(deactivateTitle, deactivateText, new HorizontalLayout(confirm, cancelDeactivate)));
 
@@ -280,17 +291,27 @@ public class SuppliersView extends Main {
         Button discard = new Button("Discard", event -> {
             dirty = false;
             dirtyDialog.close();
-            sidebar.close();
+            if (deferredAction != null) {
+                Runnable action = deferredAction;
+                deferredAction = null;
+                action.run();
+                return;
+            }
+
+            setDetail(null);
         });
         discard.addThemeVariants(ButtonVariant.LUMO_ERROR);
-        Button stay = new Button("Cancel", event -> dirtyDialog.close());
+        Button stay = new Button("Cancel", event -> {
+            deferredAction = null;
+            dirtyDialog.close();
+        });
         dirtyDialog.add(new VerticalLayout(dirtyTitle, dirtyText, new HorizontalLayout(discard, stay)));
     }
 
     private void openCreate() {
         mode = FormMode.CREATE;
         selectedSupplier = null;
-        sidebarTitle.setText("New Supplier");
+        detailTitle.setText("New Supplier");
         resetForm(new SupplierRequest());
         setReadOnly(false);
         save.setVisible(true);
@@ -298,13 +319,13 @@ public class SuppliersView extends Main {
         close.setVisible(false);
         edit.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openEdit(Supplier supplier) {
         selectedSupplier = supplierService.get(supplier.getId());
         mode = FormMode.EDIT;
-        sidebarTitle.setText("Edit Supplier");
+        detailTitle.setText("Edit Supplier");
         resetForm(fromSupplier(selectedSupplier));
         setReadOnly(false);
         save.setVisible(true);
@@ -312,13 +333,13 @@ public class SuppliersView extends Main {
         close.setVisible(false);
         edit.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openView(Supplier supplier) {
         selectedSupplier = supplierService.get(supplier.getId());
         mode = FormMode.VIEW;
-        sidebarTitle.setText("Supplier Details");
+        detailTitle.setText("Supplier Details");
         resetForm(fromSupplier(selectedSupplier));
         setReadOnly(true);
         save.setVisible(false);
@@ -326,7 +347,7 @@ public class SuppliersView extends Main {
         close.setVisible(true);
         edit.setVisible(supplierService.canUpdateSuppliers());
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void resetForm(SupplierRequest request) {
@@ -371,7 +392,7 @@ public class SuppliersView extends Main {
             }
 
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             refreshGrid();
         } catch (SupplierException | AccessDeniedException exception) {
             showError(exception.getMessage());
@@ -379,7 +400,7 @@ public class SuppliersView extends Main {
     }
 
     private void confirmDeactivate(Supplier supplier) {
-        selectedSupplier = supplier;
+        deactivateTarget = supplier;
         long activeProducts = supplierService.activeProductCount(supplier.getId());
 
         if (activeProducts > 0) {
@@ -396,10 +417,11 @@ public class SuppliersView extends Main {
 
     private void deactivateSelected() {
         try {
-            supplierService.deactivate(selectedSupplier.getId());
+            supplierService.deactivate(deactivateTarget.getId());
             deactivateDialog.close();
+            deactivateTarget = null;
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             showSuccess("Supplier deactivated.");
             refreshGrid();
         } catch (SupplierException | AccessDeniedException exception) {
@@ -407,14 +429,38 @@ public class SuppliersView extends Main {
         }
     }
 
+    private void requestDestructive(Runnable action) {
+        boolean discardDetail = dirty && mode != FormMode.VIEW;
+        requestSwitch(() -> {
+            if (discardDetail) {
+                selectedSupplier = null;
+                setDetail(null);
+            }
+
+            action.run();
+        });
+    }
+
+    private void requestSwitch(Runnable action) {
+        if (dirty && mode != FormMode.VIEW) {
+            deferredAction = action;
+            dirtyDialog.open();
+            return;
+        }
+
+        deferredAction = null;
+        action.run();
+    }
+
     private void requestClose() {
+        deferredAction = null;
         if (dirty && mode != FormMode.VIEW) {
             dirtyDialog.open();
             return;
         }
 
         dirty = false;
-        sidebar.close();
+        setDetail(null);
     }
 
     private void setReadOnly(boolean readOnly) {

@@ -5,6 +5,7 @@ public enum AppResource {
     CATEGORY("category", "Category"),
     SUPPLIER("supplier", "Supplier"),
     STOCK_MOVEMENT("stock-movement", "Stock movement"),
+    REPORT("report", "Report"),
     USER("user", "User"),
     ROLE("role", "Role");
 

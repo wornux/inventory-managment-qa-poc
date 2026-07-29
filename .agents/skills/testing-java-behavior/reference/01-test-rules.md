@@ -29,4 +29,5 @@
 - Prefer JUnit 6, AssertJ, and Mockito already provided by Spring Boot.
 - Import Java types. Fully qualified class names are allowed only for the collisions documented in `AGENTS.md`.
 - Do not introduce dependencies, production abstractions, or test-only production code for coverage.
-- Preserve the explicit JaCoCo exclusion policy; in this repository only `com/wornux/ui/views/**` is excluded.
+- Preserve the explicit JaCoCo exclusion policy; this repository excludes `com/wornux/ui/views/**` and generated `**/*MapperImpl*` classes.
+- Keep complete mapper contract tests even though generated MapStruct implementations are excluded from coverage.

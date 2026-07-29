@@ -1,7 +1,6 @@
 package com.wornux.ui.views;
 
 import com.vaadin.flow.component.Component;
-import com.vaadin.flow.component.Key;
 import com.vaadin.flow.component.button.Button;
 import com.vaadin.flow.component.button.ButtonVariant;
 import com.vaadin.flow.component.checkbox.Checkbox;
@@ -12,9 +11,12 @@ import com.vaadin.flow.component.grid.Grid;
 import com.vaadin.flow.component.grid.GridSortOrder;
 import com.vaadin.flow.component.grid.dataview.GridLazyDataView;
 import com.vaadin.flow.component.html.H1;
+import com.vaadin.flow.component.html.H2;
 import com.vaadin.flow.component.html.Header;
 import com.vaadin.flow.component.html.Main;
 import com.vaadin.flow.component.html.Span;
+import com.vaadin.flow.component.icon.SvgIcon;
+import com.vaadin.flow.component.masterdetaillayout.MasterDetailLayout;
 import com.vaadin.flow.component.notification.Notification;
 import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
@@ -33,22 +35,29 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.signals.Signal;
 import com.vaadin.flow.signals.local.ValueSignal;
 import com.wornux.catalog.Category;
+import com.wornux.catalog.CategoryException;
+import com.wornux.catalog.CategoryRequest;
+import com.wornux.catalog.CategoryService;
 import com.wornux.catalog.Product;
 import com.wornux.catalog.ProductException;
 import com.wornux.catalog.ProductFilter;
 import com.wornux.catalog.ProductRequest;
 import com.wornux.catalog.ProductService;
 import com.wornux.catalog.Supplier;
+import com.wornux.catalog.SupplierException;
+import com.wornux.catalog.SupplierRequest;
+import com.wornux.catalog.SupplierService;
 import jakarta.annotation.security.PermitAll;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.springframework.security.access.AccessDeniedException;
 
 @Route("products")
 @PageTitle("Products")
 @PermitAll
-public class ProductsView extends Main {
+public class ProductsView extends MasterDetailLayout {
 
     private enum FormMode {
         CREATE,
@@ -57,6 +66,8 @@ public class ProductsView extends Main {
     }
 
     private final ProductService productService;
+    private final CategoryService categoryService;
+    private final SupplierService supplierService;
     private final Grid<Product> grid = new Grid<>(Product.class, false);
     private final TextField search = new TextField();
     private final ComboBox<Category> categoryFilter = new ComboBox<>("Category");
@@ -78,7 +89,7 @@ public class ProductsView extends Main {
                     : supplierFilterSignal.get().getId(),
             activeFilterValue(activeStatusSignal.get()),
             lowStockSignal.get()));
-    private final Dialog sidebar = new Dialog();
+    private final VerticalLayout detailContent = new VerticalLayout();
     private final Dialog deleteDialog = new Dialog();
     private final Dialog dirtyDialog = new Dialog();
     private final BeanValidationBinder<ProductRequest> binder = new BeanValidationBinder<>(ProductRequest.class);
@@ -90,32 +101,52 @@ public class ProductsView extends Main {
     private final IntegerField quantityOnHand = new IntegerField("Quantity on hand");
     private final IntegerField minimumStock = new IntegerField("Minimum stock");
     private final ComboBox<Category> category = new ComboBox<>("Category");
+    private final Button createCategory =
+            new Button(new SvgIcon("/icons/dependency-create.svg"), event -> openCategoryCreateDialog());
     private final ComboBox<Supplier> supplier = new ComboBox<>("Supplier");
+    private final Button createSupplier =
+            new Button(new SvgIcon("/icons/dependency-create.svg"), event -> openSupplierCreateDialog());
     private final Checkbox active = new Checkbox("Active");
-    private final H1 sidebarTitle = new H1();
+    private final H2 detailTitle = new H2();
     private final Button save = new Button("Save");
     private final Button cancel = new Button("Cancel");
     private final Button close = new Button("Close");
     private List<Category> categories = new ArrayList<>();
     private List<Supplier> suppliers = new ArrayList<>();
     private Product selectedProduct;
+    private Product deleteTarget;
     private GridLazyDataView<Product> gridDataView;
     private FormMode mode = FormMode.VIEW;
     private boolean dirty;
+    private Runnable deferredAction;
 
-    public ProductsView(ProductService productService) {
+    public ProductsView(
+            ProductService productService, CategoryService categoryService, SupplierService supplierService) {
         this.productService = productService;
+        this.categoryService = categoryService;
+        this.supplierService = supplierService;
+        setId("products-view");
         setSizeFull();
-        addClassName("products-view");
+        addClassName("crud-master-detail");
+        setExpandMaster(true);
+        setMasterSize("44rem");
+        setDetailSize("30rem");
+        setOverlaySize("min(30rem, 100%)");
         categories = productService.activeCategories();
         suppliers = productService.activeSuppliers();
         configureFilters();
         configureGrid();
         gridDataView = PageableGridBinding.bind(grid, filterSignal, productService::search);
-        configureSidebar();
+        configureDetail();
         configureDialogs();
 
-        add(buildHeader(), buildToolbar(), grid);
+        var master = new Main();
+        master.setSizeFull();
+        master.addClassName("products-view");
+        master.add(buildHeader(), buildToolbar(), grid);
+        setMaster(master);
+        addBackdropClickListener(event -> requestClose());
+        addDetailEscapePressListener(event -> requestClose());
     }
 
     private Component buildHeader() {
@@ -135,7 +166,11 @@ public class ProductsView extends Main {
         toolbar.setWidthFull();
         toolbar.setAlignItems(HorizontalLayout.Alignment.END);
 
-        Button newProduct = new Button("New Product", event -> openCreate());
+        Button newProduct = new Button(
+                "New Product", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
+        newProduct.setId("new-product");
+        newProduct.setAriaLabel("New Product");
+        newProduct.setTooltipText("New Product");
         newProduct.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
         newProduct.setVisible(productService.canCreateProducts());
 
@@ -146,29 +181,35 @@ public class ProductsView extends Main {
     }
 
     private void configureFilters() {
+        search.setId("product-search");
         search.setPlaceholder("Search SKU or name");
         search.setClearButtonVisible(true);
         search.setValueChangeMode(ValueChangeMode.LAZY);
         search.bindValue(searchSignal, searchSignal::set);
 
+        categoryFilter.setId("product-category-filter");
         categoryFilter.setItems(categories);
         categoryFilter.setItemLabelGenerator(Category::getName);
         categoryFilter.setClearButtonVisible(true);
         categoryFilter.bindValue(categoryFilterSignal, categoryFilterSignal::set);
 
+        supplierFilter.setId("product-supplier-filter");
         supplierFilter.setItems(suppliers);
         supplierFilter.setItemLabelGenerator(Supplier::getName);
         supplierFilter.setClearButtonVisible(true);
         supplierFilter.bindValue(supplierFilterSignal, supplierFilterSignal::set);
 
+        activeFilter.setId("product-status-filter");
         activeFilter.setItems("Active", "Inactive", "All");
         activeFilter.setClearButtonVisible(false);
         activeFilter.bindValue(activeStatusSignal, activeStatusSignal::set);
 
+        lowStockFilter.setId("product-low-stock-filter");
         lowStockFilter.bindValue(lowStockSignal, lowStockSignal::set);
     }
 
     private void configureGrid() {
+        grid.setId("products-grid");
         grid.addClassName("products-grid");
         grid.setSizeFull();
         var productColumn = grid.addColumn(productRenderer())
@@ -196,7 +237,7 @@ public class ProductsView extends Main {
         grid.addColumn(new ComponentRenderer<>(this::actions))
                 .setHeader("Actions")
                 .setAutoWidth(true);
-        grid.addItemClickListener(event -> openView(event.getItem()));
+        grid.addItemClickListener(event -> requestSwitch(() -> openView(event.getItem())));
         grid.sort(List.of(new GridSortOrder<>(productColumn, SortDirection.ASCENDING)));
     }
 
@@ -228,15 +269,15 @@ public class ProductsView extends Main {
     private Component actions(Product product) {
         var layout = new HorizontalLayout();
         layout.addClassName("row-actions");
-        Button view = new Button("View", event -> openView(product));
+        Button view = new Button("View", event -> requestSwitch(() -> openView(product)));
         layout.add(view);
 
         if (productService.canUpdateProducts()) {
-            layout.add(new Button("Edit", event -> openEdit(product)));
+            layout.add(new Button("Edit", event -> requestSwitch(() -> openEdit(product))));
         }
 
         if (productService.canDeleteProducts()) {
-            Button delete = new Button("Delete", event -> confirmDelete(product));
+            Button delete = new Button("Delete", event -> requestDestructive(() -> confirmDelete(product)));
             delete.addThemeVariants(ButtonVariant.LUMO_ERROR);
             layout.add(delete);
         }
@@ -244,62 +285,90 @@ public class ProductsView extends Main {
         return layout;
     }
 
-    private void configureSidebar() {
-        sidebar.addClassName("product-sidebar");
-        sidebar.setModal(false);
-        sidebar.setDraggable(false);
-        sidebar.setResizable(false);
-        sidebar.setCloseOnEsc(true);
-        sidebar.setCloseOnOutsideClick(true);
-        sidebar.addOpenedChangeListener(event -> {
-            if (!event.isOpened() && dirty) {
-                sidebar.open();
-                dirtyDialog.open();
-            }
-        });
-
+    private void configureDetail() {
         configureFields();
         bindForm();
 
+        var categoryAssignment = new HorizontalLayout(category, createCategory);
+        categoryAssignment.addClassName("product-dependency-field");
+        categoryAssignment.setAlignItems(HorizontalLayout.Alignment.END);
+        categoryAssignment.setWidthFull();
+        categoryAssignment.setFlexGrow(1, category);
+
+        var supplierAssignment = new HorizontalLayout(supplier, createSupplier);
+        supplierAssignment.addClassName("product-dependency-field");
+        supplierAssignment.setAlignItems(HorizontalLayout.Alignment.END);
+        supplierAssignment.setWidthFull();
+        supplierAssignment.setFlexGrow(1, supplier);
+
         var form = new FormLayout();
-        form.add(sku, name, description, unitPrice, quantityOnHand, minimumStock, category, supplier, active);
+        form.add(
+                sku,
+                name,
+                description,
+                unitPrice,
+                quantityOnHand,
+                minimumStock,
+                categoryAssignment,
+                supplierAssignment,
+                active);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
-        save.addClickShortcut(Key.ENTER);
         save.addClickListener(event -> saveProduct());
         cancel.addClickListener(event -> requestClose());
         close.addClickListener(event -> requestClose());
 
         var footer = new HorizontalLayout(save, cancel, close);
-        footer.addClassName("sidebar-footer");
+        footer.addClassName("crud-detail-footer");
 
-        var content = new VerticalLayout(sidebarTitle, form, footer);
-        content.addClassName("sidebar-content");
-        sidebar.add(content);
+        detailTitle.setId("product-detail-title");
+        detailContent.add(detailTitle, form, footer);
+        detailContent.addClassName("crud-detail-content");
+        detailContent.getElement().setAttribute("aria-labelledby", "product-detail-title");
+        detailContent.getElement().setAttribute("role", "region");
     }
 
     private void configureFields() {
+        sku.setId("product-sku");
         sku.setRequiredIndicatorVisible(true);
         sku.setValueChangeMode(ValueChangeMode.EAGER);
+        name.setId("product-name");
         name.setRequiredIndicatorVisible(true);
         name.setValueChangeMode(ValueChangeMode.EAGER);
+        description.setId("product-description");
         description.setMaxLength(1000);
         description.setValueChangeMode(ValueChangeMode.EAGER);
+        unitPrice.setId("product-unit-price");
         unitPrice.setRequiredIndicatorVisible(true);
         unitPrice.setValueChangeMode(ValueChangeMode.EAGER);
+        quantityOnHand.setId("product-quantity");
         quantityOnHand.setRequiredIndicatorVisible(true);
         quantityOnHand.setValueChangeMode(ValueChangeMode.EAGER);
         quantityOnHand.setMin(0);
+        minimumStock.setId("product-minimum-stock");
         minimumStock.setRequiredIndicatorVisible(true);
         minimumStock.setValueChangeMode(ValueChangeMode.EAGER);
         minimumStock.setMin(0);
+        category.setId("product-category");
         category.setItems(categories);
         category.setItemLabelGenerator(Category::getName);
         category.setRequiredIndicatorVisible(true);
+        createCategory.setAriaLabel("Create category");
+        createCategory.setTooltipText("Create category");
+        createCategory.addThemeVariants(ButtonVariant.TERTIARY);
+        createCategory.setVisible(false);
+        supplier.setId("product-supplier");
         supplier.setItems(suppliers);
         supplier.setItemLabelGenerator(Supplier::getName);
         supplier.setClearButtonVisible(true);
+        createSupplier.setAriaLabel("Create supplier");
+        createSupplier.setTooltipText("Create supplier");
+        createSupplier.addThemeVariants(ButtonVariant.TERTIARY);
+        createSupplier.setVisible(false);
+        active.setId("product-active");
+        save.setId("save-product");
+        cancel.setId("cancel-product");
         binder.addValueChangeListener(event -> dirty = true);
     }
 
@@ -337,8 +406,12 @@ public class ProductsView extends Main {
         var deleteTitle = new H1("Delete product?");
         var deleteText = new Span("Are you sure you want to delete this product?");
         Button confirm = new Button("Delete", event -> deleteSelected());
+        confirm.setId("confirm-product-delete");
         confirm.addThemeVariants(ButtonVariant.LUMO_PRIMARY, ButtonVariant.LUMO_ERROR);
-        Button cancelDelete = new Button("Cancel", event -> deleteDialog.close());
+        Button cancelDelete = new Button("Cancel", event -> {
+            deleteTarget = null;
+            deleteDialog.close();
+        });
         deleteDialog.add(new VerticalLayout(deleteTitle, deleteText, new HorizontalLayout(confirm, cancelDelete)));
 
         var dirtyTitle = new H1("Unsaved changes");
@@ -346,50 +419,176 @@ public class ProductsView extends Main {
         Button discard = new Button("Discard", event -> {
             dirty = false;
             dirtyDialog.close();
-            sidebar.close();
+            if (deferredAction != null) {
+                Runnable action = deferredAction;
+                deferredAction = null;
+                action.run();
+                return;
+            }
+
+            setDetail(null);
         });
         discard.addThemeVariants(ButtonVariant.LUMO_ERROR);
-        Button stay = new Button("Cancel", event -> dirtyDialog.close());
+        Button stay = new Button("Cancel", event -> {
+            deferredAction = null;
+            dirtyDialog.close();
+        });
         dirtyDialog.add(new VerticalLayout(dirtyTitle, dirtyText, new HorizontalLayout(discard, stay)));
+    }
+
+    private void openCategoryCreateDialog() {
+        var dialog = new Dialog();
+        dialog.addClassName("dependency-create-dialog");
+        dialog.getElement().setProperty("ariaLabel", "Create category");
+
+        var chip = new Span("catalog.category.create");
+        chip.addClassName("dependency-dialog-chip");
+        var heading = new H2("Create category");
+        var description = new Span("Add a category without leaving the product form.");
+        description.addClassName("dependency-dialog-description");
+        var nameField = new TextField("Name");
+        nameField.setWidthFull();
+
+        var request = new CategoryRequest();
+        var dialogBinder = new BeanValidationBinder<>(CategoryRequest.class);
+        dialogBinder.bind(nameField, "name");
+
+        var content = new VerticalLayout(chip, heading, description, nameField);
+        content.addClassName("dependency-dialog-content");
+        content.setPadding(false);
+        content.setSpacing(false);
+        dialog.add(content);
+
+        var cancelButton = new Button("Cancel", event -> dialog.close());
+        cancelButton.addClassName("dependency-dialog-action");
+        cancelButton.addThemeVariants(ButtonVariant.TERTIARY);
+        var createButton = new Button("Create", event -> {
+            if (!dialogBinder.writeBeanIfValid(request)) {
+                return;
+            }
+
+            try {
+                Category created = categoryService.create(request);
+                Category filteredCategory = categoryFilter.getValue();
+                categories = new ArrayList<>(categories);
+                categories.removeIf(item -> created.getId().equals(item.getId()));
+                categories.add(created);
+                categories.sort(Comparator.comparing(Category::getName, String.CASE_INSENSITIVE_ORDER));
+                category.setItems(categories);
+                categoryFilter.setItems(categories);
+                categoryFilter.setValue(filteredCategory);
+                category.setValue(created);
+                dialog.close();
+            } catch (CategoryException | AccessDeniedException exception) {
+                showError(exception.getMessage());
+            }
+        });
+        createButton.addClassName("dependency-dialog-action");
+        createButton.addThemeVariants(ButtonVariant.PRIMARY);
+        dialog.getFooter().add(cancelButton, createButton);
+        dialog.addOpenedChangeListener(event -> {
+            if (event.isOpened()) {
+                nameField.focus();
+            }
+        });
+        dialog.open();
+    }
+
+    private void openSupplierCreateDialog() {
+        var dialog = new Dialog();
+        dialog.addClassName("dependency-create-dialog");
+        dialog.getElement().setProperty("ariaLabel", "Create supplier");
+
+        var chip = new Span("catalog.supplier.create");
+        chip.addClassName("dependency-dialog-chip");
+        var heading = new H2("Create supplier");
+        var description = new Span("Add a supplier without leaving the product form.");
+        description.addClassName("dependency-dialog-description");
+        var nameField = new TextField("Name");
+        nameField.setWidthFull();
+
+        var request = new SupplierRequest();
+        var dialogBinder = new BeanValidationBinder<>(SupplierRequest.class);
+        dialogBinder.bind(nameField, "name");
+
+        var content = new VerticalLayout(chip, heading, description, nameField);
+        content.addClassName("dependency-dialog-content");
+        content.setPadding(false);
+        content.setSpacing(false);
+        dialog.add(content);
+
+        var cancelButton = new Button("Cancel", event -> dialog.close());
+        cancelButton.addClassName("dependency-dialog-action");
+        cancelButton.addThemeVariants(ButtonVariant.TERTIARY);
+        var createButton = new Button("Create", event -> {
+            if (!dialogBinder.writeBeanIfValid(request)) {
+                return;
+            }
+
+            try {
+                Supplier created = supplierService.create(request);
+                Supplier filteredSupplier = supplierFilter.getValue();
+                suppliers = new ArrayList<>(suppliers);
+                suppliers.removeIf(item -> created.getId().equals(item.getId()));
+                suppliers.add(created);
+                suppliers.sort(Comparator.comparing(Supplier::getName, String.CASE_INSENSITIVE_ORDER));
+                supplier.setItems(suppliers);
+                supplierFilter.setItems(suppliers);
+                supplierFilter.setValue(filteredSupplier);
+                supplier.setValue(created);
+                dialog.close();
+            } catch (SupplierException | AccessDeniedException exception) {
+                showError(exception.getMessage());
+            }
+        });
+        createButton.addClassName("dependency-dialog-action");
+        createButton.addThemeVariants(ButtonVariant.PRIMARY);
+        dialog.getFooter().add(cancelButton, createButton);
+        dialog.addOpenedChangeListener(event -> {
+            if (event.isOpened()) {
+                nameField.focus();
+            }
+        });
+        dialog.open();
     }
 
     private void openCreate() {
         mode = FormMode.CREATE;
         selectedProduct = null;
-        sidebarTitle.setText("New Product");
+        detailTitle.setText("New Product");
         resetForm(new ProductRequest());
         setReadOnly(false);
         save.setVisible(true);
         cancel.setVisible(true);
         close.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openEdit(Product product) {
         selectedProduct = productService.get(product.getId());
         mode = FormMode.EDIT;
-        sidebarTitle.setText("Edit Product");
+        detailTitle.setText("Edit Product");
         resetForm(fromProduct(selectedProduct));
         setReadOnly(false);
         save.setVisible(true);
         cancel.setVisible(true);
         close.setVisible(false);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void openView(Product product) {
         selectedProduct = productService.get(product.getId());
         mode = FormMode.VIEW;
-        sidebarTitle.setText("Product Details");
+        detailTitle.setText("Product Details");
         resetForm(fromProduct(selectedProduct));
         setReadOnly(true);
         save.setVisible(false);
         cancel.setVisible(false);
         close.setVisible(true);
         dirty = false;
-        sidebar.open();
+        setDetail(detailContent);
     }
 
     private void resetForm(ProductRequest request) {
@@ -422,7 +621,7 @@ public class ProductsView extends Main {
             }
 
             dirty = false;
-            sidebar.close();
+            setDetail(null);
             refreshGrid();
         } catch (ProductException | AccessDeniedException exception) {
             showError(exception.getMessage());
@@ -430,14 +629,25 @@ public class ProductsView extends Main {
     }
 
     private void confirmDelete(Product product) {
-        selectedProduct = product;
+        deleteTarget = product;
         deleteDialog.open();
     }
 
     private void deleteSelected() {
         try {
-            productService.delete(selectedProduct.getId());
+            Long deletedId = deleteTarget.getId();
+            boolean deletedDetailOpen =
+                    selectedProduct != null && selectedProduct.getId().equals(deletedId);
+            productService.delete(deletedId);
             deleteDialog.close();
+            deleteTarget = null;
+
+            if (deletedDetailOpen) {
+                selectedProduct = null;
+                dirty = false;
+                setDetail(null);
+            }
+
             showSuccess("Product removed.");
             refreshGrid();
         } catch (ProductException | AccessDeniedException exception) {
@@ -445,14 +655,38 @@ public class ProductsView extends Main {
         }
     }
 
+    private void requestDestructive(Runnable action) {
+        boolean discardDetail = dirty && mode != FormMode.VIEW;
+        requestSwitch(() -> {
+            if (discardDetail) {
+                selectedProduct = null;
+                setDetail(null);
+            }
+
+            action.run();
+        });
+    }
+
+    private void requestSwitch(Runnable action) {
+        if (dirty && mode != FormMode.VIEW) {
+            deferredAction = action;
+            dirtyDialog.open();
+            return;
+        }
+
+        deferredAction = null;
+        action.run();
+    }
+
     private void requestClose() {
+        deferredAction = null;
         if (dirty && mode != FormMode.VIEW) {
             dirtyDialog.open();
             return;
         }
 
         dirty = false;
-        sidebar.close();
+        setDetail(null);
     }
 
     private void setReadOnly(boolean readOnly) {
@@ -463,7 +697,9 @@ public class ProductsView extends Main {
         quantityOnHand.setReadOnly(readOnly);
         minimumStock.setReadOnly(readOnly);
         category.setReadOnly(readOnly);
+        createCategory.setVisible(!readOnly && categoryService.canCreateCategories());
         supplier.setReadOnly(readOnly);
+        createSupplier.setVisible(!readOnly && supplierService.canCreateSuppliers());
         active.setReadOnly(readOnly);
     }
 

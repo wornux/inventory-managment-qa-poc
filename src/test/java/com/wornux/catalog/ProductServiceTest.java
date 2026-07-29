@@ -1,5 +1,6 @@
 package com.wornux.catalog;
 
+import static com.wornux.SpecificationTestSupport.predicateCount;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -11,6 +12,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
@@ -55,7 +57,13 @@ class ProductServiceTest {
 
         assertThat(service.search(null, pageable)).isSameAs(page);
         assertThat(service.search(filter, pageable)).isSameAs(page);
-        verify(products, times(2)).findAll(any(Specification.class), eq(pageable));
+        assertThat(service.search(new ProductFilter(null, null, null, null, false), pageable))
+                .isSameAs(page);
+        ArgumentCaptor<Specification<Product>> specifications = ArgumentCaptor.captor();
+        verify(products, times(3)).findAll(specifications.capture(), eq(pageable));
+        assertThat(specifications.getAllValues())
+                .extracting(specification -> predicateCount(specification))
+                .containsExactly(0, 5, 0);
     }
 
     @Test

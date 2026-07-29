@@ -17,7 +17,7 @@ groups:
         labels:
           severity: warning
       - alert: ApplicationDown
-        expr: up{job="application"} == 0
+        expr: absent_over_time(process_uptime_seconds{job="application"}[1m])
         for: 1m
         labels:
           severity: critical
@@ -26,3 +26,11 @@ groups:
         for: 2m
         labels:
           severity: warning
+      - alert: LowStockProducts
+        expr: wornux_inventory_low_stock_products{job="application"} > 0
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: Products are at or below minimum stock
+          description: "{{ $value }} active products require inventory attention."

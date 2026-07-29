@@ -59,7 +59,7 @@ class UserDomainTest {
         assertThat(second.getVersion()).isNull();
         assertThat(second.getCreatedAt()).isNull();
         assertThat(second.getUpdatedAt()).isNull();
-        assertThat(second.isSystemRole()).isFalse();
+        assertThat(second.getPriority()).isEqualTo(10);
 
         second.deactivate();
 
@@ -95,7 +95,7 @@ class UserDomainTest {
 
         assertThat(new OidcProvisioningException("message", cause)).hasCause(cause);
         assertThat(new UserException("user")).hasMessage("user");
-        assertThat(new RoleFilter("x", true, false).text()).isEqualTo("x");
+        assertThat(new RoleFilter("x", false).text()).isEqualTo("x");
         assertThat(new UserFilter("x", true).active()).isTrue();
     }
 
@@ -118,12 +118,12 @@ class UserDomainTest {
 
         assertThat(role.getPermissions()).containsExactly(AppPermission.PRODUCT_VIEW);
         assertThat(role.isActive()).isTrue();
-        assertThat(role.isSystemRole()).isTrue();
+        assertThat(role.getPriority()).isEqualTo(10);
     }
 
     static Role role(String code, boolean active, AppPermission... permissions) {
-        Role role = new Role(code, code, null, false);
-        role.update(code, null, active, new LinkedHashSet<>(Set.of(permissions)));
+        Role role = new Role(code, code, null);
+        role.update(code, null, 10, active, new LinkedHashSet<>(Set.of(permissions)));
 
         return role;
     }

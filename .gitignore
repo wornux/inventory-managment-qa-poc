@@ -1,5 +1,7 @@
 /target/
 logs/
+reports/jmeter/
+Proyecto_Final_V3.pdf
 .idea/
 .vscode/*
 !.vscode/launch.json
