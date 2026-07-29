@@ -140,6 +140,7 @@ services:
     volumes:
       - ./telemetry/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
       - alertmanager_data:/alertmanager
+    secrets: [slack_webhook]
     healthcheck:
       test: ["CMD-SHELL", "wget -q -O- http://localhost:9093/-/ready >/dev/null"]
       interval: 10s
@@ -263,6 +264,10 @@ services:
     extra_hosts:
       - host.docker.internal:host-gateway
     networks: [observability]
+
+secrets:
+  slack_webhook:
+    environment: SLACK_WEBHOOK_URL
 
 volumes:
   db_postgres:
