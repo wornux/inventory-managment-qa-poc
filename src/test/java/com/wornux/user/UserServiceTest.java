@@ -100,6 +100,7 @@ class UserServiceTest {
     void create_normalizesPersistsAndChecksUniquenessAndRoleAssignment() {
         Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
         when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
         when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
         when(appUserRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         UserRequest request = request(" user ", " U@E.COM ", 1L);
@@ -160,6 +161,7 @@ class UserServiceTest {
         request.setVersion(2L);
         when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
         when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
         when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
         when(appUserRepository.save(user)).thenReturn(user);
 
@@ -189,6 +191,54 @@ class UserServiceTest {
         assertThatThrownBy(() -> service().update(8L, request))
                 .isInstanceOf(UserException.class)
                 .hasMessage("User was not found.");
+    }
+
+    @Test
+    void update_validatesOnlyRolesAddedOrRemovedFromAMixedSelection() throws Exception {
+        Role retained = UserDomainTest.role("RETAINED", true, AppPermission.PRODUCT_VIEW);
+        Role removed = UserDomainTest.role("REMOVED", true, AppPermission.PRODUCT_VIEW);
+        Role added = UserDomainTest.role("ADDED", true, AppPermission.PRODUCT_VIEW);
+        set(retained, "id", 1L);
+        set(removed, "id", 2L);
+        set(added, "id", 3L);
+        AppUser user = new AppUser("old", "old@e.com", null, null);
+        user.addRole(retained);
+        user.addRole(removed);
+        set(user, "version", 2L);
+        UserRequest request = request("new", "new@e.com", 1L, 3L);
+        request.setVersion(2L);
+        when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
+        when(roleRepository.findAllById(Set.of(1L, 3L))).thenReturn(List.of(retained, added));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
+        when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
+        when(appUserRepository.save(user)).thenReturn(user);
+
+        AppUser updated = service().update(7L, request);
+
+        assertThat(updated.getRoles()).containsExactlyInAnyOrder(retained, added);
+        verify(authorizationService).invalidateUser(7L);
+    }
+
+    @Test
+    void update_rejectsRemovingARoleAboveTheActorPriority() throws Exception {
+        Role high = UserDomainTest.role("HIGH", true, AppPermission.PRODUCT_VIEW);
+        high.update(high.getName(), high.getDescription(), 80, true, high.getPermissions());
+        set(high, "id", 1L);
+        Role low = UserDomainTest.role("LOW", true, AppPermission.PRODUCT_VIEW);
+        set(low, "id", 2L);
+        AppUser user = new AppUser("old", "old@e.com", null, null);
+        user.addRole(high);
+        set(user, "version", 2L);
+        UserRequest request = request("new", "new@e.com", 2L);
+        request.setVersion(2L);
+        when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
+        when(roleRepository.findAllById(Set.of(2L))).thenReturn(List.of(low));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
+        when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
+
+        assertThatThrownBy(() -> service().update(7L, request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("above your priority");
     }
 
     @Test
@@ -296,8 +346,8 @@ class UserServiceTest {
     }
 
     private Role role(AppPermission... permissions) {
-        Role role = new Role("TEST", "Test", null, false);
-        role.update(role.getName(), role.getDescription(), true, Set.of(permissions));
+        Role role = new Role("TEST", "Test", null);
+        role.update(role.getName(), role.getDescription(), 100, true, Set.of(permissions));
 
         return role;
     }

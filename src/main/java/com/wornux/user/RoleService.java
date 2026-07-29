@@ -24,7 +24,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class RoleService {
 
-    private static final Sort ROLE_ORDER = Sort.by("code");
+    private static final Sort ROLE_ORDER = Sort.by(Sort.Order.desc("priority"), Sort.Order.asc("code"));
     private final RoleRepository roleRepository;
     private final AppUserRepository appUserRepository;
     private final AuthorizationService authorizationService;
@@ -90,17 +90,57 @@ public class RoleService {
         return appUserRepository.findDistinctByRolesIdOrderByUsernameAsc(roleId);
     }
 
+    @Transactional(readOnly = true)
+    public List<AppUser> assignmentCandidates(Long roleId) {
+        authorizationService.check(AppPermission.ROLE_ASSIGN);
+        Role role = roleRepository.findById(roleId).orElseThrow(() -> new RoleException("Role was not found."));
+        requireManageableRole(role);
+
+        return appUserRepository.findAll(Sort.by("username")).stream()
+                .filter(user ->
+                        user.getRoles().stream().noneMatch(assigned -> Objects.equals(assigned.getId(), roleId)))
+                .toList();
+    }
+
+    @Transactional
+    public void assignMember(Long roleId, Long userId) {
+        authorizationService.check(AppPermission.ROLE_ASSIGN);
+        Role role = roleRepository.findById(roleId).orElseThrow(() -> new RoleException("Role was not found."));
+
+        if (!role.isActive()) {
+            throw new RoleException("Inactive roles cannot receive new members.");
+        }
+
+        requireManageableRole(role);
+        AppUser user = requireUser(userId);
+        user.addRole(role);
+        appUserRepository.save(user);
+        authorizationService.invalidateUser(userId);
+    }
+
+    @Transactional
+    public void removeMember(Long roleId, Long userId) {
+        authorizationService.check(AppPermission.ROLE_ASSIGN);
+        Role role = roleRepository.findById(roleId).orElseThrow(() -> new RoleException("Role was not found."));
+        requireManageableRole(role);
+        AppUser user = requireUser(userId);
+        user.getRoles().removeIf(assignedRole -> Objects.equals(assignedRole.getId(), roleId));
+        appUserRepository.save(user);
+        authorizationService.invalidateUser(userId);
+    }
+
     @Transactional
     public Role create(@Valid RoleRequest request) {
         authorizationService.check(AppPermission.ROLE_CREATE);
         validateUniqueCode(request.getCode());
         Set<AppPermission> permissions = requireAssignablePermissions(request.getPermissions());
+        int priority = requirePriority(request.getPriority());
+        requireOutranksPriority(priority);
         Role role = new Role(
                 normalizeCode(request.getCode()),
                 normalizeName(request.getName()),
-                trimToNull(request.getDescription()),
-                false);
-        role.update(role.getName(), role.getDescription(), request.isActive(), permissions);
+                trimToNull(request.getDescription()));
+        role.update(role.getName(), role.getDescription(), priority, request.isActive(), permissions);
 
         return roleRepository.save(role);
     }
@@ -109,7 +149,6 @@ public class RoleService {
     public Role update(Long id, @Valid RoleRequest request) {
         authorizationService.check(AppPermission.ROLE_UPDATE);
         Role role = roleRepository.findById(id).orElseThrow(() -> new RoleException("Role was not found."));
-        validateCustomRole(role);
 
         if (!Objects.equals(role.getVersion(), request.getVersion())) {
             throw new RoleException("Role was updated by another administrator. Refresh the form and try again.");
@@ -119,9 +158,14 @@ public class RoleService {
             throw new RoleException("Role code cannot be changed.");
         }
 
+        requireManageableRole(role);
+        int requestedPriority = requirePriority(request.getPriority());
+        validatePriorityChange(role, requestedPriority);
+        validateActiveChange(role, request.isActive());
         role.update(
                 normalizeName(request.getName()),
                 trimToNull(request.getDescription()),
+                requestedPriority,
                 request.isActive(),
                 requireAssignablePermissions(request.getPermissions()));
         Role saved = roleRepository.save(role);
@@ -134,7 +178,8 @@ public class RoleService {
     public void deactivate(Long id) {
         authorizationService.check(AppPermission.ROLE_DELETE);
         Role role = roleRepository.findById(id).orElseThrow(() -> new RoleException("Role was not found."));
-        validateCustomRole(role);
+        requireManageableRole(role);
+        requireOutranksPriority(role.getPriority());
         role.deactivate();
         roleRepository.save(role);
         authorizationService.invalidateAll();
@@ -148,19 +193,82 @@ public class RoleService {
         return authorizationService.can(AppPermission.ROLE_UPDATE);
     }
 
+    public boolean canUpdateRole(Role role) {
+        return canUpdateRoles() && canManageRole(role);
+    }
+
+    public boolean canChangeActiveState(Role role) {
+        return canUpdateRole(role) && authorizationService.outranksPriority(role.getPriority());
+    }
+
     public boolean canDeleteRoles() {
         return authorizationService.can(AppPermission.ROLE_DELETE);
+    }
+
+    public boolean canDeactivateRole(Role role) {
+        return canDeleteRoles() && canManageRole(role) && authorizationService.outranksPriority(role.getPriority());
+    }
+
+    public boolean canAssignRoles() {
+        return authorizationService.can(AppPermission.ROLE_ASSIGN);
+    }
+
+    public boolean canAssignRole(Role role) {
+        return canAssignRoles() && canManageRole(role);
+    }
+
+    private AppUser requireUser(Long id) {
+        return appUserRepository.findWithRolesById(id).orElseThrow(() -> new UserException("User was not found."));
+    }
+
+    private void requireManageableRole(Role role) {
+        if (!authorizationService.canManagePriority(role.getPriority())) {
+            throw new RoleException("You cannot manage a role above your priority.");
+        }
+
+        if (!authorizationService.canAll(role.getPermissions())) {
+            throw new RoleException("You cannot manage a role containing permissions that you do not have.");
+        }
+    }
+
+    private boolean canManageRole(Role role) {
+        return authorizationService.canManagePriority(role.getPriority())
+                && authorizationService.canAll(role.getPermissions());
+    }
+
+    private void requireOutranksPriority(int priority) {
+        if (!authorizationService.outranksPriority(priority)) {
+            throw new RoleException("Role priority must be lower than your priority.");
+        }
+    }
+
+    private int requirePriority(Integer priority) {
+        if (priority == null || priority < 0 || priority > 100) {
+            throw new RoleException("Priority must be between 0 and 100.");
+        }
+
+        return priority;
+    }
+
+    private void validatePriorityChange(Role role, int requestedPriority) {
+        if (role.getPriority() == 100 && requestedPriority != 100) {
+            throw new RoleException("The priority 100 role cannot change priority.");
+        }
+
+        if (requestedPriority != role.getPriority()) {
+            requireOutranksPriority(requestedPriority);
+        }
+    }
+
+    private void validateActiveChange(Role role, boolean requestedActive) {
+        if (requestedActive != role.isActive() && !authorizationService.outranksPriority(role.getPriority())) {
+            throw new RoleException("You cannot change the active state of a role at your priority.");
+        }
     }
 
     private void validateUniqueCode(String code) {
         if (roleRepository.existsByCodeIgnoreCase(normalizeCode(code))) {
             throw new RoleException("Role code already exists. Please choose a different one.");
-        }
-    }
-
-    private void validateCustomRole(Role role) {
-        if (role.isSystemRole()) {
-            throw new RoleException("System roles cannot be edited.");
         }
     }
 
@@ -177,7 +285,7 @@ public class RoleService {
     }
 
     private Specification<Role> toSpecification(RoleFilter filter) {
-        RoleFilter safeFilter = filter == null ? new RoleFilter("", null, null) : filter;
+        RoleFilter safeFilter = filter == null ? new RoleFilter("", null) : filter;
         String text = normalizeSearch(safeFilter.text());
 
         return (root, query, criteriaBuilder) -> {
@@ -187,10 +295,6 @@ public class RoleService {
                 predicates.add(criteriaBuilder.or(
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("code")), "%" + text + "%"),
                         criteriaBuilder.like(criteriaBuilder.lower(root.get("name")), "%" + text + "%")));
-            }
-
-            if (safeFilter.systemRole() != null) {
-                predicates.add(criteriaBuilder.equal(root.get("systemRole"), safeFilter.systemRole()));
             }
 
             if (safeFilter.active() != null) {

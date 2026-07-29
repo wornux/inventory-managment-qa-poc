@@ -25,9 +25,11 @@ import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.tabs.Tab;
 import com.vaadin.flow.component.tabs.Tabs;
+import com.vaadin.flow.component.textfield.IntegerField;
 import com.vaadin.flow.component.textfield.TextArea;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
+import com.vaadin.flow.data.renderer.ComponentRenderer;
 import com.vaadin.flow.data.renderer.LitRenderer;
 import com.vaadin.flow.data.value.ValueChangeMode;
 import com.vaadin.flow.router.PageTitle;
@@ -40,6 +42,7 @@ import com.wornux.user.RoleException;
 import com.wornux.user.RoleFilter;
 import com.wornux.user.RoleRequest;
 import com.wornux.user.RoleService;
+import com.wornux.user.UserException;
 import jakarta.annotation.security.PermitAll;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -50,6 +53,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.access.AccessDeniedException;
 
 @Route("roles")
@@ -65,7 +69,6 @@ public class RolesView extends MasterDetailLayout {
 
     private final RoleService roleService;
     private final TextField roleSearch = new TextField();
-    private final ComboBox<String> typeFilter = new ComboBox<>();
     private final ComboBox<String> activeFilter = new ComboBox<>();
     private final Grid<Role> roleGrid = new Grid<>(Role.class, false);
     private final VerticalLayout roleHeader = new VerticalLayout();
@@ -78,6 +81,7 @@ public class RolesView extends MasterDetailLayout {
     private final TextField code = new TextField("Code");
     private final TextField name = new TextField("Name");
     private final TextArea description = new TextArea("Description");
+    private final IntegerField priority = new IntegerField("Priority");
     private final Checkbox active = new Checkbox("Active");
     private final MultiSelectComboBox<AppPermission> permissions = new MultiSelectComboBox<>("Permissions");
     private final H2 detailTitle = new H2();
@@ -92,7 +96,6 @@ public class RolesView extends MasterDetailLayout {
     private boolean dirty;
     private boolean restoringFilters;
     private String appliedSearch = "";
-    private String appliedType = "All types";
     private String appliedActiveStatus = "Active";
     private Runnable deferredAction;
 
@@ -138,10 +141,10 @@ public class RolesView extends MasterDetailLayout {
     }
 
     private Component createRolePanel() {
-        var filters = new HorizontalLayout(typeFilter, activeFilter);
+        var filters = new HorizontalLayout(activeFilter);
         filters.addClassName("role-management-filters");
         filters.setWidthFull();
-        filters.setFlexGrow(1, typeFilter, activeFilter);
+        filters.setFlexGrow(1, activeFilter);
 
         var createRole = new Button(
                 "Create role", new SvgIcon("/icons/grid-create.svg"), event -> requestSwitch(this::openCreate));
@@ -185,18 +188,12 @@ public class RolesView extends MasterDetailLayout {
         roleSearch.setValueChangeMode(ValueChangeMode.LAZY);
         roleSearch.setWidthFull();
 
-        typeFilter.setAriaLabel("Filter by role type");
-        typeFilter.setItems("All types", "System", "Custom");
-        typeFilter.setValue(appliedType);
-        typeFilter.setWidthFull();
-
         activeFilter.setAriaLabel("Filter by role status");
         activeFilter.setItems("Active", "Inactive", "All statuses");
         activeFilter.setValue(appliedActiveStatus);
         activeFilter.setWidthFull();
 
         roleSearch.addValueChangeListener(event -> filterChanged());
-        typeFilter.addValueChangeListener(event -> filterChanged());
         activeFilter.addValueChangeListener(event -> filterChanged());
     }
 
@@ -247,9 +244,8 @@ public class RolesView extends MasterDetailLayout {
 
     private void refreshRoleList() {
         String searchValue = roleSearch.getValue();
-        String typeValue = typeFilter.getValue();
         String activeStatusValue = activeFilter.getValue();
-        var filter = new RoleFilter(searchValue, typeFilterValue(typeValue), activeFilterValue(activeStatusValue));
+        var filter = new RoleFilter(searchValue, activeFilterValue(activeStatusValue));
         List<Role> refreshedRoles = roleService.search(filter);
         Map<Long, Long> refreshedMemberCounts =
                 roleService.userCounts(refreshedRoles.stream().map(Role::getId).toList());
@@ -264,7 +260,6 @@ public class RolesView extends MasterDetailLayout {
             roleMemberCounts = refreshedMemberCounts;
             selectedRoleId = refreshedSelection;
             appliedSearch = searchValue;
-            appliedType = typeValue;
             appliedActiveStatus = activeStatusValue;
             roleGrid.setItems(visibleRoles);
             roleGrid.getColumns().getFirst().setHeader("Roles · " + visibleRoles.size());
@@ -320,28 +315,16 @@ public class RolesView extends MasterDetailLayout {
     }
 
     private Component createSelectedRoleHeader(Role role) {
-        var title = new H2(role.getName());
-        var meta = new Span("%s · %s · %s · %d permissions"
-                .formatted(
-                        role.getCode(),
-                        role.isSystemRole() ? "System role" : "Custom role",
-                        role.isActive() ? "Active" : "Inactive",
-                        role.getPermissions().size()));
-        meta.addClassName("role-management-role-meta");
-
-        var copy = new VerticalLayout(title, meta);
-        copy.setPadding(false);
-        copy.setSpacing(false);
-        copy.addClassName("role-management-role-header-copy");
+        var copy = getHeader(role);
 
         var actions = new HorizontalLayout();
         actions.addClassName("role-management-header-actions");
 
-        if (!role.isSystemRole() && roleService.canUpdateRoles()) {
+        if (roleService.canUpdateRole(role)) {
             actions.add(new Button("Edit role", event -> requestSwitch(() -> openEdit(role))));
         }
 
-        if (!role.isSystemRole() && role.isActive() && roleService.canDeleteRoles()) {
+        if (role.isActive() && roleService.canDeactivateRole(role)) {
             var deactivate = new Button("Deactivate", event -> requestDestructive(() -> confirmDeactivate(role)));
             deactivate.addThemeVariants(ButtonVariant.ERROR);
             actions.add(deactivate);
@@ -356,6 +339,22 @@ public class RolesView extends MasterDetailLayout {
         return header;
     }
 
+    private static @NonNull VerticalLayout getHeader(Role role) {
+        var title = new H2(role.getName());
+        var meta = new Span("Priority %d · %s · %d permissions"
+                .formatted(
+                        role.getPriority(),
+                        role.isActive() ? "Active" : "Inactive",
+                        role.getPermissions().size()));
+        meta.addClassName("role-management-role-meta");
+
+        var copy = new VerticalLayout(title, meta);
+        copy.setPadding(false);
+        copy.setSpacing(false);
+        copy.addClassName("role-management-role-header-copy");
+        return copy;
+    }
+
     private Component createInformationTab(Role role) {
         var code = readOnly(new TextField("Code"), role.getCode());
         var name = readOnly(new TextField("Name"), role.getName());
@@ -363,17 +362,18 @@ public class RolesView extends MasterDetailLayout {
         description.setValue(nullToBlank(role.getDescription()));
         description.setReadOnly(true);
         description.setMinHeight("8rem");
+        var priority = new IntegerField("Priority");
+        priority.setValue(role.getPriority());
+        priority.setReadOnly(true);
         var active = new Checkbox("Active", role.isActive());
         active.setReadOnly(true);
-        var system = new Checkbox("System role", role.isSystemRole());
-        system.setReadOnly(true);
 
-        var form = new FormLayout(code, name, description, active, system);
+        var form = new FormLayout(code, name, description, priority, active);
         form.setWidthFull();
         form.setColspan(description, 2);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1), new FormLayout.ResponsiveStep("36rem", 2));
 
-        var content = createTabLayout("Information", "Review the role identity, description, type, and availability.");
+        var content = createTabLayout("Information", "Review the role identity, description, priority, and availability.");
         content.add(form);
 
         return content;
@@ -401,7 +401,7 @@ public class RolesView extends MasterDetailLayout {
         renderPermissionGroups(role, groups, "");
 
         var content = createTabLayout(
-                "Permissions", "Permissions are grouped by resource. Edit custom roles with the action above.");
+                "Permissions", "Permissions are grouped by resource. Use Edit role to change this assignment.");
         content.add(search, groups);
 
         return content;
@@ -469,22 +469,116 @@ public class RolesView extends MasterDetailLayout {
     }
 
     private Component createMembersTab(Role role) {
+        boolean canManageMembers = roleService.canAssignRole(role);
         var members = new Grid<>(AppUser.class, false);
         members.addColumn(memberIdentityRenderer()).setHeader("Member").setFlexGrow(1);
         members.addColumn(member -> member.isActive() ? "Active" : "Inactive")
                 .setHeader("Status")
                 .setAutoWidth(true);
+
+        if (canManageMembers) {
+            members.addColumn(new ComponentRenderer<>(member -> createRemoveMemberButton(role, member)))
+                    .setHeader("Actions")
+                    .setAutoWidth(true)
+                    .setFlexGrow(0);
+        }
+
         members.setItems(roleService.members(role.getId()));
         members.setEmptyStateText("No users are assigned to this role.");
         members.addClassName("role-management-members-grid");
 
         var content = createTabLayout(
                 "Members · " + roleMemberCounts.getOrDefault(role.getId(), 0L),
-                "Users assigned to this global role. Manage assignments from the Users view.");
+                canManageMembers
+                        ? "Add existing users to this role or remove current assignments."
+                        : "Users assigned to this global role.");
+
+        if (canManageMembers && role.isActive()) {
+            var addMember = new Button("Add member", event -> openAddMemberDialog(role));
+            addMember.addThemeVariants(ButtonVariant.PRIMARY);
+            content.add(addMember);
+        }
+
         content.add(members);
         content.addClassName("role-management-members-content");
 
         return content;
+    }
+
+    private Button createRemoveMemberButton(Role role, AppUser member) {
+        var remove = new Button("Remove", event -> confirmRemoveMember(role, member));
+        remove.setAriaLabel("Remove " + member.getUsername() + " from " + role.getName());
+        remove.addThemeVariants(ButtonVariant.ERROR);
+
+        return remove;
+    }
+
+    private void openAddMemberDialog(Role role) {
+        List<AppUser> candidates = roleService.assignmentCandidates(role.getId());
+        var member = new ComboBox<AppUser>("User");
+        member.setItems(candidates);
+        member.setItemLabelGenerator(user -> user.getUsername() + " · " + user.getEmail());
+        member.setPlaceholder(candidates.isEmpty() ? "No users available" : "Search users");
+        member.setWidthFull();
+
+        var dialog = new Dialog();
+        dialog.getElement().setAttribute("aria-label", "Add member to " + role.getName());
+        var add = new Button("Add", event -> assignMember(role, member.getValue(), dialog));
+        add.addThemeVariants(ButtonVariant.PRIMARY);
+        add.setEnabled(false);
+        member.addValueChangeListener(event -> add.setEnabled(event.getValue() != null));
+        var cancel = new Button("Cancel", event -> dialog.close());
+        dialog.add(new VerticalLayout(
+                new H1("Add member"),
+                new Span("Assign an existing user to " + role.getName() + "."),
+                member,
+                new HorizontalLayout(add, cancel)));
+        dialog.open();
+    }
+
+    private void assignMember(Role role, AppUser member, Dialog dialog) {
+        if (member == null) {
+            return;
+        }
+
+        try {
+            roleService.assignMember(role.getId(), member.getId());
+            dialog.close();
+            refreshRoleList();
+            showSuccess("Member added.");
+        } catch (RoleException | UserException | AccessDeniedException exception) {
+            showError(exception.getMessage());
+        }
+    }
+
+    private void confirmRemoveMember(Role role, AppUser member) {
+        var dialog = new Dialog();
+        dialog.getElement().setAttribute("aria-label", "Remove member from " + role.getName());
+        var remove = new Button("Remove", event -> removeMember(role, member, dialog));
+        remove.addThemeVariants(ButtonVariant.PRIMARY, ButtonVariant.ERROR);
+        var cancel = new Button("Cancel", event -> dialog.close());
+        dialog.add(new VerticalLayout(
+                new H1("Remove member?"),
+                new Span("Remove " + member.getUsername() + " from " + role.getName() + "?"),
+                new HorizontalLayout(remove, cancel)));
+        dialog.open();
+    }
+
+    private void removeMember(Role role, AppUser member, Dialog dialog) {
+        try {
+            roleService.removeMember(role.getId(), member.getId());
+            dialog.close();
+
+            if (!roleService.canAssignRoles()) {
+                getUI().ifPresent(ui -> ui.navigate(NoAccessView.class));
+                return;
+            }
+
+            refreshRoleList();
+            showSuccess("Member removed.");
+        } catch (RoleException | UserException | AccessDeniedException exception) {
+            showError(exception.getMessage());
+        }
     }
 
     private LitRenderer<AppUser> memberIdentityRenderer() {
@@ -521,7 +615,7 @@ public class RolesView extends MasterDetailLayout {
     private void configureDetail() {
         configureFields();
         bindForm();
-        var form = new FormLayout(code, name, description, active, permissions);
+        var form = new FormLayout(code, name, description, priority, active, permissions);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         save.addThemeVariants(ButtonVariant.PRIMARY);
@@ -544,6 +638,9 @@ public class RolesView extends MasterDetailLayout {
         name.setValueChangeMode(ValueChangeMode.EAGER);
         description.setMaxLength(500);
         description.setValueChangeMode(ValueChangeMode.EAGER);
+        priority.setMin(0);
+        priority.setMax(100);
+        priority.setStepButtonsVisible(true);
         permissions.setItems(availablePermissions);
         permissions.setItemLabelGenerator(AppPermission::label);
         permissions.setRequiredIndicatorVisible(true);
@@ -554,6 +651,10 @@ public class RolesView extends MasterDetailLayout {
         binder.forField(code).asRequired("Role code is required.").bind(RoleRequest::getCode, RoleRequest::setCode);
         binder.forField(name).asRequired("Role name is required.").bind(RoleRequest::getName, RoleRequest::setName);
         binder.bind(description, RoleRequest::getDescription, RoleRequest::setDescription);
+        binder.forField(priority)
+                .asRequired("Priority is required.")
+                .withValidator(value -> value >= 0 && value <= 100, "Priority must be between 0 and 100.")
+                .bind(RoleRequest::getPriority, RoleRequest::setPriority);
         binder.bind(active, RoleRequest::isActive, RoleRequest::setActive);
         binder.forField(permissions)
                 .withValidator(value -> value != null && !value.isEmpty(), "At least one permission must be selected.")
@@ -589,21 +690,19 @@ public class RolesView extends MasterDetailLayout {
         detailTitle.setText("Create role");
         resetForm(new RoleRequest());
         code.setReadOnly(false);
+        priority.setReadOnly(false);
+        active.setReadOnly(false);
         dirty = false;
         setDetail(detailContent);
     }
 
     private void openEdit(Role role) {
         selectedRole = roleService.get(role.getId());
-
-        if (selectedRole.isSystemRole()) {
-            showError("System roles cannot be edited.");
-            return;
-        }
-
         detailTitle.setText("Edit role");
         resetForm(fromRole(selectedRole));
         code.setReadOnly(true);
+        priority.setReadOnly(selectedRole.getPriority() == 100);
+        active.setReadOnly(!roleService.canChangeActiveState(selectedRole));
         dirty = false;
         setDetail(detailContent);
     }
@@ -612,6 +711,7 @@ public class RolesView extends MasterDetailLayout {
         formData.setCode(request.getCode());
         formData.setName(request.getName());
         formData.setDescription(request.getDescription());
+        formData.setPriority(request.getPriority());
         formData.setActive(request.isActive());
         formData.setPermissions(request.getPermissions());
         formData.setVersion(request.getVersion());
@@ -619,6 +719,7 @@ public class RolesView extends MasterDetailLayout {
         code.setInvalid(false);
         name.setInvalid(false);
         description.setInvalid(false);
+        priority.setInvalid(false);
         permissions.setInvalid(false);
     }
 
@@ -627,6 +728,7 @@ public class RolesView extends MasterDetailLayout {
         request.setCode(role.getCode());
         request.setName(role.getName());
         request.setDescription(role.getDescription());
+        request.setPriority(role.getPriority());
         request.setActive(role.isActive());
         request.setVersion(role.getVersion());
         request.setPermissions(role.getPermissions());
@@ -736,47 +838,32 @@ public class RolesView extends MasterDetailLayout {
         }
 
         String requestedSearch = roleSearch.getValue();
-        String requestedType = typeFilter.getValue();
         String requestedActiveStatus = activeFilter.getValue();
         boolean changed = !Objects.equals(requestedSearch, appliedSearch)
-                || !Objects.equals(requestedType, appliedType)
                 || !Objects.equals(requestedActiveStatus, appliedActiveStatus);
         if (!changed) {
             return;
         }
 
         if (dirty) {
-            setFilters(appliedSearch, appliedType, appliedActiveStatus);
-            requestMasterSwitch(() -> applyFilters(requestedSearch, requestedType, requestedActiveStatus));
+            setFilters(appliedSearch, appliedActiveStatus);
+            requestMasterSwitch(() -> applyFilters(requestedSearch, requestedActiveStatus));
             return;
         }
 
         refreshRoleList();
     }
 
-    private void applyFilters(String searchValue, String typeValue, String activeStatusValue) {
-        setFilters(searchValue, typeValue, activeStatusValue);
+    private void applyFilters(String searchValue, String activeStatusValue) {
+        setFilters(searchValue, activeStatusValue);
         refreshRoleList();
     }
 
-    private void setFilters(String searchValue, String typeValue, String activeStatusValue) {
+    private void setFilters(String searchValue, String activeStatusValue) {
         restoringFilters = true;
         roleSearch.setValue(searchValue);
-        typeFilter.setValue(typeValue);
         activeFilter.setValue(activeStatusValue);
         restoringFilters = false;
-    }
-
-    private Boolean typeFilterValue(String value) {
-        if ("System".equals(value)) {
-            return true;
-        }
-
-        if ("Custom".equals(value)) {
-            return false;
-        }
-
-        return null;
     }
 
     private Boolean activeFilterValue(String value) {

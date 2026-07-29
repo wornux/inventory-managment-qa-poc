@@ -357,8 +357,8 @@ class StockMovementServiceTest {
                 .map(AppPermission::fromCode)
                 .flatMap(Optional::stream)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        Role role = new Role("TEST", "Test", null, false);
-        role.update(role.getName(), role.getDescription(), true, permissions);
+        Role role = new Role("TEST", "Test", null);
+        role.update(role.getName(), role.getDescription(), 100, true, permissions);
         AppUser user = user(username);
         user.addRole(role);
         when(appUserRepository.findForAuthorization(username)).thenReturn(Optional.of(user));

@@ -35,8 +35,8 @@ public class Role extends Auditable {
 
     private String description;
 
-    @Column(name = "system_role", nullable = false)
-    private boolean systemRole = true;
+    @Column(nullable = false)
+    private int priority = 10;
 
     @Column(nullable = false)
     private boolean active = true;
@@ -51,14 +51,9 @@ public class Role extends Auditable {
     protected Role() {}
 
     public Role(String code, String name, String description) {
-        this(code, name, description, true);
-    }
-
-    public Role(String code, String name, String description, boolean systemRole) {
         this.code = code;
         this.name = name;
         this.description = description;
-        this.systemRole = systemRole;
     }
 
     public Long getId() {
@@ -77,8 +72,8 @@ public class Role extends Auditable {
         return description;
     }
 
-    public boolean isSystemRole() {
-        return systemRole;
+    public int getPriority() {
+        return priority;
     }
 
     public boolean isActive() {
@@ -107,9 +102,10 @@ public class Role extends Auditable {
         return super.getUpdatedAt();
     }
 
-    public void update(String name, String description, boolean active, Set<AppPermission> permissions) {
+    public void update(String name, String description, int priority, boolean active, Set<AppPermission> permissions) {
         this.name = name;
         this.description = description;
+        this.priority = priority;
         this.active = active;
         this.permissions = permissions.stream().map(AppPermission::code).toArray(String[]::new);
     }

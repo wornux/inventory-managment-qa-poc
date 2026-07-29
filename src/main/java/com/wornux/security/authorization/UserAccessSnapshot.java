@@ -6,7 +6,8 @@ import java.util.Set;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-public record UserAccessSnapshot(Long userId, String username, boolean active, Set<AppPermission> permissions) {
+public record UserAccessSnapshot(
+        Long userId, String username, boolean active, int highestRolePriority, Set<AppPermission> permissions) {
 
     public UserAccessSnapshot {
         permissions = Set.copyOf(permissions);

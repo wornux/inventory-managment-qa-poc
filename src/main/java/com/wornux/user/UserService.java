@@ -161,8 +161,13 @@ public class UserService {
         }
 
         authorizationService.check(AppPermission.ROLE_ASSIGN);
+        Set<Role> requestedRoles = requireActiveRoles(requestedRoleIds);
+        Set<Role> removedRoles = user.getRoles().stream()
+                .filter(role -> !requestedRoleIds.contains(role.getId()))
+                .collect(Collectors.toSet());
+        requireManageableRoles(removedRoles);
 
-        return requireActiveRoles(requestedRoleIds);
+        return requestedRoles;
     }
 
     private Set<Role> requireActiveRoles(Set<Long> roleIds) {
@@ -178,14 +183,25 @@ public class UserService {
             throw new UserException("At least one role must be selected.");
         }
 
-        Set<AppPermission> permissions =
-                roles.stream().flatMap(role -> role.getPermissions().stream()).collect(Collectors.toSet());
-
-        if (!authorizationService.canAll(permissions)) {
-            throw new UserException("You cannot assign a role containing permissions that you do not have.");
-        }
+        requireManageableRoles(roles);
 
         return new LinkedHashSet<>(roles);
+    }
+
+    private void requireManageableRoles(Iterable<Role> roles) {
+        var permissions = new LinkedHashSet<AppPermission>();
+
+        for (Role role : roles) {
+            if (!authorizationService.canManagePriority(role.getPriority())) {
+                throw new UserException("You cannot assign or remove a role above your priority.");
+            }
+
+            permissions.addAll(role.getPermissions());
+        }
+
+        if (!permissions.isEmpty() && !authorizationService.canAll(permissions)) {
+            throw new UserException("You cannot assign a role containing permissions that you do not have.");
+        }
     }
 
     private boolean isCurrentUser(AppUser user) {

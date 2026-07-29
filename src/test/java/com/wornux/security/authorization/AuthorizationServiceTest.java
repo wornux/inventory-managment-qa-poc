@@ -46,7 +46,7 @@ class AuthorizationServiceTest {
     @Test
     void can_reusesSnapshotUntilRoleChangeInvalidatesIt() {
         Role role = new Role("VIEWER", "Viewer", null);
-        role.update(role.getName(), role.getDescription(), true, Set.of(AppPermission.PRODUCT_VIEW));
+        role.update(role.getName(), role.getDescription(), 20, true, Set.of(AppPermission.PRODUCT_VIEW));
         AppUser user = new AppUser("viewer", "viewer@example.com", "issuer", "subject");
         user.addRole(role);
         when(appUserRepository.findForAuthorization("viewer")).thenReturn(Optional.of(user));
@@ -67,11 +67,36 @@ class AuthorizationServiceTest {
     }
 
     @Test
+    void priorityUsesTheHighestActiveRoleAndRejectsEqualForStrictOperations() {
+        Role lower = new Role("LOWER", "Lower", null);
+        lower.update(lower.getName(), lower.getDescription(), 20, true, Set.of());
+        Role higher = new Role("HIGHER", "Higher", null);
+        higher.update(higher.getName(), higher.getDescription(), 80, true, Set.of());
+        Role inactive = new Role("INACTIVE", "Inactive", null);
+        inactive.update(inactive.getName(), inactive.getDescription(), 100, false, Set.of());
+        AppUser user = new AppUser("admin", "admin@example.com", "issuer", "subject");
+        user.addRole(lower);
+        user.addRole(higher);
+        user.addRole(inactive);
+        when(appUserRepository.findForAuthorization("admin")).thenReturn(Optional.of(user));
+        SecurityContextHolder.getContext()
+                .setAuthentication(new UsernamePasswordAuthenticationToken("admin", "password", List.of()));
+        var service = new AuthorizationService(appUserRepository);
+
+        assertThat(service.canManagePriority(80)).isTrue();
+        assertThat(service.canManagePriority(81)).isFalse();
+        assertThat(service.outranksPriority(79)).isTrue();
+        assertThat(service.outranksPriority(80)).isFalse();
+    }
+
+    @Test
     void unauthenticatedAndMissingUsersHaveNoPermissions() {
         var service = new AuthorizationService(appUserRepository);
 
         assertThat(service.canAll(Set.of())).isTrue();
         assertThat(service.can(AppPermission.PRODUCT_VIEW)).isFalse();
+        assertThat(service.canManagePriority(0)).isFalse();
+        assertThat(service.outranksPriority(0)).isFalse();
         verify(appUserRepository, never()).findForAuthorization(any());
 
         SecurityContextHolder.getContext()
@@ -89,7 +114,7 @@ class AuthorizationServiceTest {
     @Test
     void actionPermissionGrantsViewButNotAnotherResourceAndCheckRejectsMissingPermission() {
         Role role = new Role("EDITOR", "Editor", null);
-        role.update(role.getName(), role.getDescription(), true, Set.of(AppPermission.PRODUCT_UPDATE));
+        role.update(role.getName(), role.getDescription(), 40, true, Set.of(AppPermission.PRODUCT_UPDATE));
         AppUser user = new AppUser("editor", "editor@example.com", "issuer", "subject");
         user.addRole(role);
         when(appUserRepository.findForAuthorization("editor")).thenReturn(Optional.of(user));
@@ -114,6 +139,7 @@ class AuthorizationServiceTest {
         role.update(
                 role.getName(),
                 role.getDescription(),
+                60,
                 true,
                 Set.of(AppPermission.PRODUCT_UPDATE, AppPermission.STOCK_MOVEMENT_CREATE));
         AppUser user = new AppUser("editor", "editor@example.com", "issuer", "subject");

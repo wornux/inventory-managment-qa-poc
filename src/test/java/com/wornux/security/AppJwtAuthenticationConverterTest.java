@@ -38,7 +38,7 @@ class AppJwtAuthenticationConverterTest {
         when(authorizationService.cached("remote")).thenReturn(Optional.empty());
         when(service.provisionOidcUser(any())).thenReturn(user);
         when(authorizationService.cache(user))
-                .thenReturn(new UserAccessSnapshot(null, "local", true, Set.of(AppPermission.PRODUCT_VIEW)));
+                .thenReturn(new UserAccessSnapshot(null, "local", true, 10, Set.of(AppPermission.PRODUCT_VIEW)));
         Jwt jwt = new Jwt(
                 "token",
                 Instant.EPOCH,
@@ -71,7 +71,7 @@ class AppJwtAuthenticationConverterTest {
     void absentIssuerIsPreserved() {
         AppUser user = new AppUser("local", "mail@example.com", "issuer", "subject");
         when(service.provisionOidcUser(any())).thenReturn(user);
-        when(authorizationService.cache(user)).thenReturn(new UserAccessSnapshot(null, "local", true, Set.of()));
+        when(authorizationService.cache(user)).thenReturn(new UserAccessSnapshot(null, "local", true, -1, Set.of()));
         Jwt jwt = new Jwt("token", Instant.EPOCH, Instant.MAX, Map.of("alg", "none"), Map.of("sub", "subject"));
 
         new AppJwtAuthenticationConverter(service, authorizationService).convert(jwt);
@@ -84,7 +84,7 @@ class AppJwtAuthenticationConverterTest {
 
     @Test
     void cachedAccessSkipsDatabaseProvisioning() {
-        var access = new UserAccessSnapshot(7L, "local", true, Set.of(AppPermission.PRODUCT_VIEW));
+        var access = new UserAccessSnapshot(7L, "local", true, 10, Set.of(AppPermission.PRODUCT_VIEW));
         when(authorizationService.cached("remote")).thenReturn(Optional.of(access));
         Jwt jwt = new Jwt(
                 "token",

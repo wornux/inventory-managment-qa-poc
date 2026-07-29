@@ -54,6 +54,20 @@ public class AuthorizationService {
                 .collect(Collectors.toUnmodifiableSet());
     }
 
+    public boolean canManagePriority(int targetPriority) {
+        return currentSnapshot()
+                .filter(UserAccessSnapshot::active)
+                .map(snapshot -> targetPriority <= snapshot.highestRolePriority())
+                .orElse(false);
+    }
+
+    public boolean outranksPriority(int targetPriority) {
+        return currentSnapshot()
+                .filter(UserAccessSnapshot::active)
+                .map(snapshot -> targetPriority < snapshot.highestRolePriority())
+                .orElse(false);
+    }
+
     public void check(AppPermission permission) {
         if (!can(permission)) {
             throw new AccessDeniedException("Missing permission " + permission.code());
@@ -82,15 +96,20 @@ public class AuthorizationService {
     }
 
     private Set<AppPermission> assignedPermissions() {
+        return currentSnapshot()
+                .filter(UserAccessSnapshot::active)
+                .map(UserAccessSnapshot::permissions)
+                .orElseGet(Set::of);
+    }
+
+    private Optional<UserAccessSnapshot> currentSnapshot() {
         var authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated() || authentication.getName() == null) {
-            return Set.of();
+            return Optional.empty();
         }
 
-        UserAccessSnapshot snapshot = cache.get(normalize(authentication.getName()), this::load);
-
-        return snapshot == null || !snapshot.active() ? Set.of() : snapshot.permissions();
+        return Optional.ofNullable(cache.get(normalize(authentication.getName()), this::load));
     }
 
     private UserAccessSnapshot load(String principal) {
@@ -101,13 +120,14 @@ public class AuthorizationService {
     }
 
     private UserAccessSnapshot snapshot(AppUser user) {
+        var activeRoles = user.getRoles().stream().filter(Role::isActive).toList();
         var permissions = new LinkedHashSet<AppPermission>();
-        user.getRoles().stream()
-                .filter(Role::isActive)
-                .flatMap(role -> role.getPermissions().stream())
-                .forEach(permissions::add);
+        activeRoles.stream().flatMap(role -> role.getPermissions().stream()).forEach(permissions::add);
+        int highestRolePriority =
+                activeRoles.stream().mapToInt(Role::getPriority).max().orElse(-1);
 
-        return new UserAccessSnapshot(user.getId(), user.getUsername(), user.isActive(), permissions);
+        return new UserAccessSnapshot(
+                user.getId(), user.getUsername(), user.isActive(), highestRolePriority, permissions);
     }
 
     private void afterCommit(Runnable invalidation) {
