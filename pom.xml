@@ -7,6 +7,7 @@
     <packaging>jar</packaging>
     
     <properties>
+        <e2e.test.exclude>**/e2e/**</e2e.test.exclude>
         <java.version>25</java.version>
         <mapstruct.version>1.6.3</mapstruct.version>
         <vaadin.version>25.2.3</vaadin.version>
@@ -126,6 +127,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.vaadin</groupId>
+            <artifactId>vaadin-testbench-junit6</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa-test</artifactId>
             <scope>test</scope>
@@ -227,6 +233,9 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <excludes>
+                        <exclude>${e2e.test.exclude}</exclude>
+                    </excludes>
                     <trimStackTrace>false</trimStackTrace>
                     <systemPropertyVariables>
                         <junit.jupiter.execution.parallel.enabled>false</junit.jupiter.execution.parallel.enabled>
@@ -304,13 +313,9 @@
     <profiles>
         <profile>
             <id>e2e</id>
-            <dependencies>
-                <dependency>
-                    <groupId>com.vaadin</groupId>
-                    <artifactId>vaadin-testbench-junit6</artifactId>
-                    <scope>test</scope>
-                </dependency>
-            </dependencies>
+            <properties>
+                <e2e.test.exclude>**/__nothing__/**</e2e.test.exclude>
+            </properties>
         </profile>
     </profiles>
     
