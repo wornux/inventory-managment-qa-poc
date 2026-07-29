@@ -35,6 +35,8 @@ import com.wornux.ui.views.UsersView;
 import jakarta.annotation.security.PermitAll;
 import java.util.LinkedHashMap;
 import java.util.Map;
+
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -80,6 +82,23 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
     }
 
     private Component createDrawerHeader() {
+        var identity = getIdentity();
+
+        var railToggle = new DrawerRailToggle();
+        railToggle.addClassName("main-layout-rail-toggle");
+
+        var mobileToggle = createMobileDrawerToggle("main-layout-drawer-close", "Close navigation");
+        var controls = new Div(railToggle, mobileToggle);
+        controls.addClassName("main-layout-brand-controls");
+
+        var header = new HorizontalLayout(identity, controls);
+        header.addClassName("main-layout-brand");
+        header.setAlignItems(FlexComponent.Alignment.CENTER);
+
+        return header;
+    }
+
+    private static @NonNull HorizontalLayout getIdentity() {
         var mark = new SvgIcon("/icons/app.svg");
         mark.addClassName("main-layout-brand-mark");
 
@@ -97,19 +116,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
         var identity = new HorizontalLayout(mark, copy);
         identity.addClassName("main-layout-brand-identity");
         identity.setAlignItems(FlexComponent.Alignment.CENTER);
-
-        var railToggle = new DrawerRailToggle();
-        railToggle.addClassName("main-layout-rail-toggle");
-
-        var mobileToggle = createMobileDrawerToggle("main-layout-drawer-close", "Close navigation");
-        var controls = new Div(railToggle, mobileToggle);
-        controls.addClassName("main-layout-brand-controls");
-
-        var header = new HorizontalLayout(identity, controls);
-        header.addClassName("main-layout-brand");
-        header.setAlignItems(FlexComponent.Alignment.CENTER);
-
-        return header;
+        return identity;
     }
 
     private DrawerToggle createMobileDrawerToggle(String className, String ariaLabel) {
@@ -207,6 +214,21 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
     private Component createProfileDrawer() {
         var profile = currentUserProfile();
 
+        var summary = getSummary(profile);
+
+        var logout = new Button("Sign out", VaadinIcon.SIGN_OUT.create(), event -> authenticationContext.logout());
+        logout.setId("sign-out");
+        logout.addThemeVariants(ButtonVariant.TERTIARY);
+        logout.addClassName("profile-drawer-card__logout");
+
+        var details = new Details(summary, logout);
+        details.setId("profile-drawer");
+        details.addClassName("profile-drawer-card");
+
+        return details;
+    }
+
+    private static @NonNull Div getSummary(UserProfile profile) {
         var avatar = new Avatar(profile.name());
         avatar.addClassName("profile-drawer-card__avatar");
 
@@ -226,17 +248,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
 
         var summary = new Div(avatar, identity, chevron);
         summary.addClassName("profile-drawer-card__summary");
-
-        var logout = new Button("Sign out", VaadinIcon.SIGN_OUT.create(), event -> authenticationContext.logout());
-        logout.setId("sign-out");
-        logout.addThemeVariants(ButtonVariant.TERTIARY);
-        logout.addClassName("profile-drawer-card__logout");
-
-        var details = new Details(summary, logout);
-        details.setId("profile-drawer");
-        details.addClassName("profile-drawer-card");
-
-        return details;
+        return summary;
     }
 
     private UserProfile currentUserProfile() {
