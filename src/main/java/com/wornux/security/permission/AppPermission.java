@@ -18,6 +18,7 @@ public enum AppPermission {
     SUPPLIER_DELETE(AppResource.SUPPLIER, AppAction.DELETE),
     STOCK_MOVEMENT_VIEW(AppResource.STOCK_MOVEMENT, AppAction.VIEW),
     STOCK_MOVEMENT_CREATE(AppResource.STOCK_MOVEMENT, AppAction.CREATE),
+    REPORT_VIEW(AppResource.REPORT, AppAction.VIEW),
     USER_VIEW(AppResource.USER, AppAction.VIEW),
     USER_CREATE(AppResource.USER, AppAction.CREATE),
     USER_UPDATE(AppResource.USER, AppAction.UPDATE),
