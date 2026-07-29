@@ -257,7 +257,7 @@ public class UsersView extends MasterDetailLayout {
         email.setValueChangeMode(ValueChangeMode.EAGER);
         active.setValue(true);
         roles.setItems(availableRoles);
-        roles.setItemLabelGenerator(role -> role.getName() + " (" + role.getCode() + ")");
+        roles.setItemLabelGenerator(Role::getName);
         roles.setRequiredIndicatorVisible(true);
         createdAt.setReadOnly(true);
         binder.addValueChangeListener(event -> dirty = true);
