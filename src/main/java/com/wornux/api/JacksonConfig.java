@@ -8,7 +8,7 @@ import tools.jackson.databind.json.JsonMapper;
 public class JacksonConfig {
 
     @Bean
-    JsonMapper jsonMapper() {
-        return JsonMapper.builderWithJackson2Defaults().build();
+    JsonMapper jsonMapper(JsonMapper.Builder builder) {
+        return builder.build();
     }
 }

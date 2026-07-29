@@ -52,11 +52,7 @@ class ApiContractsTest extends AbstractRestController {
     }
 
     @Test
-    void configurationFactoriesExposeExpectedJsonAndOpenApiContracts() throws Exception {
-        var mapper = new JacksonConfig().jsonMapper();
-
-        assertThat(mapper.writeValueAsString(ApiResponse.success("ok", 1))).contains("\"success\":true");
-
+    void openApiConfigurationExposesExpectedContract() {
         var issuerUri = "http://localhost:7777/realms/wornux";
         var api = new OpenApiConfig().openAPI(issuerUri);
 

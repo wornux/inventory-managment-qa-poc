@@ -7,8 +7,10 @@
     <packaging>jar</packaging>
     
     <properties>
+        <api.test.exclude>**/api/it/**</api.test.exclude>
         <e2e.test.exclude>**/e2e/**</e2e.test.exclude>
         <java.version>25</java.version>
+        <m2e.apt.activation>jdt_apt</m2e.apt.activation>
         <mapstruct.version>1.6.3</mapstruct.version>
         <vaadin.version>25.2.3</vaadin.version>
     </properties>
@@ -113,7 +115,7 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -139,6 +141,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <version>6.0.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -234,6 +242,7 @@
                 </executions>
                 <configuration>
                     <excludes>
+                        <exclude>${api.test.exclude}</exclude>
                         <exclude>${e2e.test.exclude}</exclude>
                     </excludes>
                     <trimStackTrace>false</trimStackTrace>
@@ -314,8 +323,16 @@
 
     <profiles>
         <profile>
+            <id>api-tests</id>
+            <properties>
+                <api.test.exclude>**/__nothing__/**</api.test.exclude>
+                <e2e.test.exclude>**/e2e/**</e2e.test.exclude>
+            </properties>
+        </profile>
+        <profile>
             <id>e2e</id>
             <properties>
+                <api.test.exclude>**/api/it/**</api.test.exclude>
                 <e2e.test.exclude>**/__nothing__/**</e2e.test.exclude>
             </properties>
         </profile>
