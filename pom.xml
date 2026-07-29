@@ -9,7 +9,6 @@
     <properties>
         <api.test.exclude>**/api/it/**</api.test.exclude>
         <e2e.test.exclude>**/e2e/**</e2e.test.exclude>
-        <integration.test.include>**/*IT.java</integration.test.include>
         <java.version>25</java.version>
         <m2e.apt.activation>jdt_apt</m2e.apt.activation>
         <mapstruct.version>1.6.3</mapstruct.version>
@@ -237,9 +236,6 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <includes>
-                        <include>${integration.test.include}</include>
-                    </includes>
                     <excludes>
                         <exclude>${api.test.exclude}</exclude>
                         <exclude>${e2e.test.exclude}</exclude>
@@ -324,12 +320,13 @@
             <id>api-tests</id>
             <properties>
                 <api.test.exclude>**/__nothing__/**</api.test.exclude>
-                <integration.test.include>**/api/it/**/*IT.java</integration.test.include>
+                <e2e.test.exclude>**/e2e/**</e2e.test.exclude>
             </properties>
         </profile>
         <profile>
             <id>e2e</id>
             <properties>
+                <api.test.exclude>**/api/it/**</api.test.exclude>
                 <e2e.test.exclude>**/__nothing__/**</e2e.test.exclude>
             </properties>
         </profile>
