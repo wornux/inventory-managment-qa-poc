@@ -157,7 +157,7 @@ class SecurityConfigTest {
         var browserAuthorization = authorizationRegistries.get(1);
 
         verify(browserAuthorization)
-                .requestMatchers("/styles/**", "/icons/**", "/actuator/health", "/actuator/prometheus");
+                .requestMatchers("/styles/**", "/icons/**", "/actuator/health");
         verify(permittedRequests.get(1)).permitAll();
 
         var failedRequest = new MockHttpServletRequest();

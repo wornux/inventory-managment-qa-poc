@@ -15,7 +15,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,prometheus
+        include: health
   endpoint:
     health:
       show-details: never
@@ -40,7 +40,10 @@ management:
   otlp:
     metrics:
       export:
-        enabled: false
+        enabled: true
+        url: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:http://localhost:4318/v1/metrics}
+        step: ${OTEL_METRICS_EXPORT_STEP:15s}
+        base-time-unit: seconds
 
 vaadin:
   launch-browser: false

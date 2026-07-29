@@ -116,7 +116,7 @@ public class SecurityConfig {
             LogoutSuccessHandler oidcLogoutSuccessHandler)
             throws Exception {
         http.authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/styles/**", "/icons/**", "/actuator/health", "/actuator/prometheus")
+                .requestMatchers("/styles/**", "/icons/**", "/actuator/health")
                 .permitAll());
 
         http.with(

@@ -13,7 +13,10 @@ services:
       PORT: ${PORT:-8080}
       SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-prod}
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/stocks
+      OTEL_SERVICE_NAME: ${OTEL_SERVICE_NAME:-qa-final-project}
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://alloy:4318/v1/traces
+      OTEL_EXPORTER_OTLP_METRICS_ENDPOINT: http://alloy:4318/v1/metrics
+      OTEL_METRICS_EXPORT_STEP: ${OTEL_METRICS_EXPORT_STEP:-15s}
       KEYCLOAK_SERVER_URL: http://keycloak:7777
       KEYCLOAK_PUBLIC_URL: http://localhost:7777
       KEYCLOAK_INTERNAL_URL: http://keycloak:7777
@@ -109,26 +112,16 @@ services:
 
   prometheus:
     image: prom/prometheus:v3.8.1
-    entrypoint: ["/bin/sh", "-c"]
     command:
-      - >-
-        sed
-        -e "s|__APP_HOST__|$${APP_HOST}|g"
-        -e "s|__APP_PORT__|$${APP_PORT}|g"
-        /etc/prometheus/prometheus.yml > /tmp/prometheus.yml &&
-        exec /bin/prometheus
-        --config.file=/tmp/prometheus.yml
-        --storage.tsdb.path=/prometheus
-    environment:
-      <<: *application-target
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --web.enable-remote-write-receiver
     ports:
       - "127.0.0.1:9090:9090"
     volumes:
       - ./telemetry/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
       - ./telemetry/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
       - prometheus_data:/prometheus
-    extra_hosts:
-      - host.docker.internal:host-gateway
     depends_on:
       alertmanager:
         condition: service_healthy
@@ -195,6 +188,8 @@ services:
       - ./logs:/var/log/application:ro
       - alloy_data:/var/lib/alloy
     depends_on:
+      prometheus:
+        condition: service_healthy
       loki:
         condition: service_healthy
       tempo:

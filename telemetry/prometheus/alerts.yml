@@ -17,7 +17,7 @@ groups:
         labels:
           severity: warning
       - alert: ApplicationDown
-        expr: up{job="application"} == 0
+        expr: absent_over_time(process_uptime_seconds{job="application"}[1m])
         for: 1m
         labels:
           severity: critical

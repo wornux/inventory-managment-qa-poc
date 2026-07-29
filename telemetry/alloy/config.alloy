@@ -4,7 +4,33 @@ otelcol.receiver.otlp "application" {
   }
 
   output {
-    traces = [otelcol.processor.batch.traces.input]
+    metrics = [otelcol.processor.batch.metrics.input]
+    traces  = [otelcol.processor.batch.traces.input]
+  }
+}
+
+otelcol.processor.batch "metrics" {
+  output {
+    metrics = [otelcol.exporter.prometheus.application.input]
+  }
+}
+
+otelcol.exporter.prometheus "application" {
+  forward_to = [prometheus.relabel.application.receiver]
+}
+
+prometheus.relabel "application" {
+  forward_to = [prometheus.remote_write.prometheus.receiver]
+
+  rule {
+    target_label = "job"
+    replacement  = "application"
+  }
+}
+
+prometheus.remote_write "prometheus" {
+  endpoint {
+    url = "http://prometheus:9090/api/v1/write"
   }
 }
 
