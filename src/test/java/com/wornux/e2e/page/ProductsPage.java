@@ -14,6 +14,7 @@ import com.vaadin.flow.component.textfield.testbench.TextFieldElement;
 import com.wornux.e2e.support.AbstractInventoryIT;
 import java.util.List;
 import java.util.Optional;
+import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.interactions.Actions;
 
 public final class ProductsPage {
@@ -233,14 +234,28 @@ public final class ProductsPage {
             grid().scrollToColumn(grid().getVisibleColumns().getLast());
         }
 
-        browser.waitUntil(driver -> findRowAction(action).isPresent());
-        ButtonElement button = findRowAction(action).orElseThrow();
-        if (!"Delete".equals(action)) {
-            button.click();
-            return;
-        }
+        browser.waitUntil(driver -> {
+            try {
+                Optional<ButtonElement> candidate = findRowAction(action);
+                if (candidate.isEmpty()) {
+                    return false;
+                }
 
-        new Actions(browser.getDriver()).moveToElement(button).click().perform();
+                ButtonElement button = candidate.orElseThrow();
+                if ("Delete".equals(action)) {
+                    new Actions(browser.getDriver())
+                            .moveToElement(button)
+                            .click()
+                            .perform();
+                } else {
+                    button.click();
+                }
+
+                return true;
+            } catch (StaleElementReferenceException ignored) {
+                return false;
+            }
+        });
     }
 
     private Optional<ButtonElement> findRowAction(String action) {
@@ -267,11 +282,19 @@ public final class ProductsPage {
     }
 
     private void waitForProduct(String text) {
-        browser.waitUntil(driver -> shows(text));
+        browser.waitUntil(driver -> safelyMatchesVisibility(text, true));
     }
 
     private void waitForProductToDisappear(String text) {
-        browser.waitUntil(driver -> !shows(text));
+        browser.waitUntil(driver -> safelyMatchesVisibility(text, false));
+    }
+
+    private boolean safelyMatchesVisibility(String text, boolean expected) {
+        try {
+            return shows(text) == expected;
+        } catch (StaleElementReferenceException ignored) {
+            return false;
+        }
     }
 
     private GridElement grid() {
