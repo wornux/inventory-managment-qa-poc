@@ -9,10 +9,12 @@ import com.wornux.e2e.page.ApplicationShell;
 import com.wornux.e2e.page.LoginPage;
 import com.wornux.security.authorization.AuthorizationService;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.TestInstance;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.chromium.HasCdp;
 import org.openqa.selenium.remote.DesiredCapabilities;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -40,6 +42,7 @@ public abstract class AbstractInventoryIT extends BrowserTestBase {
     protected static final String INVENTORY_MANAGER = "INVENTORY_MANAGER";
     protected static final String WAREHOUSE_OPERATOR = "WAREHOUSE_OPERATOR";
     protected static final String INVENTORY_VIEWER = "INVENTORY_VIEWER";
+    protected static final String REPORT_VIEWER = "E2E_REPORT_VIEWER";
 
     @LocalServerPort
     private int serverPort;
@@ -117,8 +120,19 @@ public abstract class AbstractInventoryIT extends BrowserTestBase {
         getDriver().get(applicationUrl() + route);
     }
 
+    protected void setViewport(int width, int height) {
+        ((HasCdp) getDriver())
+                .executeCdpCommand(
+                        "Emulation.setDeviceMetricsOverride",
+                        Map.of("width", width, "height", height, "deviceScaleFactor", 1, "mobile", false));
+    }
+
     protected void givenProduct(String sku, String name, int quantity, int minimumStock) {
         fixtures.createProduct(sku, name, quantity, minimumStock);
+    }
+
+    protected void givenMovement(String sku, String movementType, int quantityDelta) {
+        fixtures.createMovement(sku, movementType, quantityDelta);
     }
 
     protected void givenNumberedProducts() {

@@ -14,7 +14,7 @@ class ResponsiveLayoutIT extends AbstractInventoryIT {
 
     @BrowserTest
     void inventory_navigation_remains_usable_on_a_mobile_viewport() throws IOException {
-        testBench().resizeViewPortTo(500, 780);
+        setViewport(500, 780);
         var application = signInAs(INVENTORY_VIEWER);
 
         assertThat(application.mobileNavigationButtonIsVisible()).isTrue();

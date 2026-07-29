@@ -18,6 +18,17 @@ public final class E2eFixtures {
 
     void resetScenarioData() {
         jdbc.update("""
+                insert into role (code, name, description, priority, active, permissions)
+                select 'E2E_REPORT_VIEWER', 'E2E Report Viewer', 'Dashboard-only browser fixture.',
+                       10, true, array['report:view']::text[]
+                where not exists (select 1 from role where code = 'E2E_REPORT_VIEWER')
+                """);
+        jdbc.update("""
+                update role
+                set active = true, permissions = array['report:view']::text[]
+                where code = 'E2E_REPORT_VIEWER'
+                """);
+        jdbc.update("""
                 delete from stock_movement
                 where product_id in (select id from product where sku like 'E2E-%')
                 """);
@@ -60,5 +71,14 @@ public final class E2eFixtures {
                 cross join supplier
                 where category.name = ? and supplier.name = ?
                 """, sku, name, quantity, minimumStock, CATEGORY, SUPPLIER);
+    }
+
+    void createMovement(String sku, String movementType, int quantityDelta) {
+        jdbc.update("""
+                insert into stock_movement (product_id, user_id, movement_type, quantity_delta)
+                select id, null, ?, ?
+                from product
+                where sku = ?
+                """, movementType, quantityDelta, sku);
     }
 }

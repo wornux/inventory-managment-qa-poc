@@ -3,6 +3,7 @@ package com.wornux.e2e;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vaadin.testbench.BrowserTest;
+import com.wornux.e2e.page.DashboardPage;
 import com.wornux.e2e.page.ProductsPage;
 import com.wornux.e2e.page.StockMovementsPage;
 import com.wornux.e2e.support.AbstractInventoryIT;
@@ -10,6 +11,20 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.support.ui.ExpectedConditions;
 
 class AuthorizationIT extends AbstractInventoryIT {
+
+    @BrowserTest
+    void report_only_user_sees_the_dashboard_without_inventory_access() {
+        var application = signInAs(REPORT_VIEWER);
+        var dashboard = new DashboardPage(this);
+
+        assertThat(application.offersOverview()).isTrue();
+        assertThat(application.offersNavigationTo("products")).isFalse();
+        assertThat(dashboard.shows("No modules available")).isFalse();
+        assertThat(dashboard.panelLinkCount()).isZero();
+
+        open("/products");
+        waitUntil(ExpectedConditions.textToBePresentInElementLocated(By.tagName("h1"), "Access forbidden"));
+    }
 
     @BrowserTest
     void viewer_can_browse_inventory_but_cannot_change_it() {

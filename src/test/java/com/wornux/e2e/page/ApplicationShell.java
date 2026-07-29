@@ -25,6 +25,10 @@ public final class ApplicationShell {
         return browser.$(SideNavItemElement.class).withId("nav-" + route).exists();
     }
 
+    public boolean offersOverview() {
+        return browser.$(SideNavItemElement.class).withId("nav-overview").exists();
+    }
+
     public void navigateTo(String route) {
         browser.$(SideNavItemElement.class).id("nav-" + route).navigate();
         browser.waitUntil(ExpectedConditions.urlContains("/" + route));
