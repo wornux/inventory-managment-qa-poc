@@ -29,7 +29,6 @@ public class AuthorizationService {
 
     public AuthorizationService(AppUserRepository appUserRepository) {
         this.appUserRepository = appUserRepository;
-        // ponytail: process-local cache; use shared versioning or invalidation before running multiple app instances.
         this.cache = Caffeine.newBuilder()
                 .maximumSize(10_000)
                 .expireAfterAccess(Duration.ofMinutes(20))
