@@ -134,6 +134,7 @@ class SecurityConfigTest {
         verify(sessions).sessionCreationPolicy(SessionCreationPolicy.STATELESS);
         verify(exceptions).authenticationEntryPoint(authenticationEntryPoint);
         verify(exceptions).accessDeniedHandler(accessDeniedHandler);
+        verify(resourceServer).authenticationEntryPoint(authenticationEntryPoint);
         verify(jwt).jwtAuthenticationConverter(jwtConverter);
         verify(oauthLogin).loginPage("/login");
         var failureHandler = ArgumentCaptor.forClass(AuthenticationFailureHandler.class);

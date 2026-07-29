@@ -1,0 +1,75 @@
+{
+  "realm": "wornux-test",
+  "displayName": "Wornux Integration Tests",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "resetPasswordAllowed": false,
+  "accessTokenLifespan": 300,
+  "clients": [
+    {
+      "clientId": "integration-tests",
+      "name": "Authorization integration tests",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "defaultClientScopes": [
+        "profile",
+        "email",
+        "roles",
+        "basic"
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "warehouse-operator",
+      "firstName": "Warehouse",
+      "lastName": "Operator",
+      "email": "warehouse-operator@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${TEST_WAREHOUSE_OPERATOR_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "inventory-user",
+      "firstName": "Inventory",
+      "lastName": "User",
+      "email": "inventory-user@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${TEST_INVENTORY_USER_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    },
+    {
+      "username": "deactivation-operator",
+      "firstName": "Deactivation",
+      "lastName": "Operator",
+      "email": "deactivation-operator@example.test",
+      "emailVerified": true,
+      "enabled": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${TEST_DEACTIVATION_OPERATOR_PASSWORD}",
+          "temporary": false
+        }
+      ]
+    }
+  ]
+}
