@@ -81,7 +81,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/stocks
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    password: ${DB_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -120,4 +120,4 @@ app:
       admin-password: ${KEYCLOAK_ADMIN_PASSWORD:}
       user-username: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME:admin@wornux.com}
       user-email: ${KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL:admin@wornux.com}
-      user-password: ${KEYCLOAK_BOOTSTRAP_ADMIN_USER_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:}}
+      user-password: ${KEYCLOAK_BOOTSTRAP_ADMIN_USER_PASSWORD:}
