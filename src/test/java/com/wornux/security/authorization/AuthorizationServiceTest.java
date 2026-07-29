@@ -25,6 +25,8 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 @ExtendWith(MockitoExtension.class)
 class AuthorizationServiceTest {
@@ -33,8 +35,12 @@ class AuthorizationServiceTest {
     private AppUserRepository appUserRepository;
 
     @AfterEach
-    void clearSecurityContext() {
+    void clearThreadLocalState() {
         SecurityContextHolder.clearContext();
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+        TransactionSynchronizationManager.setActualTransactionActive(false);
     }
 
     @Test
@@ -146,5 +152,66 @@ class AuthorizationServiceTest {
         assertThat(new AuthorizationService(appUserRepository).can(AppPermission.PRODUCT_VIEW))
                 .isFalse();
         verify(appUserRepository, never()).findForAuthorization(any());
+    }
+
+    @Test
+    void cacheNormalizesPrincipalAndReturnsTheStoredSnapshot() {
+        AppUser user = mockUser(7L, "  Editor  ");
+        var service = new AuthorizationService(appUserRepository);
+
+        UserAccessSnapshot snapshot = service.cache(user);
+
+        assertThat(service.cached(" EDITOR ")).contains(snapshot);
+        assertThat(service.cached(null)).isEmpty();
+    }
+
+    @Test
+    void invalidateUserRemovesOnlyTheMatchingSnapshot() {
+        var service = new AuthorizationService(appUserRepository);
+        service.cache(mockUser(7L, "first"));
+        UserAccessSnapshot retained = service.cache(mockUser(8L, "second"));
+
+        service.invalidateUser(7L);
+
+        assertThat(service.cached("first")).isEmpty();
+        assertThat(service.cached("second")).contains(retained);
+    }
+
+    @Test
+    void invalidationWaitsForAnActiveTransactionToCommit() {
+        var service = new AuthorizationService(appUserRepository);
+        UserAccessSnapshot snapshot = service.cache(mockUser(7L, "editor"));
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.invalidateUser(7L);
+
+        assertThat(service.cached("editor")).contains(snapshot);
+
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(TransactionSynchronization::afterCommit);
+
+        assertThat(service.cached("editor")).isEmpty();
+    }
+
+    @Test
+    void invalidationRunsImmediatelyWithoutTransactionSynchronization() {
+        var service = new AuthorizationService(appUserRepository);
+        service.cache(mockUser(7L, "editor"));
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+
+        service.invalidateAll();
+
+        assertThat(service.cached("editor")).isEmpty();
+    }
+
+    private static AppUser mockUser(Long id, String username) {
+        AppUser user = mock(AppUser.class);
+        when(user.getId()).thenReturn(id);
+        when(user.getUsername()).thenReturn(username);
+        when(user.isActive()).thenReturn(true);
+        when(user.getRoles()).thenReturn(Set.of());
+
+        return user;
     }
 }

@@ -35,6 +35,9 @@ class StockMovementApiTest {
 
     @Test
     void mapperPreservesRequestAndLedgerResponseFields() {
+        assertThat(mapper.toDomainRequest(null)).isNull();
+        assertThat(mapper.toResponse(null)).isNull();
+
         Product product = mock(Product.class);
         AppUser user = mock(AppUser.class);
         StockMovement movement = mock(StockMovement.class);
@@ -64,6 +67,15 @@ class StockMovementApiTest {
                         -2,
                         "operator",
                         "sold"));
+    }
+
+    @Test
+    void mapperPreservesMissingOptionalRelationships() {
+        StockMovement movement = mock(StockMovement.class);
+
+        assertThat(mapper.toResponse(movement))
+                .extracting(StockMovementResponseDto::product, StockMovementResponseDto::username)
+                .containsExactly(null, null);
     }
 
     @Test
