@@ -79,7 +79,6 @@ services:
       - --spi-theme--cache-templates=false
     ports:
       - "7777:7777"
-      - "9000:9000"
     volumes:
       - ./keycloak/import:/opt/keycloak/data/import:ro
       - ./keycloak/themes:/opt/keycloak/themes:ro
