@@ -70,6 +70,19 @@ class OpenApiContractApiIT extends MockMvcApiTestBase {
         assertThat(list(schema, "required")).containsExactlyInAnyOrder("productId", "movementType", "quantityDelta");
     }
 
+    @Test
+    void publishedStockMovementInstants_useOpenApiDateTimeFormat() throws Exception {
+        Map<String, Object> contract = contract();
+        Map<String, Object> createdAt =
+                child(child(schema(contract, "StockMovementResponseDto"), "properties"), "createdAt");
+        List<Map<String, Object>> parameters =
+                listOfMaps(child(child(child(contract, "paths"), ApiPaths.STOCK_MOVEMENTS), "get"), "parameters");
+
+        assertDateTime(createdAt);
+        assertDateTime(parameterSchema(parameters, "createdFrom"));
+        assertDateTime(parameterSchema(parameters, "createdTo"));
+    }
+
     private Map<String, Object> contract() throws Exception {
         return responseBody(request(get(ApiPaths.OPEN_API))
                 .andExpect(status().isOk())
@@ -95,6 +108,23 @@ class OpenApiContractApiIT extends MockMvcApiTestBase {
     @SuppressWarnings("unchecked")
     private static List<String> list(Map<String, Object> parent, String name) {
         return (List<String>) parent.get(name);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Map<String, Object>> listOfMaps(Map<String, Object> parent, String name) {
+        return (List<Map<String, Object>>) parent.get(name);
+    }
+
+    private static Map<String, Object> parameterSchema(List<Map<String, Object>> parameters, String name) {
+        return parameters.stream()
+                .filter(parameter -> name.equals(parameter.get("name")))
+                .findFirst()
+                .map(parameter -> child(parameter, "schema"))
+                .orElseThrow();
+    }
+
+    private static void assertDateTime(Map<String, Object> schema) {
+        assertThat(schema).containsEntry("type", "string").containsEntry("format", "date-time");
     }
 
     private static Number number(Map<String, Object> parent, String name) {
