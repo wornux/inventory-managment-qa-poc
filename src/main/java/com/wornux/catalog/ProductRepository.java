@@ -3,6 +3,7 @@ package com.wornux.catalog;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
+import org.jspecify.annotations.NonNull;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
@@ -81,5 +82,5 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     @Override
     @EntityGraph(attributePaths = {"category", "supplier"})
-    Page<Product> findAll(Specification<Product> specification, Pageable pageable);
+    Page<Product> findAll(@NonNull Specification<Product> specification, @NonNull Pageable pageable);
 }
