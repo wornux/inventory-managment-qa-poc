@@ -8,7 +8,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import java.time.Instant;
 import org.hibernate.envers.Audited;
 
 @Entity
@@ -71,14 +70,6 @@ public class Supplier extends Auditable {
 
     public Long getVersion() {
         return version;
-    }
-
-    public Instant getCreatedAt() {
-        return super.getCreatedAt();
-    }
-
-    public Instant getUpdatedAt() {
-        return super.getUpdatedAt();
     }
 
     public void update(String name, String contactName, String email, String phone, boolean active) {

@@ -24,6 +24,7 @@ import com.vaadin.flow.component.notification.NotificationVariant;
 import com.vaadin.flow.component.orderedlayout.HorizontalLayout;
 import com.vaadin.flow.component.orderedlayout.VerticalLayout;
 import com.vaadin.flow.component.textfield.EmailField;
+import com.vaadin.flow.component.textfield.PasswordField;
 import com.vaadin.flow.component.textfield.TextField;
 import com.vaadin.flow.data.binder.BeanValidationBinder;
 import com.vaadin.flow.data.provider.SortDirection;
@@ -80,6 +81,7 @@ public class UsersView extends MasterDetailLayout {
     private final UserRequest formData = new UserRequest();
     private final TextField username = new TextField("Username");
     private final EmailField email = new EmailField("Email");
+    private final PasswordField password = new PasswordField("Password");
     private final Checkbox active = new Checkbox("Active");
     private final TextField createdAt = new TextField("Created at");
     private final MultiSelectComboBox<Role> roles = new MultiSelectComboBox<>("Roles");
@@ -226,7 +228,7 @@ public class UsersView extends MasterDetailLayout {
         bindForm();
 
         var form = new FormLayout();
-        form.add(username, email, active, roles, createdAt);
+        form.add(username, email, password, active, roles, createdAt);
         form.setResponsiveSteps(new FormLayout.ResponsiveStep("0", 1));
 
         save.addThemeVariants(ButtonVariant.LUMO_PRIMARY);
@@ -255,6 +257,11 @@ public class UsersView extends MasterDetailLayout {
         username.setValueChangeMode(ValueChangeMode.EAGER);
         email.setRequiredIndicatorVisible(true);
         email.setValueChangeMode(ValueChangeMode.EAGER);
+        password.setMinLength(8);
+        password.setHelperText("At least 8 characters.");
+        password.setValueChangeMode(ValueChangeMode.EAGER);
+        password.getElement().setAttribute("autocomplete", "new-password");
+        password.setVisible(false);
         active.setValue(true);
         roles.setItems(availableRoles);
         roles.setItemLabelGenerator(Role::getName);
@@ -268,6 +275,12 @@ public class UsersView extends MasterDetailLayout {
                 .asRequired("Username is required.")
                 .bind(UserRequest::getUsername, UserRequest::setUsername);
         binder.forField(email).asRequired("Email is required.").bind(UserRequest::getEmail, UserRequest::setEmail);
+        binder.forField(password)
+                .withValidator(
+                        value -> mode != FormMode.CREATE
+                                || (value != null && !value.isBlank() && value.length() >= 8),
+                        "Password must be at least 8 characters.")
+                .bind(UserRequest::getPassword, UserRequest::setPassword);
         binder.bind(active, UserRequest::isActive, UserRequest::setActive);
         binder.forField(roles)
                 .withValidator(value -> value != null && !value.isEmpty(), "At least one role must be selected.")
@@ -316,6 +329,8 @@ public class UsersView extends MasterDetailLayout {
         selectedUser = null;
         detailTitle.setText("New User");
         resetForm(new UserRequest(), null);
+        password.setVisible(true);
+        password.setRequiredIndicatorVisible(true);
         setReadOnly(false);
         save.setVisible(true);
         cancel.setVisible(true);
@@ -330,6 +345,8 @@ public class UsersView extends MasterDetailLayout {
         mode = FormMode.EDIT;
         detailTitle.setText("Edit User");
         resetForm(fromUser(selectedUser), selectedUser.getCreatedAt());
+        password.setVisible(false);
+        password.setRequiredIndicatorVisible(false);
         setReadOnly(false);
         save.setVisible(true);
         cancel.setVisible(true);
@@ -344,6 +361,8 @@ public class UsersView extends MasterDetailLayout {
         mode = FormMode.VIEW;
         detailTitle.setText("User Details");
         resetForm(fromUser(selectedUser), selectedUser.getCreatedAt());
+        password.setVisible(false);
+        password.setRequiredIndicatorVisible(false);
         setReadOnly(true);
         save.setVisible(false);
         cancel.setVisible(false);
@@ -356,6 +375,7 @@ public class UsersView extends MasterDetailLayout {
     private void resetForm(UserRequest request, Instant createdAtValue) {
         formData.setUsername(request.getUsername());
         formData.setEmail(request.getEmail());
+        formData.setPassword(null);
         formData.setActive(request.isActive());
         formData.setRoleIds(request.getRoleIds());
         formData.setVersion(request.getVersion());
@@ -453,8 +473,9 @@ public class UsersView extends MasterDetailLayout {
     }
 
     private void setReadOnly(boolean readOnly) {
-        username.setReadOnly(readOnly);
-        email.setReadOnly(readOnly);
+        username.setReadOnly(readOnly || mode != FormMode.CREATE);
+        email.setReadOnly(readOnly || mode != FormMode.CREATE);
+        password.setReadOnly(readOnly);
         active.setReadOnly(readOnly);
         roles.setReadOnly(readOnly || !userService.canAssignRoles());
     }
@@ -492,6 +513,7 @@ public class UsersView extends MasterDetailLayout {
     private void clearValidationErrors() {
         username.setInvalid(false);
         email.setInvalid(false);
+        password.setInvalid(false);
         roles.setInvalid(false);
     }
 

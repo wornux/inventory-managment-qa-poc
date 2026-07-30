@@ -1,0 +1,45 @@
+name: Provision
+
+on:
+  workflow_call:
+    outputs:
+      droplet_ip:
+        value: ${{ jobs.provision.outputs.droplet_ip }}
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provision-${{ github.repository }}
+
+jobs:
+  provision:
+    runs-on: ubuntu-latest
+    outputs:
+      droplet_ip: ${{ steps.output.outputs.droplet_ip }}
+    env:
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.SPACES_ACCESS_KEY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.SPACES_SECRET_KEY }}
+      TF_STATE_BUCKET: ${{ vars.SPACES_BUCKET }}
+      TF_STATE_REGION: ${{ vars.SPACES_REGION || 'nyc3' }}
+      TF_VAR_domain: ${{ vars.DOMAIN }}
+      TF_VAR_cloudflare_zone_id: ${{ vars.CLOUDFLARE_ZONE_ID }}
+      TF_VAR_cloudflare_proxied: ${{ vars.CLOUDFLARE_PROXIED || 'false' }}
+      TF_VAR_region: ${{ vars.DO_REGION || 'nyc3' }}
+      TF_VAR_size: ${{ vars.DO_SIZE || 's-4vcpu-8gb' }}
+      TF_VAR_ssh_key_fingerprint: ${{ vars.DO_SSH_KEY_FINGERPRINT }}
+      TF_VAR_ssh_allowed_cidr: ${{ vars.DO_SSH_ALLOWED_CIDR || '0.0.0.0/0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+
+      - name: Apply infrastructure
+        run: make -C ops/tofu up TOFU_ARGS=-auto-approve
+
+      - name: Export Droplet IP
+        id: output
+        working-directory: ops/tofu
+        run: echo "droplet_ip=$(tofu output -raw droplet_ip)" >> "$GITHUB_OUTPUT"

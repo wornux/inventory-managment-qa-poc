@@ -22,10 +22,10 @@ import com.vaadin.flow.router.BeforeEnterEvent;
 import com.vaadin.flow.router.BeforeEnterObserver;
 import com.vaadin.flow.router.Layout;
 import com.vaadin.flow.spring.security.AuthenticationContext;
+import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.ui.components.DrawerRailToggle;
 import com.wornux.ui.navigation.NavigationEntry;
 import com.wornux.ui.navigation.NavigationRegistry;
-import com.wornux.ui.security.UiAccessService;
 import com.wornux.ui.views.ForbiddenView;
 import com.wornux.ui.views.NoAccessView;
 import jakarta.annotation.security.PermitAll;
@@ -42,11 +42,11 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSize {
 
     private final transient AuthenticationContext authenticationContext;
-    private final UiAccessService accessService;
+    private final AuthorizationService authorizationService;
 
-    public MainLayout(AuthenticationContext authenticationContext, UiAccessService accessService) {
+    public MainLayout(AuthenticationContext authenticationContext, AuthorizationService authorizationService) {
         this.authenticationContext = authenticationContext;
-        this.accessService = accessService;
+        this.authorizationService = authorizationService;
 
         setId("main-layout");
         addClassName("main-layout");
@@ -63,7 +63,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
             return;
         }
 
-        if (!accessService.hasAnyAccess()) {
+        if (authorizationService.effectivePermissions().isEmpty()) {
             event.rerouteTo(NoAccessView.class);
             return;
         }
@@ -71,7 +71,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
         NavigationRegistry.findByTarget(target)
                 .ifPresentOrElse(
                         entry -> {
-                            if (!accessService.canRead(entry.permission())) {
+                            if (!authorizationService.can(entry.permission())) {
                                 event.rerouteTo(ForbiddenView.class);
                             }
                         },
@@ -134,7 +134,7 @@ public class MainLayout extends AppLayout implements BeforeEnterObserver, HasSiz
 
         Map<String, SideNav> sections = new LinkedHashMap<>();
         NavigationRegistry.entries().stream()
-                .filter(entry -> accessService.canRead(entry.permission()))
+                .filter(entry -> authorizationService.can(entry.permission()))
                 .forEach(entry ->
                         sections.computeIfAbsent(entry.section(), this::section).addItem(navItem(entry)));
 

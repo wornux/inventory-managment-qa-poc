@@ -12,7 +12,6 @@ import jakarta.persistence.JoinTable;
 import jakarta.persistence.ManyToMany;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import org.hibernate.envers.Audited;
@@ -86,14 +85,6 @@ public class AppUser extends Auditable {
 
     public void setActive(boolean active) {
         this.active = active;
-    }
-
-    public Instant getCreatedAt() {
-        return super.getCreatedAt();
-    }
-
-    public Instant getUpdatedAt() {
-        return super.getUpdatedAt();
     }
 
     public Long getVersion() {

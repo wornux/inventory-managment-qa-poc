@@ -11,8 +11,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface AppUserRepository extends JpaRepository<AppUser, Long>, JpaSpecificationExecutor<AppUser> {
 
-    long countByRolesId(Long roleId);
-
     List<AppUser> findDistinctByRolesIdOrderByUsernameAsc(Long roleId);
 
     @Query("""

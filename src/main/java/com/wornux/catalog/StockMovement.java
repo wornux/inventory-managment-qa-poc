@@ -13,7 +13,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-import java.time.Instant;
 import org.hibernate.envers.Audited;
 
 @Entity
@@ -75,9 +74,5 @@ public class StockMovement extends Auditable {
 
     public String getReason() {
         return reason;
-    }
-
-    public Instant getCreatedAt() {
-        return super.getCreatedAt();
     }
 }
