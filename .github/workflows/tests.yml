@@ -1,4 +1,4 @@
-name: Integration Tests
+name: Tests
 
 on:
   pull_request:
@@ -8,9 +8,10 @@ permissions:
   contents: read
 
 jobs:
-  integration-tests:
-    name: Integration Tests
+  tests:
+    name: Unit, Integration, API and Contract Tests
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -22,12 +23,15 @@ jobs:
           java-version: '25'
           cache: maven
 
-      - name: Run integration tests with JaCoCo
-        run: ./mvnw -B verify
+      - name: Run tests
+        run: ./mvnw -B -Papi-tests verify
 
-      - name: Upload JaCoCo report
+      - name: Upload test reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: integration-tests-jacoco-report
-          path: target/site/jacoco
-          if-no-files-found: error
+          name: test-reports
+          path: |
+            target/site/jacoco
+            target/failsafe-reports
+          if-no-files-found: warn
