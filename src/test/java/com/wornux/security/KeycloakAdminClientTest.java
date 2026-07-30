@@ -34,7 +34,7 @@ class KeycloakAdminClientTest {
 
     @Test
     void obtainsPasswordGrantAdminToken() {
-        server.expect(requestTo("https://keycloak/realms/master/protocol/openid-connect/token"))
+        server.expect(requestTo("http://keycloak:7777/realms/master/protocol/openid-connect/token"))
                 .andExpect(method(POST))
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_FORM_URLENCODED))
                 .andExpect(content()
@@ -53,7 +53,7 @@ class KeycloakAdminClientTest {
     void rejectsMissingBlankAndNullTokenResponses() {
         for (String body : new String[] {"{}", "{\"access_token\":\"  \"}", "null"}) {
             setUp();
-            server.expect(requestTo("https://keycloak/realms/master/protocol/openid-connect/token"))
+            server.expect(requestTo("http://keycloak:7777/realms/master/protocol/openid-connect/token"))
                     .andRespond(withSuccess(body, MediaType.APPLICATION_JSON));
 
             assertThatThrownBy(() -> client.adminToken(properties))
@@ -75,7 +75,7 @@ class KeycloakAdminClientTest {
     @Test
     void createsMissingUserThenReturnsIt() {
         expectFind("[]");
-        server.expect(requestTo("https://keycloak/admin/realms/app/users"))
+        server.expect(requestTo("http://keycloak:7777/admin/realms/app/users"))
                 .andExpect(method(POST))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer token"))
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
@@ -94,7 +94,7 @@ class KeycloakAdminClientTest {
     @Test
     void reportsWhenCreateDoesNotBecomeVisibleAndWhenUserFieldsAreInvalid() {
         expectFind("[]");
-        server.expect(requestTo("https://keycloak/admin/realms/app/users")).andRespond(withNoContent());
+        server.expect(requestTo("http://keycloak:7777/admin/realms/app/users")).andRespond(withNoContent());
         expectFind("null");
 
         assertThatThrownBy(() -> client.ensureUser(properties, "token"))
@@ -115,7 +115,7 @@ class KeycloakAdminClientTest {
     }
 
     private void expectFind(String response) {
-        server.expect(requestTo("https://keycloak/admin/realms/app/users?email=sys@example.com&exact=true"))
+        server.expect(requestTo("http://keycloak:7777/admin/realms/app/users?email=sys@example.com&exact=true"))
                 .andExpect(method(GET))
                 .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer token"))
                 .andRespond(withSuccess(response, MediaType.APPLICATION_JSON));

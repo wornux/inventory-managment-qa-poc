@@ -100,6 +100,7 @@ app:
     admin-bootstrap:
       enabled: ${KEYCLOAK_BOOTSTRAP_ENABLED:true}
       server-url: ${KEYCLOAK_SERVER_URL:http://localhost:7777}
+      issuer: ${spring.security.oauth2.resourceserver.jwt.issuer-uri}
       realm: ${KEYCLOAK_REALM:wornux}
       admin-realm: ${KEYCLOAK_ADMIN_REALM:master}
       admin-client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}

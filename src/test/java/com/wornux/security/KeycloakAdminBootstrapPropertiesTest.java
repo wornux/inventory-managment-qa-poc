@@ -8,7 +8,8 @@ import org.junit.jupiter.api.Test;
 
 class KeycloakAdminBootstrapPropertiesTest {
     private static final String[] VALUES = {
-        "https://keycloak///",
+        "http://keycloak:7777///",
+        "https://auth.example.com/realms/app",
         "app",
         "master",
         "admin-cli",
@@ -25,14 +26,15 @@ class KeycloakAdminBootstrapPropertiesTest {
 
         properties.validate();
 
-        assertThat(properties.baseUrl()).isEqualTo("https://keycloak");
-        assertThat(properties.issuer()).isEqualTo("https://keycloak/realms/app");
+        assertThat(properties.baseUrl()).isEqualTo("http://keycloak:7777");
+        assertThat(properties.issuer()).isEqualTo("https://auth.example.com/realms/app");
     }
 
     @Test
     void everyRequiredPropertyIsNamedOnFailure() {
         String[] names = {
             "server-url",
+            "issuer",
             "realm",
             "admin-realm",
             "admin-client-id",
@@ -54,6 +56,16 @@ class KeycloakAdminBootstrapPropertiesTest {
 
     private static KeycloakAdminBootstrapProperties properties(String[] value) {
         return new KeycloakAdminBootstrapProperties(
-                true, value[0], value[1], value[2], value[3], value[4], value[5], value[6], value[7], value[8]);
+                true,
+                value[0],
+                value[1],
+                value[2],
+                value[3],
+                value[4],
+                value[5],
+                value[6],
+                value[7],
+                value[8],
+                value[9]);
     }
 }
