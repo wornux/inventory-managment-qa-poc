@@ -1,10 +1,7 @@
 package com.wornux.user;
 
 import com.wornux.security.permission.AppPermission;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
-import java.util.Set;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -115,40 +112,5 @@ public class AppUserService {
         if (exists) {
             throw new OidcProvisioningException("Email already exists for another local user.");
         }
-    }
-
-    private Set<Role> requireRoles(Set<Long> roleIds) {
-        if (roleIds == null || roleIds.isEmpty()) {
-            throw new UserException("At least one role must be selected.");
-        }
-
-        List<Role> roles = roleRepository.findAllById(roleIds).stream()
-                .filter(Role::isActive)
-                .toList();
-
-        if (roles.size() != roleIds.size()) {
-            throw new UserException("At least one role must be selected.");
-        }
-
-        return new LinkedHashSet<>(roles);
-    }
-
-    @Transactional
-    public AppUser createLocalUser(UserRequest request) {
-        Set<Role> roles = requireRoles(request.getRoleIds());
-        AppUser user =
-                new AppUser(normalizeUsername(request.getUsername()), normalizeEmail(request.getEmail()), null, null);
-        user.setActive(request.isActive());
-        roles.forEach(user::addRole);
-
-        return appUserRepository.save(user);
-    }
-
-    private String normalizeUsername(String value) {
-        return value == null ? "" : value.trim();
-    }
-
-    private String normalizeEmail(String value) {
-        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
     }
 }

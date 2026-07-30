@@ -1,21 +1,23 @@
 package com.wornux.security.api;
 
-import static io.restassured.RestAssured.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import io.restassured.http.ContentType;
-import io.restassured.specification.RequestSpecification;
 import java.time.Duration;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
 import org.testcontainers.containers.GenericContainer;
@@ -27,14 +29,15 @@ import org.testcontainers.utility.MountableFile;
 
 @Testcontainers
 @SpringBootTest(
-        webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        webEnvironment = SpringBootTest.WebEnvironment.MOCK,
         properties = {
-                "spring.jpa.hibernate.ddl-auto=validate",
-                "spring.flyway.enabled=true",
-                "spring.flyway.locations=classpath:db/migration/prod",
-                "management.otlp.metrics.export.enabled=false",
-                "vaadin.launch-browser=false"
+            "spring.jpa.hibernate.ddl-auto=validate",
+            "spring.flyway.enabled=true",
+            "spring.flyway.locations=classpath:db/migration/prod",
+            "management.otlp.metrics.export.enabled=false",
+            "vaadin.launch-browser=false"
         })
+@AutoConfigureMockMvc
 class JwtValidationIT {
 
     private static final String REALM = "wornux-test";
@@ -50,8 +53,7 @@ class JwtValidationIT {
     private static final String DEACTIVATION_OPERATOR_PASSWORD = randomSecret();
     private static final String WRONG_ISSUER_PASSWORD = randomSecret();
     private static final ParameterizedTypeReference<Map<String, Object>> MAP_TYPE =
-            new ParameterizedTypeReference<>() {
-            };
+            new ParameterizedTypeReference<>() {};
 
     @Container
     @ServiceConnection
@@ -78,8 +80,8 @@ class JwtValidationIT {
                     .forStatusCode(200))
             .withStartupTimeout(Duration.ofMinutes(2));
 
-    @LocalServerPort
-    int serverPort;
+    @Autowired
+    MockMvc mockMvc;
 
     @DynamicPropertySource
     static void securityProperties(DynamicPropertyRegistry registry) {
@@ -94,33 +96,33 @@ class JwtValidationIT {
     }
 
     @Test
-    void validJwt_canAccessProtectedEndpoint() {
-        apiRequest(accessToken(issuerUri(), TEST_CLIENT, INVENTORY_USER_USERNAME, INVENTORY_USER_PASSWORD))
-                .get("/api/products")
-                .then()
-                .statusCode(200);
+    void validJwt_canAccessProtectedEndpoint() throws Exception {
+        mockMvc.perform(apiRequest(
+                        accessToken(issuerUri(), TEST_CLIENT, INVENTORY_USER_USERNAME, INVENTORY_USER_PASSWORD)))
+                .andExpect(status().isOk());
     }
 
     @Test
-    void missingJwt_returns401() {
-        apiRequest(null).get("/api/products").then().statusCode(401);
+    void missingJwt_returns401() throws Exception {
+        mockMvc.perform(apiRequest(null)).andExpect(status().isUnauthorized());
     }
 
     @Test
-    void malformedJwt_returns401() {
-        apiRequest("not-a-jwt").get("/api/products").then().statusCode(401);
+    void malformedJwt_returns401() throws Exception {
+        mockMvc.perform(apiRequest("not-a-jwt")).andExpect(status().isUnauthorized());
     }
 
     @Test
-    void tamperedJwt_returns401() {
+    void tamperedJwt_returns401() throws Exception {
         String validToken = accessToken(issuerUri(), TEST_CLIENT, INVENTORY_USER_USERNAME, INVENTORY_USER_PASSWORD);
 
-        apiRequest(tamperSignature(validToken)).get("/api/products").then().statusCode(401);
+        mockMvc.perform(apiRequest(tamperSignature(validToken))).andExpect(status().isUnauthorized());
     }
 
     @Test
-    void expiredJwt_returns401() {
-        String adminToken = accessToken(masterIssuerUri(), "admin-cli", KEYCLOAK_ADMIN_USERNAME, KEYCLOAK_ADMIN_PASSWORD);
+    void expiredJwt_returns401() throws Exception {
+        String adminToken =
+                accessToken(masterIssuerUri(), "admin-cli", KEYCLOAK_ADMIN_USERNAME, KEYCLOAK_ADMIN_PASSWORD);
         Map<String, Object> realm = realmRepresentation(adminToken);
         Object originalLifespan = realm.get("accessTokenLifespan");
         String expiredToken;
@@ -134,25 +136,22 @@ class JwtValidationIT {
             updateRealm(adminToken, realm);
         }
 
-        apiRequest(expiredToken).get("/api/products").then().statusCode(401);
+        mockMvc.perform(apiRequest(expiredToken)).andExpect(status().isUnauthorized());
     }
 
     @Test
-    void wrongIssuer_returns401() {
+    void wrongIssuer_returns401() throws Exception {
         String wrongIssuerToken =
                 accessToken(wrongIssuerUri(), WRONG_ISSUER_CLIENT, WRONG_ISSUER_USERNAME, WRONG_ISSUER_PASSWORD);
 
-        apiRequest(wrongIssuerToken).get("/api/products").then().statusCode(401);
+        mockMvc.perform(apiRequest(wrongIssuerToken)).andExpect(status().isUnauthorized());
     }
 
-    private RequestSpecification apiRequest(String token) {
-        RequestSpecification request = given()
-                .baseUri("http://localhost:" + serverPort)
-                .accept(ContentType.JSON)
-                .contentType(ContentType.JSON);
+    private MockHttpServletRequestBuilder apiRequest(String token) {
+        MockHttpServletRequestBuilder request = get("/api/products").accept(MediaType.APPLICATION_JSON);
 
         if (token != null) {
-            request.auth().oauth2(token);
+            request.header(HttpHeaders.AUTHORIZATION, bearer(token));
         }
 
         return request;

@@ -1,7 +1,5 @@
 package com.wornux.catalog;
 
-import java.util.Set;
-
 public enum MovementType {
     PURCHASE(true, false),
     SALE(false, false),
@@ -12,8 +10,6 @@ public enum MovementType {
     INITIAL_STOCK(true, false),
     DAMAGED(false, true),
     LOST(false, true);
-
-    private static final Set<MovementType> INBOUND = Set.of(PURCHASE, RETURN_IN, ADJUSTMENT_IN, INITIAL_STOCK);
 
     private final boolean positive;
     private final boolean reasonRequired;
@@ -37,9 +33,5 @@ public enum MovementType {
 
     public String displayName() {
         return name().replace('_', ' ');
-    }
-
-    public static boolean isInbound(MovementType movementType) {
-        return INBOUND.contains(movementType);
     }
 }

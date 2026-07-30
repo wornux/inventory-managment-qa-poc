@@ -60,18 +60,6 @@ public class RoleService {
     }
 
     @Transactional(readOnly = true)
-    public long userCount(Long roleId) {
-        authorizationService.check(AppPermission.ROLE_VIEW);
-
-        return appUserRepository.countByRolesId(roleId);
-    }
-
-    @Transactional(readOnly = true)
-    public long permissionCount(Long roleId) {
-        return get(roleId).getPermissions().size();
-    }
-
-    @Transactional(readOnly = true)
     public Map<Long, Long> userCounts(Collection<Long> roleIds) {
         authorizationService.check(AppPermission.ROLE_VIEW);
 

@@ -20,7 +20,6 @@ import com.vaadin.flow.spring.security.AuthenticationContext;
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
 import com.wornux.ui.components.DrawerRailToggle;
-import com.wornux.ui.security.UiAccessService;
 import com.wornux.ui.views.ForbiddenView;
 import com.wornux.ui.views.HomeView;
 import com.wornux.ui.views.NoAccessView;
@@ -50,19 +49,6 @@ class UiBehaviorTest {
     }
 
     @Test
-    void accessServiceDelegatesPermissionAndDetectsWhetherAnyAccessRemains() {
-        var authorization = mock(AuthorizationService.class);
-        var access = new UiAccessService(authorization);
-        when(authorization.can(AppPermission.PRODUCT_VIEW)).thenReturn(true);
-        when(authorization.effectivePermissions()).thenReturn(Set.of(AppPermission.PRODUCT_VIEW), Set.of());
-
-        assertThat(access.canRead(AppPermission.PRODUCT_VIEW)).isTrue();
-        assertThat(access.hasAnyAccess()).isTrue();
-        assertThat(access.hasAnyAccess()).isFalse();
-        verify(authorization).can(AppPermission.PRODUCT_VIEW);
-    }
-
-    @Test
     void drawerRailToggleExposesItsCustomElementContract() {
         var toggle = new DrawerRailToggle();
 
@@ -71,9 +57,9 @@ class UiBehaviorTest {
 
     @Test
     void layoutShowsOnlyAllowedNavigationAndAuthenticatedUsername() {
-        var access = mock(UiAccessService.class);
-        when(access.canRead(AppPermission.PRODUCT_VIEW)).thenReturn(true);
-        when(access.canRead(AppPermission.REPORT_VIEW)).thenReturn(true);
+        var access = mock(AuthorizationService.class);
+        when(access.can(AppPermission.PRODUCT_VIEW)).thenReturn(true);
+        when(access.can(AppPermission.REPORT_VIEW)).thenReturn(true);
         SecurityContextHolder.getContext()
                 .setAuthentication(new UsernamePasswordAuthenticationToken(
                         User.withUsername("alice").password("x").roles("USER").build(), "x", List.of()));
@@ -89,8 +75,8 @@ class UiBehaviorTest {
 
     @Test
     void layoutShowsOnlyOverviewWithoutAnEmptyStateForReportOnlyAccess() {
-        var access = mock(UiAccessService.class);
-        when(access.canRead(AppPermission.REPORT_VIEW)).thenReturn(true);
+        var access = mock(AuthorizationService.class);
+        when(access.can(AppPermission.REPORT_VIEW)).thenReturn(true);
 
         assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), access)))
                 .contains("Overview")
@@ -99,7 +85,7 @@ class UiBehaviorTest {
 
     @Test
     void layoutShowsEmptyStateAndFallbackUsernameWhenNothingIsAllowed() {
-        var layout = new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class));
+        var layout = new MainLayout(mock(AuthenticationContext.class), mock(AuthorizationService.class));
 
         assertThat(descendants(layout)
                         .filter(Span.class::isInstance)
@@ -109,8 +95,8 @@ class UiBehaviorTest {
 
     @Test
     void layoutCanShowAdministrationWithoutInventory() {
-        var access = mock(UiAccessService.class);
-        when(access.canRead(AppPermission.USER_VIEW)).thenReturn(true);
+        var access = mock(AuthorizationService.class);
+        when(access.can(AppPermission.USER_VIEW)).thenReturn(true);
         var text = textOf(new MainLayout(mock(AuthenticationContext.class), access));
 
         assertThat(text).contains("Users").doesNotContain("Products", "No modules available");
@@ -123,15 +109,15 @@ class UiBehaviorTest {
         when(authentication.getName()).thenReturn("bob");
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class))))
+        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(AuthorizationService.class))))
                 .contains("bob");
         when(authentication.getName()).thenReturn(" ");
 
-        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class))))
+        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(AuthorizationService.class))))
                 .contains("User");
         when(authentication.getName()).thenReturn(null);
 
-        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class))))
+        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(AuthorizationService.class))))
                 .contains("User");
     }
 
@@ -144,16 +130,16 @@ class UiBehaviorTest {
 
         when(principal.getClaimAsString("preferred_username")).thenReturn("alice");
 
-        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class))))
+        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(AuthorizationService.class))))
                 .contains("alice");
         when(principal.getClaimAsString("preferred_username")).thenReturn(null);
         when(principal.getName()).thenReturn("subject");
 
-        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class))))
+        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(AuthorizationService.class))))
                 .contains("subject");
         when(principal.getClaimAsString("preferred_username")).thenReturn(" ");
 
-        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class))))
+        assertThat(textOf(new MainLayout(mock(AuthenticationContext.class), mock(AuthorizationService.class))))
                 .contains("subject");
     }
 
@@ -167,7 +153,7 @@ class UiBehaviorTest {
         when(principal.getEmail()).thenReturn("alice@example.com");
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
-        var layout = new MainLayout(mock(AuthenticationContext.class), mock(UiAccessService.class));
+        var layout = new MainLayout(mock(AuthenticationContext.class), mock(AuthorizationService.class));
         var profile = descendants(layout)
                 .filter(Details.class::isInstance)
                 .map(Details.class::cast)
@@ -186,7 +172,7 @@ class UiBehaviorTest {
     @Test
     void logoutButtonInvokesAuthenticationContext() {
         var authentication = mock(AuthenticationContext.class);
-        var layout = new MainLayout(authentication, mock(UiAccessService.class));
+        var layout = new MainLayout(authentication, mock(AuthorizationService.class));
         descendants(layout)
                 .filter(Button.class::isInstance)
                 .map(Button.class::cast)
@@ -254,8 +240,8 @@ class UiBehaviorTest {
     @ParameterizedTest
     @MethodSource("protectedRoutes")
     void registeredRoutesRequireTheirExactPermission(Class<? extends Component> target, AppPermission permission) {
-        var access = mock(UiAccessService.class);
-        when(access.hasAnyAccess()).thenReturn(true);
+        var access = mock(AuthorizationService.class);
+        when(access.effectivePermissions()).thenReturn(Set.of(permission));
         var layout = new MainLayout(mock(AuthenticationContext.class), access);
         var denied = mock(BeforeEnterEvent.class);
         doReturn(target).when(denied).getNavigationTarget();
@@ -263,7 +249,7 @@ class UiBehaviorTest {
         layout.beforeEnter(denied);
 
         verify(denied).rerouteTo(ForbiddenView.class);
-        when(access.canRead(permission)).thenReturn(true);
+        when(access.can(permission)).thenReturn(true);
         var allowed = mock(BeforeEnterEvent.class);
         doReturn(target).when(allowed).getNavigationTarget();
 
@@ -274,8 +260,8 @@ class UiBehaviorTest {
 
     @Test
     void publicAndUnknownRoutesAreHandledWithoutRedirectLoops() {
-        var access = mock(UiAccessService.class);
-        when(access.hasAnyAccess()).thenReturn(true);
+        var access = mock(AuthorizationService.class);
+        when(access.effectivePermissions()).thenReturn(Set.of(AppPermission.REPORT_VIEW));
         var layout = new MainLayout(mock(AuthenticationContext.class), access);
         var publicRoute = mock(BeforeEnterEvent.class);
         doReturn(ForbiddenView.class).when(publicRoute).getNavigationTarget();
@@ -293,7 +279,8 @@ class UiBehaviorTest {
 
     @Test
     void usersWithoutPermissionsRerouteToNoAccessWithoutCreatingARedirectLoop() {
-        var access = mock(UiAccessService.class);
+        var access = mock(AuthorizationService.class);
+        when(access.effectivePermissions()).thenReturn(Set.of());
         var layout = new MainLayout(mock(AuthenticationContext.class), access);
         var denied = mock(BeforeEnterEvent.class);
         doReturn(HomeView.class).when(denied).getNavigationTarget();
