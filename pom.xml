@@ -12,7 +12,7 @@
         <java.version>25</java.version>
         <m2e.apt.activation>jdt_apt</m2e.apt.activation>
         <mapstruct.version>1.6.3</mapstruct.version>
-        <vaadin.version>25.2.3</vaadin.version>
+        <vaadin.version>25.2.4</vaadin.version>
     </properties>
     
     <parent>
@@ -30,6 +30,16 @@
                 <version>${vaadin.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>11.0.24</version>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>swagger-ui</artifactId>
+                <version>5.32.11</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -111,6 +121,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <version>42.7.13</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -349,6 +360,10 @@
                         <version>12.2.2</version>
                         <configuration>
                             <failBuildOnCVSS>7.0</failBuildOnCVSS>
+                            <failBuildOnUnusedSuppressionRule>true</failBuildOnUnusedSuppressionRule>
+                            <suppressionFiles>
+                                <suppressionFile>${project.basedir}/config/dependency-check-suppressions.xml</suppressionFile>
+                            </suppressionFiles>
                             <formats>
                                 <format>HTML</format>
                                 <format>JSON</format>
