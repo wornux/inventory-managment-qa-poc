@@ -98,6 +98,19 @@ class KeycloakAdminClientTest {
     }
 
     @Test
+    void reportsTrailingSlashCreatedUserIdentifier() {
+        server.expect(requestTo("http://keycloak:7777/realms/master/protocol/openid-connect/token"))
+                .andRespond(withSuccess("{\"access_token\":\"token\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://keycloak:7777/admin/realms/app/users"))
+                .andRespond(withCreatedEntity(URI.create("http://keycloak:7777/admin/realms/app/users/")));
+
+        assertThatThrownBy(() -> client.createUser(properties, "new-user", "new@example.com", "password1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Keycloak user response did not include its identifier.");
+        server.verify();
+    }
+
+    @Test
     void returnsExistingUserWithoutCreatingOne() {
         expectFind("[{\"id\":\"1\",\"username\":\"sysadmin\",\"email\":\"sys@example.com\"}]");
 

@@ -74,8 +74,8 @@ public class UserService {
     public AppUser create(@Valid UserRequest request) {
         authorizationService.check(AppPermission.USER_CREATE);
         authorizationService.check(AppPermission.ROLE_ASSIGN);
-        validateUniqueUsername(request.getUsername(), null);
-        validateUniqueEmail(request.getEmail(), null);
+        validateUniqueUsername(request.getUsername());
+        validateUniqueEmail(request.getEmail());
         Set<Role> roles = requireActiveRoles(request.getRoleIds());
         String username = normalizeUsername(request.getUsername());
         String email = normalizeEmail(request.getEmail());
@@ -167,22 +167,14 @@ public class UserService {
         return password;
     }
 
-    private void validateUniqueUsername(String username, Long id) {
-        boolean exists = id == null
-                ? appUserRepository.existsByUsernameIgnoreCase(normalizeUsername(username))
-                : appUserRepository.existsByUsernameIgnoreCaseAndIdNot(normalizeUsername(username), id);
-
-        if (exists) {
+    private void validateUniqueUsername(String username) {
+        if (appUserRepository.existsByUsernameIgnoreCase(normalizeUsername(username))) {
             throw new UserException("Username already exists. Please choose a different one.");
         }
     }
 
-    private void validateUniqueEmail(String email, Long id) {
-        boolean exists = id == null
-                ? appUserRepository.existsByEmailIgnoreCase(normalizeEmail(email))
-                : appUserRepository.existsByEmailIgnoreCaseAndIdNot(normalizeEmail(email), id);
-
-        if (exists) {
+    private void validateUniqueEmail(String email) {
+        if (appUserRepository.existsByEmailIgnoreCase(normalizeEmail(email))) {
             throw new UserException("Email already registered. Please use a different one.");
         }
     }

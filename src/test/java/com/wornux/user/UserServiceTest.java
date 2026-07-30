@@ -22,6 +22,9 @@ import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -143,14 +146,16 @@ class UserServiceTest {
                 .hasMessageContaining("Email");
     }
 
-    @Test
-    void create_requiresPasswordBeforeProvisioningIdentity() {
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {" ", "short"})
+    void create_requiresPasswordBeforeProvisioningIdentity(String password) {
         Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
         when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
         when(authorizationService.canManagePriority(10)).thenReturn(true);
         when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
         UserRequest request = request("user", "u@e.com", 1L);
-        request.setPassword("short");
+        request.setPassword(password);
 
         assertThatThrownBy(() -> service().create(request))
                 .isInstanceOf(UserException.class)
@@ -225,6 +230,12 @@ class UserServiceTest {
                 .hasMessageContaining("another administrator");
         request.setVersion(2L);
         request.setUsername("new");
+
+        assertThatThrownBy(() -> service().update(7L, request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("managed by Keycloak");
+        request.setUsername("old");
+        request.setEmail("new@e.com");
 
         assertThatThrownBy(() -> service().update(7L, request))
                 .isInstanceOf(UserException.class)
