@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Answers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.invocation.InvocationOnMock;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -64,6 +66,7 @@ class SecurityConfigTest {
         var userInfo = mock(OAuth2LoginConfigurer.UserInfoEndpointConfig.class, Answers.RETURNS_SELF);
         var vaadinConfigurer = mock(VaadinSecurityConfigurer.class, Answers.RETURNS_SELF);
         when(http.securityMatcher(any(String[].class))).thenReturn(http);
+        when(http.cors(any())).thenReturn(http);
         when(http.csrf(any())).thenAnswer(invocation -> customize(invocation, csrf, http));
         when(http.sessionManagement(any())).thenAnswer(invocation -> customize(invocation, sessions, http));
         when(http.exceptionHandling(any())).thenAnswer(invocation -> customize(invocation, exceptions, http));
@@ -130,6 +133,7 @@ class SecurityConfigTest {
                         "/v3/api-docs",
                         "/v3/api-docs/**",
                         "/webjars/swagger-ui/**");
+        verify(http).cors(any());
         verify(csrf).disable();
         verify(sessions).sessionCreationPolicy(SessionCreationPolicy.STATELESS);
         verify(exceptions).authenticationEntryPoint(authenticationEntryPoint);
@@ -218,6 +222,27 @@ class SecurityConfigTest {
 
         assertThat(fallbackResponse.getRedirectedUrl()).isEqualTo("/");
         verify(registrations).findByRegistrationId("missing");
+    }
+
+    @Test
+    void corsConfiguration_allowsConfiguredOriginsAndApiContractOnly() {
+        var config = new SecurityConfig();
+        var properties = new CorsProperties(List.of("https://trusted-client.test"));
+        var source = config.corsConfigurationSource(properties);
+        var apiRequest = new MockHttpServletRequest(HttpMethod.OPTIONS.name(), "/api/products");
+        var browserRequest = new MockHttpServletRequest(HttpMethod.OPTIONS.name(), "/products");
+
+        var cors = source.getCorsConfiguration(apiRequest);
+
+        assertThat(cors).isNotNull();
+        assertThat(cors.getAllowedOrigins()).containsExactly("https://trusted-client.test");
+        assertThat(cors.getAllowedMethods()).containsExactly("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS");
+        assertThat(cors.getAllowedHeaders())
+                .containsExactly(
+                        HttpHeaders.AUTHORIZATION, HttpHeaders.CONTENT_TYPE, HttpHeaders.ACCEPT, "X-Correlation-ID");
+        assertThat(cors.getAllowCredentials()).isFalse();
+        assertThat(cors.getMaxAge()).isEqualTo(3600L);
+        assertThat(source.getCorsConfiguration(browserRequest)).isNull();
     }
 
     @Test
