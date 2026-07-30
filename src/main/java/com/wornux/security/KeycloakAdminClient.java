@@ -1,5 +1,6 @@
 package com.wornux.security;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import org.springframework.core.ParameterizedTypeReference;
@@ -48,25 +49,49 @@ public class KeycloakAdminClient {
     }
 
     public KeycloakUser ensureUser(KeycloakAdminBootstrapProperties properties, String token) {
-        return findUser(properties, token).stream()
+        return findUser(properties, token, properties.userEmail()).stream()
                 .findFirst()
                 .map(KeycloakUser::from)
                 .orElseGet(() -> {
-                    createUser(properties, token);
+                    createBootstrapUser(properties, token);
 
-                    return findUser(properties, token).stream()
-                            .findFirst()
-                            .map(KeycloakUser::from)
-                            .orElseThrow(() -> new IllegalStateException("Keycloak admin user was not created."));
+                    return requireCreatedUser(properties, token, properties.userEmail());
                 });
     }
 
-    private List<Map<String, Object>> findUser(KeycloakAdminBootstrapProperties properties, String token) {
+    public KeycloakUser createUser(
+            KeycloakAdminBootstrapProperties properties, String username, String email, String password) {
+        String token = adminToken(properties);
+        Map<String, Object> credential = Map.of("type", "password", "value", password, "temporary", false);
+        Map<String, Object> body = Map.of(
+                "username", username,
+                "email", email,
+                "firstName", username,
+                "lastName", "User",
+                "emailVerified", true,
+                "enabled", true,
+                "requiredActions", List.of(),
+                "credentials", List.of(credential));
+        URI location = postUser(properties, token, body);
+
+        return new KeycloakUser(subject(location), username, email);
+    }
+
+    private KeycloakUser requireCreatedUser(
+            KeycloakAdminBootstrapProperties properties, String token, String email) {
+        return findUser(properties, token, email).stream()
+                .findFirst()
+                .map(KeycloakUser::from)
+                .orElseThrow(() -> new IllegalStateException("Keycloak user was not created."));
+    }
+
+    private List<Map<String, Object>> findUser(
+            KeycloakAdminBootstrapProperties properties, String token, String email) {
         List<Map<String, Object>> response = restClient
                 .get()
                 .uri(UriComponentsBuilder.fromUriString(properties.baseUrl())
                         .path("/admin/realms/{realm}/users")
-                        .queryParam("email", properties.userEmail())
+                        .queryParam("email", email)
                         .queryParam("exact", "true")
                         .build(properties.realm()))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
@@ -76,7 +101,7 @@ public class KeycloakAdminClient {
         return response == null ? List.of() : response;
     }
 
-    private void createUser(KeycloakAdminBootstrapProperties properties, String token) {
+    private void createBootstrapUser(KeycloakAdminBootstrapProperties properties, String token) {
         Map<String, Object> credential =
                 Map.of("type", "password", "value", properties.userPassword(), "temporary", false);
         Map<String, Object> body = Map.of(
@@ -96,14 +121,31 @@ public class KeycloakAdminClient {
                 List.of(),
                 "credentials",
                 List.of(credential));
-        restClient
+        postUser(properties, token, body);
+    }
+
+    private URI postUser(KeycloakAdminBootstrapProperties properties, String token, Map<String, Object> body) {
+        return restClient
                 .post()
                 .uri(properties.baseUrl() + "/admin/realms/" + properties.realm() + "/users")
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + token)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()
-                .toBodilessEntity();
+                .toBodilessEntity()
+                .getHeaders()
+                .getLocation();
+    }
+
+    private String subject(URI location) {
+        String path = location == null ? "" : location.getPath();
+        int separator = path.lastIndexOf('/');
+
+        if (separator < 0 || separator == path.length() - 1) {
+            throw new IllegalStateException("Keycloak user response did not include its identifier.");
+        }
+
+        return path.substring(separator + 1);
     }
 
     public record KeycloakUser(String id, String username, String email) {
