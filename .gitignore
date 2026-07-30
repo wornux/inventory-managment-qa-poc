@@ -1,6 +1,8 @@
 /target/
 logs/
 jmeter/reports/
+zap/reports/*
+!zap/reports/.gitkeep
 Proyecto_Final_V3.pdf
 .idea/
 .vscode/*

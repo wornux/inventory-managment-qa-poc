@@ -1,10 +1,14 @@
-.PHONY: jmeter-edit performance-test
+.PHONY: jmeter-edit performance-test zap-security-test
 
 BREAKPOINT ?= false
 BREAKPOINT_MAX_USERS ?= 500
-# ponytail: keep each thread below the realm's 300s access-token lifetime; add token refresh for longer runs.
+# inventory-automation uses a 30-minute access token.
+# Each automation run must still obtain a fresh token before starting.
 BREAKPOINT_RAMP_SECONDS ?= 240
 BREAKPOINT_DURATION_SECONDS ?= 270
+
+zap-security-test:
+	@./zap/run-authenticated-api-scan.sh
 
 jmeter-edit:
 	@command -v jmeter >/dev/null || { echo "JMeter is not installed. Run: brew install jmeter"; exit 1; }
