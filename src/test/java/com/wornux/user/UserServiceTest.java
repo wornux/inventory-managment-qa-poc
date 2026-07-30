@@ -11,6 +11,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.wornux.security.KeycloakAdminBootstrapProperties;
+import com.wornux.security.KeycloakAdminClient;
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
 import java.util.LinkedHashSet;
@@ -42,6 +44,12 @@ class UserServiceTest {
     @Mock
     private AuthorizationService authorizationService;
 
+    @Mock
+    private KeycloakAdminClient keycloakAdminClient;
+
+    @Mock
+    private KeycloakAdminBootstrapProperties keycloakProperties;
+
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
@@ -57,7 +65,12 @@ class UserServiceTest {
         request.setUsername("new-user");
         request.setEmail("new-user@example.com");
         request.setRoleIds(Set.of(7L));
-        var service = new UserService(appUserRepository, roleRepository, new AuthorizationService(appUserRepository));
+        var service = new UserService(
+                appUserRepository,
+                roleRepository,
+                new AuthorizationService(appUserRepository),
+                keycloakAdminClient,
+                keycloakProperties);
 
         assertThatThrownBy(() -> service.create(request))
                 .isInstanceOf(UserException.class)
@@ -103,6 +116,9 @@ class UserServiceTest {
         when(authorizationService.canManagePriority(10)).thenReturn(true);
         when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
         when(appUserRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(keycloakAdminClient.createUser(keycloakProperties, "user", "u@e.com", "password1"))
+                .thenReturn(new KeycloakAdminClient.KeycloakUser("subject", "user", "u@e.com"));
+        when(keycloakProperties.issuer()).thenReturn("https://issuer");
         UserRequest request = request(" user ", " U@E.COM ", 1L);
         request.setActive(false);
 
@@ -110,6 +126,8 @@ class UserServiceTest {
 
         assertThat(result.getUsername()).isEqualTo("user");
         assertThat(result.getEmail()).isEqualTo("u@e.com");
+        assertThat(result.getOidcIssuer()).isEqualTo("https://issuer");
+        assertThat(result.getOidcSubject()).isEqualTo("subject");
         assertThat(result.isActive()).isFalse();
 
         when(appUserRepository.existsByUsernameIgnoreCase("user")).thenReturn(true);
@@ -123,6 +141,37 @@ class UserServiceTest {
         assertThatThrownBy(() -> service().create(request))
                 .isInstanceOf(UserException.class)
                 .hasMessageContaining("Email");
+    }
+
+    @Test
+    void create_requiresPasswordBeforeProvisioningIdentity() {
+        Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
+        when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
+        when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
+        UserRequest request = request("user", "u@e.com", 1L);
+        request.setPassword("short");
+
+        assertThatThrownBy(() -> service().create(request))
+                .isInstanceOf(UserException.class)
+                .hasMessage("Password must be at least 8 characters.");
+        verify(keycloakAdminClient, never()).createUser(any(), any(), any(), any());
+    }
+
+    @Test
+    void create_reportsKeycloakFailureWithoutPersistingLocalUser() {
+        Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
+        when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
+        when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
+        when(keycloakAdminClient.createUser(keycloakProperties, "user", "u@e.com", "password1"))
+                .thenThrow(new IllegalStateException("remote failure"));
+        UserRequest request = request("user", "u@e.com", 1L);
+
+        assertThatThrownBy(() -> service().create(request))
+                .isInstanceOf(UserException.class)
+                .hasMessage("The Keycloak account could not be created.");
+        verify(appUserRepository, never()).save(any());
     }
 
     @Test
@@ -153,11 +202,11 @@ class UserServiceTest {
     }
 
     @Test
-    void update_enforcesOptimisticLockUniquenessAndUpdatesRoles() throws Exception {
-        AppUser user = new AppUser("old", "old@e.com", null, null);
+    void update_enforcesOptimisticLockImmutableIdentityAndUpdatesRoles() throws Exception {
+        AppUser user = new AppUser("old", "old@e.com", "issuer", "subject");
         set(user, "version", 2L);
         Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
-        UserRequest request = request(" new ", " N@E.COM ", 1L);
+        UserRequest request = request(" old ", " OLD@E.COM ", 1L);
         request.setVersion(2L);
         when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
         when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
@@ -165,7 +214,7 @@ class UserServiceTest {
         when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
         when(appUserRepository.save(user)).thenReturn(user);
 
-        assertThat(service().update(7L, request).getUsername()).isEqualTo("new");
+        assertThat(service().update(7L, request).getUsername()).isEqualTo("old");
         verify(authorizationService).check(AppPermission.ROLE_ASSIGN);
         verify(authorizationService).invalidateUser(7L);
 
@@ -175,17 +224,11 @@ class UserServiceTest {
                 .isInstanceOf(UserException.class)
                 .hasMessageContaining("another administrator");
         request.setVersion(2L);
-        when(appUserRepository.existsByUsernameIgnoreCaseAndIdNot("new", 7L)).thenReturn(true);
+        request.setUsername("new");
 
         assertThatThrownBy(() -> service().update(7L, request))
                 .isInstanceOf(UserException.class)
-                .hasMessageContaining("Username");
-        when(appUserRepository.existsByUsernameIgnoreCaseAndIdNot("new", 7L)).thenReturn(false);
-        when(appUserRepository.existsByEmailIgnoreCaseAndIdNot("n@e.com", 7L)).thenReturn(true);
-
-        assertThatThrownBy(() -> service().update(7L, request))
-                .isInstanceOf(UserException.class)
-                .hasMessageContaining("Email");
+                .hasMessageContaining("managed by Keycloak");
         when(appUserRepository.findWithRolesById(8L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().update(8L, request))
@@ -205,7 +248,7 @@ class UserServiceTest {
         user.addRole(retained);
         user.addRole(removed);
         set(user, "version", 2L);
-        UserRequest request = request("new", "new@e.com", 1L, 3L);
+        UserRequest request = request("old", "old@e.com", 1L, 3L);
         request.setVersion(2L);
         when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
         when(roleRepository.findAllById(Set.of(1L, 3L))).thenReturn(List.of(retained, added));
@@ -248,12 +291,12 @@ class UserServiceTest {
         AppUser user = new AppUser("old", "old@e.com", null, null);
         user.addRole(role);
         set(user, "version", 2L);
-        UserRequest request = request("new", "new@e.com", 1L);
+        UserRequest request = request("old", "old@e.com", 1L);
         request.setVersion(2L);
         when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
         when(appUserRepository.save(user)).thenReturn(user);
 
-        assertThat(service().update(7L, request).getUsername()).isEqualTo("new");
+        assertThat(service().update(7L, request).getUsername()).isEqualTo("old");
         verify(authorizationService).check(AppPermission.USER_UPDATE);
         verify(authorizationService, never()).check(AppPermission.ROLE_ASSIGN);
         verify(authorizationService).invalidateUser(7L);
@@ -313,13 +356,15 @@ class UserServiceTest {
     }
 
     private UserService service() {
-        return new UserService(appUserRepository, roleRepository, authorizationService);
+        return new UserService(
+                appUserRepository, roleRepository, authorizationService, keycloakAdminClient, keycloakProperties);
     }
 
     private UserRequest request(String username, String email, Long... ids) {
         UserRequest request = new UserRequest();
         request.setUsername(username);
         request.setEmail(email);
+        request.setPassword("password1");
         request.setRoleIds(new LinkedHashSet<>(List.of(ids)));
 
         return request;

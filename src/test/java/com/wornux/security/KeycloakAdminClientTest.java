@@ -10,9 +10,11 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withCreatedEntity;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withNoContent;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
+import java.net.URI;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -64,6 +66,38 @@ class KeycloakAdminClientTest {
     }
 
     @Test
+    void createsApplicationUserWithPermanentPassword() {
+        server.expect(requestTo("http://keycloak:7777/realms/master/protocol/openid-connect/token"))
+                .andRespond(withSuccess("{\"access_token\":\"token\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://keycloak:7777/admin/realms/app/users"))
+                .andExpect(method(POST))
+                .andExpect(header(HttpHeaders.AUTHORIZATION, "Bearer token"))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content()
+                        .json("{\"username\":\"new-user\",\"email\":\"new@example.com\","
+                                + "\"firstName\":\"new-user\",\"lastName\":\"User\","
+                                + "\"emailVerified\":true,\"enabled\":true,\"requiredActions\":[],"
+                                + "\"credentials\":[{\"type\":\"password\",\"value\":\"password1\","
+                                + "\"temporary\":false}]}"))
+                .andRespond(withCreatedEntity(URI.create("http://keycloak:7777/admin/realms/app/users/2")));
+
+        assertThat(client.createUser(properties, "new-user", "new@example.com", "password1").id()).isEqualTo("2");
+        server.verify();
+    }
+
+    @Test
+    void reportsMissingCreatedUserIdentifier() {
+        server.expect(requestTo("http://keycloak:7777/realms/master/protocol/openid-connect/token"))
+                .andRespond(withSuccess("{\"access_token\":\"token\"}", MediaType.APPLICATION_JSON));
+        server.expect(requestTo("http://keycloak:7777/admin/realms/app/users")).andRespond(withNoContent());
+
+        assertThatThrownBy(() -> client.createUser(properties, "new-user", "new@example.com", "password1"))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessage("Keycloak user response did not include its identifier.");
+        server.verify();
+    }
+
+    @Test
     void returnsExistingUserWithoutCreatingOne() {
         expectFind("[{\"id\":\"1\",\"username\":\"sysadmin\",\"email\":\"sys@example.com\"}]");
 
@@ -98,7 +132,7 @@ class KeycloakAdminClientTest {
         expectFind("null");
 
         assertThatThrownBy(() -> client.ensureUser(properties, "token"))
-                .hasMessage("Keycloak admin user was not created.");
+                .hasMessage("Keycloak user was not created.");
         server.verify();
 
         setUp();
