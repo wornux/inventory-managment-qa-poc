@@ -11,10 +11,9 @@ import org.junit.jupiter.api.Test;
 class NavigationRegistryTest {
 
     @Test
-    void registryIsOrderedUniqueAndProvidesRouteAuthorizationMetadata() {
+    void registryProvidesUniqueRouteAuthorizationMetadata() {
         var entries = NavigationRegistry.entries();
 
-        assertThat(entries).extracting(NavigationEntry::order).isSorted();
         assertThat(entries).extracting(NavigationEntry::target).doesNotHaveDuplicates();
         assertThat(entries).extracting(NavigationEntry::path).doesNotHaveDuplicates();
         assertThat(NavigationRegistry.findByTarget(HomeView.class))

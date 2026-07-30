@@ -12,7 +12,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 import java.math.BigDecimal;
-import java.time.Instant;
 import org.hibernate.envers.Audited;
 
 @Entity
@@ -133,14 +132,6 @@ public class Product extends Auditable {
 
     public Long getVersion() {
         return version;
-    }
-
-    public Instant getCreatedAt() {
-        return super.getCreatedAt();
-    }
-
-    public Instant getUpdatedAt() {
-        return super.getUpdatedAt();
     }
 
     public boolean isLowStock() {

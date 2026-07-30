@@ -9,60 +9,33 @@ import com.wornux.ui.views.RolesView;
 import com.wornux.ui.views.StockMovementsView;
 import com.wornux.ui.views.SuppliersView;
 import com.wornux.ui.views.UsersView;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
 public final class NavigationRegistry {
 
     private static final List<NavigationEntry> ENTRIES = List.of(
-                    new NavigationEntry(
-                            null, "Overview", HomeView.class, "/icons/overview.svg", AppPermission.REPORT_VIEW, 0),
-                    new NavigationEntry(
-                            "Inventory",
-                            "Products",
-                            ProductsView.class,
-                            "/icons/package.svg",
-                            AppPermission.PRODUCT_VIEW,
-                            10),
-                    new NavigationEntry(
-                            "Inventory",
-                            "Categories",
-                            CategoriesView.class,
-                            "/icons/categories.svg",
-                            AppPermission.CATEGORY_VIEW,
-                            20),
-                    new NavigationEntry(
-                            "Inventory",
-                            "Suppliers",
-                            SuppliersView.class,
-                            "/icons/suppliers.svg",
-                            AppPermission.SUPPLIER_VIEW,
-                            30),
-                    new NavigationEntry(
-                            "Inventory",
-                            "Stock Movements",
-                            StockMovementsView.class,
-                            "/icons/stock-movement.svg",
-                            AppPermission.STOCK_MOVEMENT_VIEW,
-                            40),
-                    new NavigationEntry(
-                            "Administration",
-                            "Users",
-                            UsersView.class,
-                            "/icons/users.svg",
-                            AppPermission.USER_VIEW,
-                            50),
-                    new NavigationEntry(
-                            "Administration",
-                            "Roles",
-                            RolesView.class,
-                            "/icons/roles.svg",
-                            AppPermission.ROLE_VIEW,
-                            60))
-            .stream()
-            .sorted(Comparator.comparingInt(NavigationEntry::order))
-            .toList();
+            new NavigationEntry(null, "Overview", HomeView.class, "/icons/overview.svg", AppPermission.REPORT_VIEW),
+            new NavigationEntry(
+                    "Inventory", "Products", ProductsView.class, "/icons/package.svg", AppPermission.PRODUCT_VIEW),
+            new NavigationEntry(
+                    "Inventory",
+                    "Categories",
+                    CategoriesView.class,
+                    "/icons/categories.svg",
+                    AppPermission.CATEGORY_VIEW),
+            new NavigationEntry(
+                    "Inventory", "Suppliers", SuppliersView.class, "/icons/suppliers.svg", AppPermission.SUPPLIER_VIEW),
+            new NavigationEntry(
+                    "Inventory",
+                    "Stock Movements",
+                    StockMovementsView.class,
+                    "/icons/stock-movement.svg",
+                    AppPermission.STOCK_MOVEMENT_VIEW),
+            new NavigationEntry(
+                    "Administration", "Users", UsersView.class, "/icons/users.svg", AppPermission.USER_VIEW),
+            new NavigationEntry(
+                    "Administration", "Roles", RolesView.class, "/icons/roles.svg", AppPermission.ROLE_VIEW));
 
     private NavigationRegistry() {}
 

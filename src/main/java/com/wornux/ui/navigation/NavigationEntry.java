@@ -6,12 +6,7 @@ import com.wornux.security.permission.AppPermission;
 import java.util.Objects;
 
 public record NavigationEntry(
-        String section,
-        String label,
-        Class<? extends Component> target,
-        String iconPath,
-        AppPermission permission,
-        int order) {
+        String section, String label, Class<? extends Component> target, String iconPath, AppPermission permission) {
 
     public NavigationEntry {
         label = Objects.requireNonNull(label, "label");

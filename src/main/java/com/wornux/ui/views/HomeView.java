@@ -14,9 +14,9 @@ import com.vaadin.flow.router.Route;
 import com.vaadin.flow.router.RouterLink;
 import com.wornux.catalog.DashboardService;
 import com.wornux.catalog.DashboardSnapshot;
+import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
 import com.wornux.ui.components.InventoryMovementChart;
-import com.wornux.ui.security.UiAccessService;
 import jakarta.annotation.security.PermitAll;
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -34,14 +34,14 @@ public class HomeView extends Main {
     private static final DateTimeFormatter MOVEMENT_DATE =
             DateTimeFormatter.ofPattern("MMM d, HH:mm", Locale.ENGLISH).withZone(ZoneId.systemDefault());
 
-    private final UiAccessService accessService;
+    private final AuthorizationService authorizationService;
 
-    public HomeView(DashboardService dashboardService, UiAccessService accessService) {
-        this.accessService = accessService;
+    public HomeView(DashboardService dashboardService, AuthorizationService authorizationService) {
+        this.authorizationService = authorizationService;
         setId("dashboard-view");
         addClassName("home-view");
 
-        if (!accessService.canRead(AppPermission.REPORT_VIEW)) {
+        if (!authorizationService.can(AppPermission.REPORT_VIEW)) {
             return;
         }
 
@@ -226,7 +226,7 @@ public class HomeView extends Main {
 
     private RouterLink permittedLink(
             AppPermission permission, String label, Class<? extends Component> navigationTarget) {
-        return accessService.canRead(permission) ? new RouterLink(label, navigationTarget) : null;
+        return authorizationService.can(permission) ? new RouterLink(label, navigationTarget) : null;
     }
 
     private Section panel(String title, String description, Component body, RouterLink link) {

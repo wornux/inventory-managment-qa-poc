@@ -99,14 +99,11 @@ class CatalogDomainTest {
         assertThat(MovementType.values()).allSatisfy(type -> {
             assertThat(type.isNegative()).isEqualTo(!type.isPositive());
             assertThat(type.displayName()).doesNotContain("_");
-            assertThat(MovementType.isInbound(type)).isEqualTo(type.isPositive());
         });
 
         assertThat(MovementType.ADJUSTMENT_IN.isReasonRequired()).isTrue();
         assertThat(MovementType.DAMAGED.isReasonRequired()).isTrue();
         assertThat(MovementType.PURCHASE.isReasonRequired()).isFalse();
-
-        assertThatThrownBy(() -> MovementType.isInbound(null)).isInstanceOf(NullPointerException.class);
     }
 
     @Test
