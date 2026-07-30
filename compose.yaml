@@ -277,8 +277,8 @@ services:
       STRESS_DURATION_SECONDS: ${JMETER_STRESS_DURATION_SECONDS:-180}
       JVM_ARGS: ${JMETER_JVM_ARGS:--Xms512m -Xmx1g}
     volumes:
-      - ./telemetry/jmeter:/tests:ro
-      - ./reports/jmeter:/results
+      - ./jmeter:/tests:ro
+      - ./jmeter/reports:/results
     extra_hosts:
       - host.docker.internal:host-gateway
     networks: [observability]

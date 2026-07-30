@@ -1,6 +1,6 @@
 /target/
 logs/
-reports/jmeter/
+jmeter/reports/
 Proyecto_Final_V3.pdf
 .idea/
 .vscode/*

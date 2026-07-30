@@ -6,6 +6,7 @@
 target
 logs
 reports
+jmeter/reports
 node_modules
 ops
 Proyecto_Final_V3.pdf
