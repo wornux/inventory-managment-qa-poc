@@ -1,0 +1,9 @@
+#cloud-config
+package_update: true
+packages: [docker.io, docker-compose-v2]
+write_files:
+  - path: /etc/docker/daemon.json
+    content: '{"log-driver":"local"}'
+runcmd:
+  - systemctl enable --now docker
+  - mkdir -p /opt/qa-final-project

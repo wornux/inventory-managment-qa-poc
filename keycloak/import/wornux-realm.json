@@ -922,16 +922,16 @@
       "clientId": "inventory-management",
       "name": "Inventory Management web application",
       "description": "Confidential Vaadin web client",
-      "rootUrl": "http://localhost:8080",
-      "baseUrl": "http://localhost:8080/",
+      "rootUrl": "${APP_PUBLIC_URL}",
+      "baseUrl": "${APP_PUBLIC_URL}/",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
       "secret": "${KEYCLOAK_CLIENT_SECRET}",
       "redirectUris": [
-        "http://localhost:8080/login/oauth2/code/keycloak"
+        "${APP_PUBLIC_URL}/login/oauth2/code/keycloak"
       ],
       "webOrigins": [
-        "http://localhost:8080"
+        "${APP_PUBLIC_URL}"
       ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,
@@ -941,7 +941,7 @@
       "protocol": "openid-connect",
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "post.logout.redirect.uris": "http://localhost:8080/login"
+        "post.logout.redirect.uris": "${APP_PUBLIC_URL}/login"
       },
       "fullScopeAllowed": false,
       "defaultClientScopes": [
@@ -953,15 +953,15 @@
       "clientId": "inventory-api-tools",
       "name": "Inventory API interactive tools",
       "description": "Public PKCE client for Swagger UI and Postman",
-      "rootUrl": "http://localhost:8080",
+      "rootUrl": "${APP_PUBLIC_URL}",
       "enabled": true,
       "redirectUris": [
-        "http://localhost:8080/swagger-ui/oauth2-redirect.html",
+        "${APP_PUBLIC_URL}/swagger-ui/oauth2-redirect.html",
         "https://oauth.pstmn.io/v1/callback",
         "https://oauth.pstmn.io/v1/browser-callback"
       ],
       "webOrigins": [
-        "http://localhost:8080"
+        "${APP_PUBLIC_URL}"
       ],
       "standardFlowEnabled": true,
       "implicitFlowEnabled": false,

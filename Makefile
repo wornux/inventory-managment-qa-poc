@@ -8,7 +8,7 @@ BREAKPOINT_DURATION_SECONDS ?= 270
 
 jmeter-edit:
 	@command -v jmeter >/dev/null || { echo "JMeter is not installed. Run: brew install jmeter"; exit 1; }
-	@AUTH_CLIENT_SECRET="$${KEYCLOAK_AUTOMATION_CLIENT_SECRET:-}" jmeter -t telemetry/jmeter/load-and-stress-test.jmx \
+	@AUTH_CLIENT_SECRET="$${KEYCLOAK_AUTOMATION_CLIENT_SECRET:-}" jmeter -t jmeter/load-and-stress-test.jmx \
 		-Jhost=localhost -Jport=$${PORT:-8080} -JauthHost=localhost -JauthPort=7777
 
 performance-test:
