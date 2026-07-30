@@ -11,6 +11,7 @@
         <e2e.test.exclude>**/e2e/**</e2e.test.exclude>
         <java.version>25</java.version>
         <mapstruct.version>1.6.3</mapstruct.version>
+        <sonar.organization>wornux</sonar.organization>
         <vaadin.version>25.2.3</vaadin.version>
     </properties>
     
