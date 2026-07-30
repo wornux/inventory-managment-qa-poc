@@ -12,13 +12,6 @@ logging:
     name: logs/application.json
 
 management:
-  endpoints:
-    web:
-      exposure:
-        include: health
-  endpoint:
-    health:
-      show-details: never
   metrics:
     tags:
       application: ${spring.application.name}
@@ -93,21 +86,15 @@ spring:
             audit_table_suffix: _log
             store_data_at_delete: true
   flyway:
-    enabled: true
     locations: [classpath:db/migration/prod]
 
 springdoc:
-  api-docs:
-    path: /v3/api-docs
   swagger-ui:
-    path: /swagger-ui.html
     oauth:
       client-id: inventory-api-tools
       use-pkce-with-authorization-code-grant: true
 
 app:
-  observability:
-    grafana-url: ${GRAFANA_URL:http://localhost:3000}
   keycloak:
     end-session-uri: ${KEYCLOAK_PUBLIC_URL:http://localhost:7777}/realms/wornux/protocol/openid-connect/logout
     admin-bootstrap:

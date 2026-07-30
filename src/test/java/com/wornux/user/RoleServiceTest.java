@@ -248,9 +248,6 @@ class RoleServiceTest {
         assertThatThrownBy(() -> service.get(1L))
                 .isInstanceOf(RoleException.class)
                 .hasMessage("Role was not found.");
-        when(appUserRepository.countByRolesId(1L)).thenReturn(3L);
-
-        assertThat(service.userCount(1L)).isEqualTo(3L);
         assertThat(service.userCounts(List.of())).isEmpty();
 
         when(appUserRepository.findDistinctByRolesIdOrderByUsernameAsc(1L)).thenReturn(List.of());
@@ -260,12 +257,7 @@ class RoleServiceTest {
     }
 
     @Test
-    void permissionCount_andUserCountsMapRepositoryValues() {
-        Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW, AppPermission.PRODUCT_UPDATE);
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(role));
-
-        assertThat(directService().permissionCount(1L)).isEqualTo(2);
-
+    void userCounts_mapsRepositoryValues() {
         when(appUserRepository.countMembersByRoleIds(Set.of(1L))).thenReturn(List.<Object[]>of(new Object[] {1L, 2L}));
 
         assertThat(directService().userCounts(Set.of(1L))).containsEntry(1L, 2L);

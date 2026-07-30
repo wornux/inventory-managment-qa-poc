@@ -25,7 +25,7 @@ jobs:
     environment: production
     env:
       HOST: ${{ needs.provision.outputs.droplet_ip }}
-      APP_IMAGE: ${{ needs.publish.outputs.image }}
+      APP_IMAGE: cristiandelahooz/qa-final-project@${{ needs.publish.outputs.digest }}
       DOMAIN: ${{ vars.DOMAIN }}
       SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_PRIVATE_KEY }}
       DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
