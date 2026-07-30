@@ -190,7 +190,7 @@ public final class CanonicalRequestContext {
             return fallback;
         }
 
-        String sanitized = value.replaceAll("[\\p{Cntrl}]", "_");
+        String sanitized = value.replaceAll("\\p{Cntrl}", "_");
 
         return sanitized.length() <= limit ? sanitized : sanitized.substring(0, limit);
     }

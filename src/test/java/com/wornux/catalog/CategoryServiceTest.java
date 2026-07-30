@@ -1,5 +1,6 @@
 package com.wornux.catalog;
 
+import static com.wornux.SpecificationTestSupport.predicateCount;
 import static org.assertj.core.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
@@ -10,6 +11,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -46,6 +48,11 @@ class CategoryServiceTest {
         assertThat(service.search(null)).isEmpty();
         assertThat(service.search(new CategoryFilter("  TOOLS ", true))).containsExactly(tools);
         assertThat(service.search(new CategoryFilter(null, false))).containsExactly(inactive);
+        ArgumentCaptor<Specification<Category>> specifications = ArgumentCaptor.captor();
+        verify(categories, times(3)).findAll(specifications.capture(), eq(order));
+        assertThat(specifications.getAllValues())
+                .extracting(specification -> predicateCount(specification))
+                .containsExactly(0, 2, 1);
 
         var pageable = PageRequest.of(1, 10);
         var page = new PageImpl<>(List.of(tools), pageable, 11);

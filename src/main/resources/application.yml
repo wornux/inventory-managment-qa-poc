@@ -15,7 +15,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,prometheus
+        include: health
   endpoint:
     health:
       show-details: never
@@ -40,7 +40,10 @@ management:
   otlp:
     metrics:
       export:
-        enabled: false
+        enabled: true
+        url: ${OTEL_EXPORTER_OTLP_METRICS_ENDPOINT:http://localhost:4318/v1/metrics}
+        step: ${OTEL_METRICS_EXPORT_STEP:15s}
+        base-time-unit: seconds
 
 vaadin:
   launch-browser: false
@@ -49,6 +52,8 @@ vaadin:
 spring:
   application:
     name: qa-final-project
+  profiles:
+    default: dev
   config:
     import:
       - optional:file:.env[.properties]
@@ -60,18 +65,23 @@ spring:
             client-id: inventory-management
             client-secret: ${KEYCLOAK_CLIENT_SECRET:}
             authorization-grant-type: authorization_code
+            redirect-uri: "{baseUrl}/login/oauth2/code/{registrationId}"
             scope: openid,profile,email
         provider:
           keycloak:
-            issuer-uri: http://localhost:7777/realms/wornux
+            authorization-uri: ${KEYCLOAK_PUBLIC_URL:http://localhost:7777}/realms/wornux/protocol/openid-connect/auth
+            token-uri: ${KEYCLOAK_INTERNAL_URL:${KEYCLOAK_PUBLIC_URL:http://localhost:7777}}/realms/wornux/protocol/openid-connect/token
+            jwk-set-uri: ${KEYCLOAK_INTERNAL_URL:${KEYCLOAK_PUBLIC_URL:http://localhost:7777}}/realms/wornux/protocol/openid-connect/certs
+            user-info-uri: ${KEYCLOAK_INTERNAL_URL:${KEYCLOAK_PUBLIC_URL:http://localhost:7777}}/realms/wornux/protocol/openid-connect/userinfo
             user-name-attribute: preferred_username
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:7777/realms/wornux
+          issuer-uri: ${KEYCLOAK_PUBLIC_URL:http://localhost:7777}/realms/wornux
+          jwk-set-uri: ${KEYCLOAK_INTERNAL_URL:${KEYCLOAK_PUBLIC_URL:http://localhost:7777}}/realms/wornux/protocol/openid-connect/certs
   datasource:
     url: jdbc:postgresql://localhost:5432/stocks
     username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD:postgres}
+    password: ${DB_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -99,6 +109,7 @@ app:
   observability:
     grafana-url: ${GRAFANA_URL:http://localhost:3000}
   keycloak:
+    end-session-uri: ${KEYCLOAK_PUBLIC_URL:http://localhost:7777}/realms/wornux/protocol/openid-connect/logout
     admin-bootstrap:
       enabled: ${KEYCLOAK_BOOTSTRAP_ENABLED:true}
       server-url: ${KEYCLOAK_SERVER_URL:http://localhost:7777}
@@ -109,4 +120,4 @@ app:
       admin-password: ${KEYCLOAK_ADMIN_PASSWORD:}
       user-username: ${KEYCLOAK_BOOTSTRAP_ADMIN_USERNAME:admin@wornux.com}
       user-email: ${KEYCLOAK_BOOTSTRAP_ADMIN_EMAIL:admin@wornux.com}
-      user-password: ${KEYCLOAK_BOOTSTRAP_ADMIN_USER_PASSWORD:${KEYCLOAK_ADMIN_PASSWORD:}}
+      user-password: ${KEYCLOAK_BOOTSTRAP_ADMIN_USER_PASSWORD:}

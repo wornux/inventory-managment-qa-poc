@@ -17,6 +17,7 @@ import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -30,7 +31,7 @@ class StockMovementApiTest {
     @Mock
     private StockMovementService service;
 
-    private final StockMovementApiMapper mapper = new StockMovementApiMapper();
+    private final StockMovementApiMapper mapper = Mappers.getMapper(StockMovementApiMapper.class);
 
     @Test
     void mapperPreservesRequestAndLedgerResponseFields() {
@@ -66,6 +67,15 @@ class StockMovementApiTest {
     }
 
     @Test
+    void mapperPreservesMissingOptionalRelationships() {
+        StockMovement movement = mock(StockMovement.class);
+
+        assertThat(mapper.toResponse(movement))
+                .extracting(StockMovementResponseDto::product, StockMovementResponseDto::username)
+                .containsExactly(null, null);
+    }
+
+    @Test
     void controllerSearchCombinesFiltersAndPagination() {
         Instant from = Instant.parse("2026-07-01T00:00:00Z");
         Instant to = Instant.parse("2026-08-01T00:00:00Z");
@@ -76,13 +86,14 @@ class StockMovementApiTest {
         when(service.search(any(), any())).thenReturn(new PageImpl<>(List.of(movement), pageable, 21));
         var controller = new StockMovementController(service, mapper);
 
-        var response = controller.search(from, to, 4L, MovementType.SALE, "operator", pageable).getBody();
+        var response = controller
+                .search(from, to, 4L, MovementType.SALE, "operator", pageable)
+                .getBody();
 
         assertThat(response.page().number()).isEqualTo(1);
         ArgumentCaptor<StockMovementFilter> filter = ArgumentCaptor.forClass(StockMovementFilter.class);
         verify(service).search(filter.capture(), eq(pageable));
-        assertThat(filter.getValue())
-                .isEqualTo(new StockMovementFilter(from, to, 4L, MovementType.SALE, "operator"));
+        assertThat(filter.getValue()).isEqualTo(new StockMovementFilter(from, to, 4L, MovementType.SALE, "operator"));
     }
 
     @Test

@@ -33,8 +33,7 @@ public class CatalogLookupController extends AbstractRestController {
     @GetMapping("/api/categories")
     @Operation(summary = "List category options")
     ResponseEntity<ApiResponse<List<CatalogReferenceResponseDto>>> categories(
-            @RequestParam(defaultValue = "") String text,
-            @RequestParam(defaultValue = "true") Boolean active) {
+            @RequestParam(defaultValue = "") String text, @RequestParam(defaultValue = "true") Boolean active) {
         List<CatalogReferenceResponseDto> categories = categoryService.search(new CategoryFilter(text, active)).stream()
                 .map(category -> new CatalogReferenceResponseDto(category.getId(), category.getName()))
                 .toList();
@@ -45,8 +44,7 @@ public class CatalogLookupController extends AbstractRestController {
     @GetMapping("/api/suppliers")
     @Operation(summary = "List supplier options")
     ResponseEntity<ApiResponse<List<CatalogReferenceResponseDto>>> suppliers(
-            @RequestParam(defaultValue = "") String text,
-            @RequestParam(defaultValue = "true") Boolean active) {
+            @RequestParam(defaultValue = "") String text, @RequestParam(defaultValue = "true") Boolean active) {
         List<CatalogReferenceResponseDto> suppliers = supplierService.search(new SupplierFilter(text, active)).stream()
                 .map(supplier -> new CatalogReferenceResponseDto(supplier.getId(), supplier.getName()))
                 .toList();

@@ -2,6 +2,7 @@ package com.wornux.catalog;
 
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
+import io.micrometer.observation.annotation.Observed;
 import jakarta.persistence.criteria.Predicate;
 import jakarta.validation.Valid;
 import java.util.ArrayList;
@@ -54,6 +55,7 @@ public class ProductService {
                 .orElseThrow(() -> new ProductException("Product was not found."));
     }
 
+    @Observed(name = "wornux.product.create", contextualName = "create-product")
     @Transactional
     public Product create(@Valid ProductRequest request) {
         authorizationService.check(AppPermission.PRODUCT_CREATE);
@@ -75,6 +77,7 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    @Observed(name = "wornux.product.update", contextualName = "update-product")
     @Transactional
     public Product update(Long id, @Valid ProductRequest request) {
         authorizationService.check(AppPermission.PRODUCT_UPDATE);
@@ -102,6 +105,7 @@ public class ProductService {
         return productRepository.save(product);
     }
 
+    @Observed(name = "wornux.product.delete", contextualName = "delete-product")
     @Transactional
     public void delete(Long id) {
         authorizationService.check(AppPermission.PRODUCT_DELETE);

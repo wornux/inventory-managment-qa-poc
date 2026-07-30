@@ -1,10 +1,12 @@
 package com.wornux.user;
 
+import static com.wornux.SpecificationTestSupport.predicateCount;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -18,6 +20,7 @@ import java.util.Set;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
@@ -46,7 +49,7 @@ class UserServiceTest {
 
     @Test
     void create_rejectsRoleWithPermissionsActorDoesNotHave() {
-        authenticateActor(AppPermission.USER_CREATE, AppPermission.USER_ASSIGN);
+        authenticateActor(AppPermission.USER_CREATE, AppPermission.ROLE_ASSIGN);
         Role elevatedRole = role(AppPermission.PRODUCT_DELETE);
         when(roleRepository.findAllById(Set.of(7L))).thenReturn(List.of(elevatedRole));
 
@@ -71,6 +74,11 @@ class UserServiceTest {
         assertThat(service.search(new UserFilter(" QUERY ", true), pageable)).isEmpty();
         assertThat(service.search(null, pageable)).isEmpty();
         assertThat(service.search(new UserFilter(null, null), pageable)).isEmpty();
+        ArgumentCaptor<Specification<AppUser>> specifications = ArgumentCaptor.captor();
+        verify(appUserRepository, times(3)).findAll(specifications.capture(), eq(pageable));
+        assertThat(specifications.getAllValues())
+                .extracting(specification -> predicateCount(specification))
+                .containsExactly(2, 0, 0);
 
         when(appUserRepository.findWithRolesById(1L)).thenReturn(Optional.empty());
 
@@ -92,6 +100,7 @@ class UserServiceTest {
     void create_normalizesPersistsAndChecksUniquenessAndRoleAssignment() {
         Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
         when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
         when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
         when(appUserRepository.save(any())).thenAnswer(i -> i.getArgument(0));
         UserRequest request = request(" user ", " U@E.COM ", 1L);
@@ -152,10 +161,13 @@ class UserServiceTest {
         request.setVersion(2L);
         when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
         when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
         when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
         when(appUserRepository.save(user)).thenReturn(user);
 
         assertThat(service().update(7L, request).getUsername()).isEqualTo("new");
+        verify(authorizationService).check(AppPermission.ROLE_ASSIGN);
+        verify(authorizationService).invalidateUser(7L);
 
         request.setVersion(3L);
 
@@ -179,6 +191,72 @@ class UserServiceTest {
         assertThatThrownBy(() -> service().update(8L, request))
                 .isInstanceOf(UserException.class)
                 .hasMessage("User was not found.");
+    }
+
+    @Test
+    void update_validatesOnlyRolesAddedOrRemovedFromAMixedSelection() throws Exception {
+        Role retained = UserDomainTest.role("RETAINED", true, AppPermission.PRODUCT_VIEW);
+        Role removed = UserDomainTest.role("REMOVED", true, AppPermission.PRODUCT_VIEW);
+        Role added = UserDomainTest.role("ADDED", true, AppPermission.PRODUCT_VIEW);
+        set(retained, "id", 1L);
+        set(removed, "id", 2L);
+        set(added, "id", 3L);
+        AppUser user = new AppUser("old", "old@e.com", null, null);
+        user.addRole(retained);
+        user.addRole(removed);
+        set(user, "version", 2L);
+        UserRequest request = request("new", "new@e.com", 1L, 3L);
+        request.setVersion(2L);
+        when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
+        when(roleRepository.findAllById(Set.of(1L, 3L))).thenReturn(List.of(retained, added));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
+        when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
+        when(appUserRepository.save(user)).thenReturn(user);
+
+        AppUser updated = service().update(7L, request);
+
+        assertThat(updated.getRoles()).containsExactlyInAnyOrder(retained, added);
+        verify(authorizationService).invalidateUser(7L);
+    }
+
+    @Test
+    void update_rejectsRemovingARoleAboveTheActorPriority() throws Exception {
+        Role high = UserDomainTest.role("HIGH", true, AppPermission.PRODUCT_VIEW);
+        high.update(high.getName(), high.getDescription(), 80, true, high.getPermissions());
+        set(high, "id", 1L);
+        Role low = UserDomainTest.role("LOW", true, AppPermission.PRODUCT_VIEW);
+        set(low, "id", 2L);
+        AppUser user = new AppUser("old", "old@e.com", null, null);
+        user.addRole(high);
+        set(user, "version", 2L);
+        UserRequest request = request("new", "new@e.com", 2L);
+        request.setVersion(2L);
+        when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
+        when(roleRepository.findAllById(Set.of(2L))).thenReturn(List.of(low));
+        when(authorizationService.canManagePriority(10)).thenReturn(true);
+        when(authorizationService.canAll(Set.of(AppPermission.PRODUCT_VIEW))).thenReturn(true);
+
+        assertThatThrownBy(() -> service().update(7L, request))
+                .isInstanceOf(UserException.class)
+                .hasMessageContaining("above your priority");
+    }
+
+    @Test
+    void update_withoutRoleChanges_doesNotRequireRoleAssignment() throws Exception {
+        Role role = UserDomainTest.role("R", true, AppPermission.PRODUCT_VIEW);
+        set(role, "id", 1L);
+        AppUser user = new AppUser("old", "old@e.com", null, null);
+        user.addRole(role);
+        set(user, "version", 2L);
+        UserRequest request = request("new", "new@e.com", 1L);
+        request.setVersion(2L);
+        when(appUserRepository.findWithRolesById(7L)).thenReturn(Optional.of(user));
+        when(appUserRepository.save(user)).thenReturn(user);
+
+        assertThat(service().update(7L, request).getUsername()).isEqualTo("new");
+        verify(authorizationService).check(AppPermission.USER_UPDATE);
+        verify(authorizationService, never()).check(AppPermission.ROLE_ASSIGN);
+        verify(authorizationService).invalidateUser(7L);
     }
 
     @Test
@@ -211,6 +289,7 @@ class UserServiceTest {
 
         service().deactivate(1L);
 
+        verify(authorizationService, times(3)).invalidateUser(1L);
         when(appUserRepository.findWithRolesById(2L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().deactivate(2L)).isInstanceOf(UserException.class);
@@ -218,17 +297,19 @@ class UserServiceTest {
 
     @Test
     void capabilityQueriesDelegateToAuthorization() {
-        var create = Set.of(AppPermission.USER_CREATE, AppPermission.USER_ASSIGN);
-        var update = Set.of(AppPermission.USER_UPDATE, AppPermission.USER_ASSIGN);
+        var create = Set.of(AppPermission.USER_CREATE, AppPermission.ROLE_ASSIGN);
         when(authorizationService.canAll(create)).thenReturn(true);
-        when(authorizationService.canAll(update)).thenReturn(false);
+        when(authorizationService.can(AppPermission.USER_UPDATE)).thenReturn(false);
+        when(authorizationService.can(AppPermission.ROLE_ASSIGN)).thenReturn(true);
         when(authorizationService.can(AppPermission.USER_DELETE)).thenReturn(true);
 
         assertThat(service().canCreateUsers()).isTrue();
         assertThat(service().canUpdateUsers()).isFalse();
+        assertThat(service().canAssignRoles()).isTrue();
         assertThat(service().canDeleteUsers()).isTrue();
         verify(authorizationService).canAll(create);
-        verify(authorizationService).canAll(update);
+        verify(authorizationService).can(AppPermission.USER_UPDATE);
+        verify(authorizationService).can(AppPermission.ROLE_ASSIGN);
     }
 
     private UserService service() {
@@ -265,8 +346,8 @@ class UserServiceTest {
     }
 
     private Role role(AppPermission... permissions) {
-        Role role = new Role("TEST", "Test", null, false);
-        role.update(role.getName(), role.getDescription(), true, Set.of(permissions));
+        Role role = new Role("TEST", "Test", null);
+        role.update(role.getName(), role.getDescription(), 100, true, Set.of(permissions));
 
         return role;
     }

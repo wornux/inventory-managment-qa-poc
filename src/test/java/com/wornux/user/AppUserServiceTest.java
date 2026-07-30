@@ -27,8 +27,8 @@ class AppUserServiceTest {
 
     @Test
     void authorities_includesPermissionsFromActiveRoles() {
-        Role role = new Role("CATALOG_EDITOR", "Catalog Editor", null, false);
-        role.update(role.getName(), role.getDescription(), true, Set.of(AppPermission.PRODUCT_UPDATE));
+        Role role = new Role("CATALOG_EDITOR", "Catalog Editor", null);
+        role.update(role.getName(), role.getDescription(), 10, true, Set.of(AppPermission.PRODUCT_UPDATE));
         AppUser user = new AppUser("editor", "editor@example.com", "issuer", "subject");
         user.addRole(role);
 

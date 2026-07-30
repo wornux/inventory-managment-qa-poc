@@ -2,58 +2,20 @@ package com.wornux.api.product;
 
 import com.wornux.catalog.Category;
 import com.wornux.catalog.Product;
+import com.wornux.catalog.ProductRequest;
 import com.wornux.catalog.Supplier;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import org.springframework.stereotype.Component;
-import tools.jackson.databind.json.JsonMapper;
+import org.mapstruct.Mapper;
+import org.mapstruct.MappingConstants;
+import org.mapstruct.ReportingPolicy;
 
-@Component
-public class ProductApiMapper {
+@Mapper(componentModel = MappingConstants.ComponentModel.SPRING, unmappedTargetPolicy = ReportingPolicy.ERROR)
+public interface ProductApiMapper {
 
-    private final JsonMapper jsonMapper;
+    ProductRequest toDomainRequest(ProductRequestDto request);
 
-    public ProductApiMapper(JsonMapper jsonMapper) {
-        this.jsonMapper = jsonMapper;
-    }
+    ProductResponseDto toResponse(Product product);
 
-    public com.wornux.catalog.ProductRequest toDomainRequest(ProductRequestDto request) {
-        return jsonMapper.convertValue(request, com.wornux.catalog.ProductRequest.class);
-    }
+    CatalogReferenceResponseDto toReference(Category category);
 
-    public ProductResponseDto toResponse(Product product) {
-        Map<String, Object> value = new LinkedHashMap<>();
-        value.put("id", product.getId());
-        value.put("sku", product.getSku());
-        value.put("name", product.getName());
-        value.put("description", product.getDescription());
-        value.put("unitPrice", product.getUnitPrice());
-        value.put("quantityOnHand", product.getQuantityOnHand());
-        value.put("minimumStock", product.getMinimumStock());
-        value.put("active", product.isActive());
-        value.put("version", product.getVersion());
-        value.put("lowStock", product.isLowStock());
-        value.put("category", reference(product.getCategory()));
-        value.put("supplier", reference(product.getSupplier()));
-
-        return jsonMapper.convertValue(value, ProductResponseDto.class);
-    }
-
-    private CatalogReferenceResponseDto reference(Category category) {
-        if (category == null) {
-            return null;
-        }
-
-        return jsonMapper.convertValue(
-                Map.of("id", category.getId(), "name", category.getName()), CatalogReferenceResponseDto.class);
-    }
-
-    private CatalogReferenceResponseDto reference(Supplier supplier) {
-        if (supplier == null) {
-            return null;
-        }
-
-        return jsonMapper.convertValue(
-                Map.of("id", supplier.getId(), "name", supplier.getName()), CatalogReferenceResponseDto.class);
-    }
+    CatalogReferenceResponseDto toReference(Supplier supplier);
 }

@@ -1,7 +1,10 @@
 package com.wornux.user;
 
 import com.wornux.security.permission.AppPermission;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -16,6 +19,11 @@ public class RoleRequest {
 
     @Size(max = 500, message = "Description must be 500 characters or fewer.")
     private String description;
+
+    @NotNull(message = "Priority is required.")
+    @Min(value = 0, message = "Priority must be between 0 and 100.")
+    @Max(value = 100, message = "Priority must be between 0 and 100.")
+    private Integer priority = 10;
 
     private boolean active = true;
     private Set<AppPermission> permissions = new LinkedHashSet<>();
@@ -43,6 +51,14 @@ public class RoleRequest {
 
     public void setDescription(String description) {
         this.description = description;
+    }
+
+    public Integer getPriority() {
+        return priority;
+    }
+
+    public void setPriority(Integer priority) {
+        this.priority = priority;
     }
 
     public boolean isActive() {

@@ -1,5 +1,7 @@
 /target/
 logs/
+jmeter/reports/
+Proyecto_Final_V3.pdf
 .idea/
 .vscode/*
 !.vscode/launch.json
@@ -10,6 +12,11 @@ logs/
 
 *.iml
 .DS_Store
+
+# OpenTofu local files (state is stored remotely in DigitalOcean Spaces)
+ops/tofu/.terraform/
+ops/tofu/.backend.hcl
+ops/tofu/*.tfstate*
 
 # The following files are generated/updated by vaadin-maven-plugin
 node_modules/

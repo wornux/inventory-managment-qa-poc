@@ -16,12 +16,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mapstruct.factory.Mappers;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import tools.jackson.databind.json.JsonMapper;
 
 @ExtendWith(MockitoExtension.class)
 class ProductApiTest {
@@ -33,7 +33,7 @@ class ProductApiTest {
 
     @Test
     void mapperConvertsRequestsAndCompleteAndNullableReferences() {
-        var real = new ProductApiMapper(JsonMapper.builderWithJackson2Defaults().build());
+        var real = Mappers.getMapper(ProductApiMapper.class);
         var request = request();
 
         var domain = real.toDomainRequest(request);
@@ -98,8 +98,7 @@ class ProductApiTest {
     @Test
     void controllerListBuildsFilterMapsResultsAndReturnsPageMetadata() {
         var product = mock(Product.class);
-        var response =
-                new ProductResponseDto(null, "s", "n", null, BigDecimal.ONE, 1, 1, true, null, true, null, null);
+        var response = new ProductResponseDto(null, "s", "n", null, BigDecimal.ONE, 1, 1, true, null, true, null, null);
         var pageable = PageRequest.of(1, 2);
         when(service.search(any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(product), pageable, 3));
         when(mapper.toResponse(product)).thenReturn(response);
@@ -121,8 +120,7 @@ class ProductApiTest {
     void controllerDelegatesGetCreateUpdateAndDelete() {
         var domainRequest = mock(com.wornux.catalog.ProductRequest.class);
         var product = mock(Product.class);
-        var response =
-                new ProductResponseDto(9L, "s", "n", null, BigDecimal.ONE, 1, 1, true, 0L, true, null, null);
+        var response = new ProductResponseDto(9L, "s", "n", null, BigDecimal.ONE, 1, 1, true, 0L, true, null, null);
         when(mapper.toDomainRequest(any())).thenReturn(domainRequest);
         when(mapper.toResponse(product)).thenReturn(response);
         when(product.getId()).thenReturn(9L);
@@ -139,7 +137,6 @@ class ProductApiTest {
     }
 
     private static ProductRequestDto request() {
-        return new ProductRequestDto(
-                "SKU", "Hammer", "desc", new BigDecimal("12.50"), 2, 3, 4L, 5L, true, 6L);
+        return new ProductRequestDto("SKU", "Hammer", "desc", new BigDecimal("12.50"), 2, 3, 4L, 5L, true, 6L);
     }
 }

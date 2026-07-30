@@ -22,7 +22,8 @@ class CurrentUserControllerTest {
         when(authorizationService.effectivePermissions())
                 .thenReturn(Set.of(AppPermission.PRODUCT_UPDATE, AppPermission.PRODUCT_VIEW));
 
-        var response = new CurrentUserController(authorizationService).permissions().getBody();
+        var response =
+                new CurrentUserController(authorizationService).permissions().getBody();
 
         assertThat(response.data().permissions()).containsExactly("product:update", "product:view");
     }

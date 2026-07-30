@@ -81,11 +81,7 @@ public class RestExceptionHandler {
         CanonicalRequestContext.authorizationFailure(request);
 
         return failure(
-                request,
-                exception,
-                HttpStatus.FORBIDDEN,
-                "Access denied.",
-                List.of(error("Permission is required.")));
+                request, exception, HttpStatus.FORBIDDEN, "Access denied.", List.of(error("Permission is required.")));
     }
 
     @ExceptionHandler(ProductException.class)

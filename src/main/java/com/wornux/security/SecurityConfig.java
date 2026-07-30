@@ -1,5 +1,6 @@
 package com.wornux.security;
 
+import com.vaadin.flow.spring.security.UidlRedirectStrategy;
 import com.vaadin.flow.spring.security.VaadinSecurityConfigurer;
 import com.wornux.api.security.ApiAccessDeniedHandler;
 import com.wornux.api.security.ApiAuthenticationEntryPoint;
@@ -7,14 +8,21 @@ import com.wornux.observability.CanonicalRequestContext;
 import com.wornux.observability.CanonicalRequestFilter;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.util.HashMap;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.oauth2.client.oidc.web.logout.OidcClientInitiatedLogoutSuccessHandler;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
+import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 
 @Configuration
@@ -42,6 +50,30 @@ public class SecurityConfig {
     }
 
     @Bean
+    LogoutSuccessHandler oidcLogoutSuccessHandler(
+            ClientRegistrationRepository clientRegistrationRepository,
+            @Value("${app.keycloak.end-session-uri}") String endSessionUri) {
+        ClientRegistrationRepository logoutClientRegistrations = registrationId -> {
+            ClientRegistration registration = clientRegistrationRepository.findByRegistrationId(registrationId);
+            if (registration == null) {
+                return null;
+            }
+
+            var metadata = new HashMap<>(registration.getProviderDetails().getConfigurationMetadata());
+            metadata.put("end_session_endpoint", endSessionUri);
+
+            return ClientRegistration.withClientRegistration(registration)
+                    .providerConfigurationMetadata(metadata)
+                    .build();
+        };
+        var logoutSuccessHandler = new OidcClientInitiatedLogoutSuccessHandler(logoutClientRegistrations);
+        logoutSuccessHandler.setPostLogoutRedirectUri("{baseUrl}/login");
+        logoutSuccessHandler.setRedirectStrategy(new UidlRedirectStrategy());
+
+        return logoutSuccessHandler;
+    }
+
+    @Bean
     @Order(1)
     SecurityFilterChain securityFilterChainApi(
             HttpSecurity http,
@@ -57,7 +89,7 @@ public class SecurityConfig {
                         "/v3/api-docs",
                         "/v3/api-docs/**",
                         "/webjars/swagger-ui/**")
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(apiAuthenticationEntryPoint)
@@ -67,8 +99,8 @@ public class SecurityConfig {
                         .permitAll()
                         .anyRequest()
                         .authenticated())
-                .oauth2ResourceServer(
-                        oauth2 -> oauth2.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
+                .oauth2ResourceServer(oauth2 -> oauth2.authenticationEntryPoint(apiAuthenticationEntryPoint)
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter)))
                 .addFilterAfter(canonicalRequestFilter, SecurityContextHolderFilter.class);
 
         return http.build();
@@ -80,15 +112,18 @@ public class SecurityConfig {
             HttpSecurity http,
             AppOidcUserService oidcUserService,
             CanonicalRequestFilter canonicalRequestFilter,
-            Counter authenticationFailureCounter)
+            Counter authenticationFailureCounter,
+            LogoutSuccessHandler oidcLogoutSuccessHandler)
             throws Exception {
         http.authorizeHttpRequests(authorize -> authorize
-                .requestMatchers("/styles/**", "/icons/**", "/actuator/health", "/actuator/prometheus")
+                .requestMatchers("/styles/**", "/icons/**", "/actuator/health")
                 .permitAll());
 
-        http.with(VaadinSecurityConfigurer.vaadin(), configurer -> {
-            configurer.oauth2LoginPage("/oauth2/authorization/keycloak", "{baseUrl}/login");
-        });
+        http.with(
+                VaadinSecurityConfigurer.vaadin(),
+                configurer -> configurer
+                        .oauth2LoginPage("/oauth2/authorization/keycloak", "{baseUrl}/login")
+                        .logoutSuccessHandler(oidcLogoutSuccessHandler));
 
         http.oauth2Login(oauth2 -> oauth2.loginPage("/login")
                 .failureHandler((request, response, exception) -> {

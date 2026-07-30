@@ -1,0 +1,40 @@
+name: Browser E2E Tests
+
+on:
+#  pull_request:
+#    types: [opened, reopened, synchronize, ready_for_review]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser-e2e:
+    name: TestBench with PostgreSQL and Keycloak
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VAADIN_OFFLINE_KEY: ${{ secrets.VAADIN_OFFLINE_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+
+      - name: Run browser E2E scenarios
+        run: ./mvnw -B -Pe2e verify
+
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-e2e-evidence
+          path: |
+            target/e2e/screenshots
+            target/failsafe-reports
+          if-no-files-found: warn
