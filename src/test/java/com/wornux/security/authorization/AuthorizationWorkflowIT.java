@@ -1,8 +1,15 @@
 package com.wornux.security.authorization;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.clearInvocations;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.verify;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -15,6 +22,8 @@ import com.wornux.catalog.ProductRepository;
 import com.wornux.catalog.StockMovement;
 import com.wornux.catalog.StockMovementRepository;
 import com.wornux.security.AppJwtAuthenticationConverter;
+import com.wornux.security.permission.AppAction;
+import com.wornux.security.permission.AppPermission;
 import com.wornux.user.AppUser;
 import com.wornux.user.AppUserRepository;
 import com.wornux.user.Role;
@@ -24,12 +33,16 @@ import com.wornux.user.UserService;
 
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
@@ -38,13 +51,16 @@ import org.springframework.boot.webmvc.test.autoconfigure.MockMvcPrint;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.web.client.RestClient;
@@ -61,7 +77,8 @@ import tools.jackson.databind.json.JsonMapper;
         properties = {
                 "spring.jpa.hibernate.ddl-auto=validate",
                 "spring.flyway.enabled=true",
-                "spring.flyway.locations=classpath:db/migration/prod"
+                "spring.flyway.locations=classpath:db/migration/prod",
+                "management.otlp.metrics.export.enabled=false"
         })
 @AutoConfigureMockMvc(print = MockMvcPrint.NONE, printOnlyOnFailure = false)
 class AuthorizationWorkflowIT {
@@ -69,6 +86,7 @@ class AuthorizationWorkflowIT {
     private static final String REALM = "wornux-test";
     private static final String TEST_CLIENT = "integration-tests";
     private static final String SYSTEM_ADMINISTRATOR = "SYSTEM_ADMINISTRATOR";
+    private static final String INVENTORY_MANAGER = "INVENTORY_MANAGER";
     private static final String WAREHOUSE_OPERATOR = "WAREHOUSE_OPERATOR";
     private static final String INVENTORY_VIEWER = "INVENTORY_VIEWER";
     private static final String ADMINISTRATOR_USERNAME = "system-administrator";
@@ -122,6 +140,9 @@ class AuthorizationWorkflowIT {
     @Autowired
     UserService userService;
 
+    @MockitoSpyBean
+    AuthorizationService authorizationService;
+
     @Autowired
     AppUserRepository appUserRepository;
 
@@ -162,6 +183,64 @@ class AuthorizationWorkflowIT {
     @AfterEach
     void clearSecurityContext() {
         SecurityContextHolder.clearContext();
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("endpointPermissions")
+    void endpoint_permissionMatrixEnforcesAuthenticationAndRequiredPermission(EndpointPermissionCase endpoint)
+            throws Exception {
+        String username = persistPermissionUser(null);
+        Product product = persistProduct("PERMISSION-" + UUID.randomUUID(), 5);
+        long productCount = productRepository.count();
+        String originalName = product.getName();
+
+        performEndpoint(endpoint, product, null).andExpect(status().isUnauthorized());
+
+        doThrow(new AccessDeniedException("Missing permission " + endpoint.permission().code()))
+                .when(authorizationService)
+                .check(endpoint.permission());
+
+        performEndpoint(endpoint, product, username).andExpect(status().isForbidden());
+        verify(authorizationService).check(endpoint.permission());
+        assertOperationDidNotMutateState(endpoint, product, productCount, originalName);
+
+        clearInvocations(authorizationService);
+        doNothing().when(authorizationService).check(endpoint.permission());
+
+        performEndpoint(endpoint, product, username).andExpect(status().is(endpoint.successStatus()));
+        verify(authorizationService).check(endpoint.permission());
+        assertSuccessfulOperationState(endpoint, product, productCount);
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("systemRoles")
+    void systemRole_enforcesEndpointPermissionMatrix(String roleCode) throws Exception {
+        Role role = requiredRole(roleCode);
+        String username = persistPermissionUser(role);
+
+        for (EndpointPermissionCase endpoint : endpointPermissions().toList()) {
+            String fixture = roleCode.substring(0, Math.min(roleCode.length(), 8))
+                    + "-"
+                    + endpoint.permission().action()
+                    + "-"
+                    + UUID.randomUUID().toString().substring(0, 8);
+            Product product = persistProduct(fixture, 5);
+            boolean allowed = role.getPermissions().stream()
+                    .anyMatch(granted -> granted.grants(endpoint.permission()));
+            int expectedStatus = allowed ? endpoint.successStatus() : 403;
+
+            performEndpoint(endpoint, product, username)
+                    .andExpect(status().is(expectedStatus));
+        }
+    }
+
+    @Test
+    void permissionsEndpoint_requiresAuthenticationButNoDomainPermission() throws Exception {
+        String username = persistPermissionUser(null);
+
+        mockMvc.perform(get("/api/me/permissions")).andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/api/me/permissions").with(jwt().jwt(token -> token.subject(username))))
+                .andExpect(status().isOk());
     }
 
     @Test
@@ -259,6 +338,166 @@ class AuthorizationWorkflowIT {
                 .containsExactly(firstMovementId);
     }
 
+
+    static Stream<EndpointPermissionCase> endpointPermissions() {
+        return Stream.of(
+                new EndpointPermissionCase(
+                        "GET /api/products",
+                        AppPermission.PRODUCT_VIEW,
+                        200,
+                        (product, mapper) -> get("/api/products")),
+                new EndpointPermissionCase(
+                        "GET /api/products/{id}",
+                        AppPermission.PRODUCT_VIEW,
+                        200,
+                        (product, mapper) -> get("/api/products/{id}", product.getId())),
+                new EndpointPermissionCase(
+                        "POST /api/products",
+                        AppPermission.PRODUCT_CREATE,
+                        201,
+                        (product, mapper) -> post("/api/products")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapper.writeValueAsBytes(productRequest(
+                                        permissionFixture(AppPermission.PRODUCT_CREATE, product),
+                                        product.getCategory().getId(),
+                                        null)))),
+                new EndpointPermissionCase(
+                        "PUT /api/products/{id}",
+                        AppPermission.PRODUCT_UPDATE,
+                        200,
+                        (product, mapper) -> put("/api/products/{id}", product.getId())
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapper.writeValueAsBytes(productRequest(
+                                        permissionFixture(AppPermission.PRODUCT_UPDATE, product),
+                                        product.getCategory().getId(),
+                                        product.getVersion())))),
+                new EndpointPermissionCase(
+                        "DELETE /api/products/{id}",
+                        AppPermission.PRODUCT_DELETE,
+                        200,
+                        (product, mapper) -> delete("/api/products/{id}", product.getId())),
+                new EndpointPermissionCase(
+                        "GET /api/categories",
+                        AppPermission.CATEGORY_VIEW,
+                        200,
+                        (product, mapper) -> get("/api/categories")),
+                new EndpointPermissionCase(
+                        "GET /api/suppliers",
+                        AppPermission.SUPPLIER_VIEW,
+                        200,
+                        (product, mapper) -> get("/api/suppliers")),
+                new EndpointPermissionCase(
+                        "GET /api/stock-movements",
+                        AppPermission.STOCK_MOVEMENT_VIEW,
+                        200,
+                        (product, mapper) -> get("/api/stock-movements")),
+                new EndpointPermissionCase(
+                        "POST /api/stock-movements",
+                        AppPermission.STOCK_MOVEMENT_CREATE,
+                        201,
+                        (product, mapper) -> post("/api/stock-movements")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(mapper.writeValueAsBytes(new StockMovementRequestDto(
+                                        product.getId(),
+                                        MovementType.PURCHASE,
+                                        3,
+                                        "Permission matrix restock")))));
+    }
+
+    static Stream<String> systemRoles() {
+        return Stream.of(SYSTEM_ADMINISTRATOR, INVENTORY_MANAGER, WAREHOUSE_OPERATOR, INVENTORY_VIEWER);
+    }
+
+    private ResultActions performEndpoint(EndpointPermissionCase endpoint, Product product, String username)
+            throws Exception {
+        MockHttpServletRequestBuilder request = endpoint.request().build(product, jsonMapper);
+
+        if (username != null) {
+            request.with(jwt().jwt(token -> token.subject(username)));
+        }
+
+        return mockMvc.perform(request);
+    }
+
+    private String persistPermissionUser(Role role) {
+        String suffix = UUID.randomUUID().toString();
+        String username = "permission-" + suffix;
+
+        return transactionTemplate.execute(status -> {
+            AppUser user = new AppUser(username, username + "@example.test", null, null);
+            if (role != null) {
+                user.addRole(roleRepository.findById(role.getId()).orElseThrow());
+            }
+            appUserRepository.save(user);
+
+            return username;
+        });
+    }
+
+    private void assertOperationDidNotMutateState(
+            EndpointPermissionCase endpoint, Product product, long productCount, String originalName) {
+        AppAction action = endpoint.permission().action();
+
+        switch (action) {
+            case CREATE -> {
+                if (endpoint.permission() == AppPermission.PRODUCT_CREATE) {
+                    assertThat(productRepository.count()).isEqualTo(productCount);
+                } else if (endpoint.permission() == AppPermission.STOCK_MOVEMENT_CREATE) {
+                    assertThat(productRepository.findById(product.getId()).orElseThrow().getQuantityOnHand())
+                            .isEqualTo(5);
+                    assertThat(stockMovementRepository.existsByProductId(product.getId())).isFalse();
+                }
+            }
+            case UPDATE -> assertThat(productRepository.findById(product.getId()).orElseThrow().getName())
+                    .isEqualTo(originalName);
+            case DELETE -> assertThat(productRepository.existsById(product.getId())).isTrue();
+            default -> {
+            }
+        }
+    }
+
+    private void assertSuccessfulOperationState(
+            EndpointPermissionCase endpoint, Product product, long productCount) {
+        AppAction action = endpoint.permission().action();
+
+        switch (action) {
+            case CREATE -> {
+                if (endpoint.permission() == AppPermission.PRODUCT_CREATE) {
+                    assertThat(productRepository.count()).isEqualTo(productCount + 1);
+                } else if (endpoint.permission() == AppPermission.STOCK_MOVEMENT_CREATE) {
+                    assertThat(productRepository.findById(product.getId()).orElseThrow().getQuantityOnHand())
+                            .isEqualTo(8);
+                    assertThat(stockMovementRepository.existsByProductId(product.getId())).isTrue();
+                }
+            }
+            case UPDATE -> assertThat(productRepository.findById(product.getId()).orElseThrow().getName())
+                    .isEqualTo(permissionFixture(endpoint.permission(), product) + " Product");
+            case DELETE -> assertThat(productRepository.existsById(product.getId())).isFalse();
+            default -> {
+            }
+        }
+    }
+
+    private static String permissionFixture(AppPermission permission, Product product) {
+        return permission.name() + "-" + product.getId();
+    }
+
+    private static Map<String, Object> productRequest(String fixture, Long categoryId, Long version) {
+        var request = new HashMap<String, Object>();
+        request.put("sku", "AUTH-" + fixture);
+        request.put("name", fixture + " Product");
+        request.put("description", "Authorization endpoint matrix fixture");
+        request.put("unitPrice", new BigDecimal("25.00"));
+        request.put("quantityOnHand", 5);
+        request.put("minimumStock", 2);
+        request.put("categoryId", categoryId);
+        request.put("active", true);
+        if (version != null) {
+            request.put("version", version);
+        }
+
+        return request;
+    }
 
     private void provisionThroughApi(String accessToken) throws Exception {
         mockMvc.perform(get("/api/me/permissions").header(HttpHeaders.AUTHORIZATION, bearer(accessToken)))
@@ -377,5 +616,19 @@ class AuthorizationWorkflowIT {
 
     private static String randomSecret() {
         return UUID.randomUUID().toString();
+    }
+
+    @FunctionalInterface
+    interface EndpointRequest {
+        MockHttpServletRequestBuilder build(Product product, JsonMapper mapper) throws Exception;
+    }
+
+    record EndpointPermissionCase(
+            String endpoint, AppPermission permission, int successStatus, EndpointRequest request) {
+
+        @Override
+        public String toString() {
+            return endpoint + " requires " + permission.code();
+        }
     }
 }
