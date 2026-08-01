@@ -21,8 +21,9 @@ KEYCLOAK_BASE_URL="${KEYCLOAK_BASE_URL:-http://localhost:7777}"
 ZAP_TARGET_URL="${ZAP_TARGET_URL:-http://app:8080}"
 
 ZAP_ENVIRONMENT="${ZAP_ENVIRONMENT:-local}"
-ZAP_IMAGE="${ZAP_IMAGE:-ghcr.io/zaproxy/zaproxy:stable}"
+ZAP_IMAGE="${ZAP_IMAGE:-ghcr.io/zaproxy/zaproxy:stable@sha256:8d387b1a63e3425beef4846e39719f5af2a787753af2d8b6558c6257d7a577a2}"
 ZAP_STARTUP_TIMEOUT_MINUTES="${ZAP_STARTUP_TIMEOUT_MINUTES:-10}"
+ZAP_ENV_FILE=""
 
 : "${KEYCLOAK_AUTOMATION_CLIENT_SECRET:?Set KEYCLOAK_AUTOMATION_CLIENT_SECRET}"
 
@@ -40,6 +41,10 @@ case "${ZAP_ENVIRONMENT}" in
 esac
 
 cleanup() {
+  if [[ -n "${ZAP_ENV_FILE}" ]]; then
+    rm -f "${ZAP_ENV_FILE}"
+  fi
+
   unset ACCESS_TOKEN
   unset ZAP_ACCESS_TOKEN
 }
@@ -209,13 +214,29 @@ print(hostname)
 PY
 )"
 
-DOCKER_NETWORK_ARGUMENTS=()
+ZAP_ENV_FILE="$(mktemp)"
+chmod 600 "${ZAP_ENV_FILE}"
+{
+  printf '%s\n' "ZAP_AUTH_HEADER=Authorization"
+  printf '%s\n' "ZAP_AUTH_HEADER_VALUE=Bearer ${ACCESS_TOKEN}"
+  printf '%s\n' "ZAP_AUTH_HEADER_SITE=${ZAP_AUTH_HEADER_SITE}"
+} > "${ZAP_ENV_FILE}"
 
-if [[ -n "${ZAP_DOCKER_NETWORK:-}" ]]; then
-  DOCKER_NETWORK_ARGUMENTS=(
-    --network "${ZAP_DOCKER_NETWORK}"
-  )
-fi
+run_zap_container() {
+  docker run \
+    --rm \
+    "$@" \
+    --env-file "${ZAP_ENV_FILE}" \
+    --volume "${PROJECT_ROOT}/zap:/zap/wrk:rw" \
+    "${ZAP_IMAGE}" \
+    zap-api-scan.py \
+      -t "${ZAP_OPENAPI_URL}" \
+      -f openapi \
+      -T "${ZAP_STARTUP_TIMEOUT_MINUTES}" \
+      -r reports/zap-report.html \
+      -J reports/zap-report.json \
+      -w reports/zap-report.md
+}
 
 echo "Starting authenticated OWASP ZAP API scan..."
 echo "Target: ${ZAP_OPENAPI_URL}"
@@ -223,21 +244,11 @@ echo "Authentication identity: ${ZAP_CLIENT_ID}"
 
 set +e
 
-docker run \
-  --rm \
-  "${DOCKER_NETWORK_ARGUMENTS[@]}" \
-  --env "ZAP_AUTH_HEADER=Authorization" \
-  --env "ZAP_AUTH_HEADER_VALUE=Bearer ${ACCESS_TOKEN}" \
-  --env "ZAP_AUTH_HEADER_SITE=${ZAP_AUTH_HEADER_SITE}" \
-  --volume "${PROJECT_ROOT}/zap:/zap/wrk:rw" \
-  "${ZAP_IMAGE}" \
-  zap-api-scan.py \
-    -t "${ZAP_OPENAPI_URL}" \
-    -f openapi \
-    -T "${ZAP_STARTUP_TIMEOUT_MINUTES}" \
-    -r reports/zap-report.html \
-    -J reports/zap-report.json \
-    -w reports/zap-report.md
+if [[ -n "${ZAP_DOCKER_NETWORK:-}" ]]; then
+  run_zap_container --network "${ZAP_DOCKER_NETWORK}"
+else
+  run_zap_container
+fi
 
 ZAP_EXIT_CODE=$?
 
@@ -245,8 +256,12 @@ set -e
 
 echo "Sanitizing security reports..."
 
-ZAP_ACCESS_TOKEN="${ACCESS_TOKEN}" \
-  python3 "${PROJECT_ROOT}/zap/sanitize-reports.py" "${REPORT_DIRECTORY}"
+if ! ZAP_ACCESS_TOKEN="${ACCESS_TOKEN}" \
+  python3 "${PROJECT_ROOT}/zap/sanitize-reports.py" "${REPORT_DIRECTORY}"; then
+  find "${REPORT_DIRECTORY}" -mindepth 1 ! -name ".gitkeep" -delete
+  echo "Report sanitization failed; generated reports were deleted." >&2
+  exit 1
+fi
 
 if [[ "${ZAP_EXIT_CODE}" -ne 0 ]]; then
   echo "OWASP ZAP finished with exit code ${ZAP_EXIT_CODE}." >&2
