@@ -24,6 +24,31 @@ public final class TokenProvider {
         return token(Actor.VIEWER);
     }
 
+    public static String automationToken() {
+        var form = new LinkedMultiValueMap<String, String>();
+        form.add("client_id", ApiTestEnvironment.AUTOMATION_CLIENT);
+        form.add("client_secret", ApiTestEnvironment.AUTOMATION_CLIENT_SECRET);
+        form.add("grant_type", "client_credentials");
+        form.add("scope", "openid profile email");
+
+        Map<String, Object> response = RestClient.create()
+                .post()
+                .uri(ApiTestEnvironment.issuerUri() + "/protocol/openid-connect/token")
+                .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                .body(form)
+                .retrieve()
+                .body(TOKEN_RESPONSE_TYPE);
+
+        Object accessToken = response == null ? null : response.get("access_token");
+
+        if (!(accessToken instanceof String value) || value.isBlank()) {
+            throw new IllegalStateException(
+                    "Keycloak service-account response did not include an access token.");
+        }
+
+        return value;
+    }
+
     private static String token(Actor actor) {
         CachedToken cached = TOKENS.get(actor);
         if (cached != null && cached.refreshAfter().isAfter(Instant.now())) {

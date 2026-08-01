@@ -11,7 +11,8 @@
         <e2e.test.exclude>**/e2e/**</e2e.test.exclude>
         <java.version>25</java.version>
         <mapstruct.version>1.6.3</mapstruct.version>
-        <vaadin.version>25.2.3</vaadin.version>
+        <sonar.organization>wornux</sonar.organization>
+        <vaadin.version>25.2.4</vaadin.version>
     </properties>
     
     <parent>
@@ -29,6 +30,21 @@
                 <version>${vaadin.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-core</artifactId>
+                <version>11.0.24</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.tomcat.embed</groupId>
+                <artifactId>tomcat-embed-websocket</artifactId>
+                <version>11.0.24</version>
+            </dependency>
+            <dependency>
+                <groupId>org.webjars</groupId>
+                <artifactId>swagger-ui</artifactId>
+                <version>5.32.11</version>
             </dependency>
         </dependencies>
     </dependencyManagement>
@@ -105,6 +121,7 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+            <version>42.7.13</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -306,6 +323,42 @@
                 <api.test.exclude>**/api/it/**</api.test.exclude>
                 <e2e.test.exclude>**/__nothing__/**</e2e.test.exclude>
             </properties>
+        </profile>
+        <profile>
+            <id>security-scan</id>
+            <properties>
+                <skipTests>true</skipTests>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.owasp</groupId>
+                        <artifactId>dependency-check-maven</artifactId>
+                        <version>12.2.2</version>
+                        <configuration>
+                            <failBuildOnCVSS>7.0</failBuildOnCVSS>
+                            <failBuildOnUnusedSuppressionRule>true</failBuildOnUnusedSuppressionRule>
+                            <suppressionFiles>
+                                <suppressionFile>${project.basedir}/config/dependency-check-suppressions.xml</suppressionFile>
+                            </suppressionFiles>
+                            <formats>
+                                <format>HTML</format>
+                                <format>JSON</format>
+                                <format>SARIF</format>
+                            </formats>
+                            <nvdApiKeyEnvironmentVariable>NVD_API_KEY</nvdApiKeyEnvironmentVariable>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>check</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
         </profile>
     </profiles>
     

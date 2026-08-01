@@ -95,6 +95,9 @@ springdoc:
       use-pkce-with-authorization-code-grant: true
 
 app:
+  security:
+    cors:
+      allowed-origins: ${CORS_ALLOWED_ORIGINS:}
   keycloak:
     end-session-uri: ${KEYCLOAK_PUBLIC_URL:http://localhost:7777}/realms/wornux/protocol/openid-connect/logout
     admin-bootstrap:
