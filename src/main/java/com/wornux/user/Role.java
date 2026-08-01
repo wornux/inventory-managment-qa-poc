@@ -9,7 +9,6 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
-import java.time.Instant;
 import java.util.Arrays;
 import java.util.LinkedHashSet;
 import java.util.Optional;
@@ -92,14 +91,6 @@ public class Role extends Auditable {
                 .forEach(result::add);
 
         return result;
-    }
-
-    public Instant getCreatedAt() {
-        return super.getCreatedAt();
-    }
-
-    public Instant getUpdatedAt() {
-        return super.getUpdatedAt();
     }
 
     public void update(String name, String description, int priority, boolean active, Set<AppPermission> permissions) {

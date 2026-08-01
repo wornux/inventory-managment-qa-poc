@@ -1,5 +1,6 @@
-.PHONY: jmeter-edit performance-test security-scan
+.PHONY: jmeter-edit performance-test security-scan demo-alert
 
+DEMO_ALERT_HOST ?= app.cristiandelahoz.dev
 BREAKPOINT ?= false
 BREAKPOINT_MAX_USERS ?= 500
 # ponytail: keep each thread below the realm's 300s access-token lifetime; add token refresh for longer runs.
@@ -13,9 +14,18 @@ security-scan:
 		|| { echo "NVD_API_KEY is missing from .env or still has its example value."; exit 1; }; \
 	NVD_API_KEY="$$NVD_API_KEY" ./mvnw -Psecurity-scan verify
 
+demo-alert:
+	@ssh -o StrictHostKeyChecking=accept-new root@$(DEMO_ALERT_HOST) '\
+		set -eu; \
+		start=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+		end=$$(date -u -d "+2 minutes" +%Y-%m-%dT%H:%M:%SZ); \
+		status=$$(printf '\''[{"labels":{"alertname":"DemoLowStock","severity":"warning","environment":"production","demo":"true"},"annotations":{"summary":"Demo: products are at or below minimum stock","description":"Synthetic low-stock alert triggered with make demo-alert."},"startsAt":"%s","endsAt":"%s"}]'\'' "$$start" "$$end" | curl -sS -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" --data-binary @- http://127.0.0.1:9093/api/v2/alerts); \
+		test "$$status" = 200; \
+		echo "DemoLowStock sent; Slack notification follows after Alertmanager'\''s 10-second group wait."'
+
 jmeter-edit:
 	@command -v jmeter >/dev/null || { echo "JMeter is not installed. Run: brew install jmeter"; exit 1; }
-	@AUTH_CLIENT_SECRET="$${KEYCLOAK_AUTOMATION_CLIENT_SECRET:-}" jmeter -t telemetry/jmeter/load-and-stress-test.jmx \
+	@AUTH_CLIENT_SECRET="$${KEYCLOAK_AUTOMATION_CLIENT_SECRET:-}" jmeter -t jmeter/load-and-stress-test.jmx \
 		-Jhost=localhost -Jport=$${PORT:-8080} -JauthHost=localhost -JauthPort=7777
 
 performance-test:

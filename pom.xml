@@ -10,8 +10,8 @@
         <api.test.exclude>**/api/it/**</api.test.exclude>
         <e2e.test.exclude>**/e2e/**</e2e.test.exclude>
         <java.version>25</java.version>
-        <m2e.apt.activation>jdt_apt</m2e.apt.activation>
         <mapstruct.version>1.6.3</mapstruct.version>
+        <sonar.organization>wornux</sonar.organization>
         <vaadin.version>25.2.4</vaadin.version>
     </properties>
     
@@ -45,11 +45,6 @@
     </dependencyManagement>
     
     <dependencies>
-        <dependency>
-            <groupId>com.vaadin</groupId>
-            <!-- Replace artifactId with vaadin-core to use only free components -->
-            <artifactId>vaadin-core</artifactId>
-        </dependency>
         <dependency>
             <groupId>com.vaadin</groupId>
             <artifactId>vaadin-dev</artifactId>
@@ -130,16 +125,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webmvc-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>com.vaadin</groupId>
-            <artifactId>browserless-test-junit6</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>com.vaadin</groupId>
             <artifactId>vaadin-testbench-junit6</artifactId>
             <scope>test</scope>
@@ -152,12 +137,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.rest-assured</groupId>
-            <artifactId>rest-assured</artifactId>
-            <version>6.0.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -319,13 +298,6 @@
     </build>
     
     <repositories>
-        <repository>
-            <id>central</id>
-            <url>https://repo.maven.apache.org/maven2</url>
-            <snapshots>
-                <enabled>false</enabled>
-            </snapshots>
-        </repository>
         <repository>
             <id>vaadin-directory</id>
             <url>https://maven.vaadin.com/vaadin-addons</url>

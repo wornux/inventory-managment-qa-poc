@@ -1,5 +1,7 @@
 package com.wornux.user;
 
+import com.wornux.security.KeycloakAdminBootstrapProperties;
+import com.wornux.security.KeycloakAdminClient;
 import com.wornux.security.authorization.AuthorizationService;
 import com.wornux.security.permission.AppPermission;
 import jakarta.persistence.criteria.Predicate;
@@ -14,6 +16,8 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -24,17 +28,25 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 public class UserService {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(UserService.class);
+
     private final AppUserRepository appUserRepository;
     private final RoleRepository roleRepository;
     private final AuthorizationService authorizationService;
+    private final KeycloakAdminClient keycloakAdminClient;
+    private final KeycloakAdminBootstrapProperties keycloakProperties;
 
     public UserService(
             AppUserRepository appUserRepository,
             RoleRepository roleRepository,
-            AuthorizationService authorizationService) {
+            AuthorizationService authorizationService,
+            KeycloakAdminClient keycloakAdminClient,
+            KeycloakAdminBootstrapProperties keycloakProperties) {
         this.appUserRepository = appUserRepository;
         this.roleRepository = roleRepository;
         this.authorizationService = authorizationService;
+        this.keycloakAdminClient = keycloakAdminClient;
+        this.keycloakProperties = keycloakProperties;
     }
 
     @Transactional(readOnly = true)
@@ -62,12 +74,16 @@ public class UserService {
     public AppUser create(@Valid UserRequest request) {
         authorizationService.check(AppPermission.USER_CREATE);
         authorizationService.check(AppPermission.ROLE_ASSIGN);
-        validateUniqueUsername(request.getUsername(), null);
-        validateUniqueEmail(request.getEmail(), null);
+        validateUniqueUsername(request.getUsername());
+        validateUniqueEmail(request.getEmail());
         Set<Role> roles = requireActiveRoles(request.getRoleIds());
+        String username = normalizeUsername(request.getUsername());
+        String email = normalizeEmail(request.getEmail());
+        String password = requirePassword(request.getPassword());
+        KeycloakAdminClient.KeycloakUser identity = createIdentity(username, email, password);
 
-        AppUser user =
-                new AppUser(normalizeUsername(request.getUsername()), normalizeEmail(request.getEmail()), null, null);
+        // ponytail: Keycloak and PostgreSQL are not atomic; add reconciliation if provisioning volume grows.
+        AppUser user = new AppUser(username, email, keycloakProperties.issuer(), identity.id());
         user.setActive(request.isActive());
         roles.forEach(user::addRole);
 
@@ -85,13 +101,14 @@ public class UserService {
         }
 
         Set<Role> roles = rolesForUpdate(user, request.getRoleIds());
-        validateUniqueUsername(request.getUsername(), id);
-        validateUniqueEmail(request.getEmail(), id);
-        user.update(
-                normalizeUsername(request.getUsername()),
-                normalizeEmail(request.getEmail()),
-                request.isActive(),
-                roles);
+        String username = normalizeUsername(request.getUsername());
+        String email = normalizeEmail(request.getEmail());
+
+        if (!user.getUsername().equals(username) || !user.getEmail().equals(email)) {
+            throw new UserException("Username and email are managed by Keycloak and cannot be changed here.");
+        }
+
+        user.update(username, email, request.isActive(), roles);
         AppUser saved = appUserRepository.save(user);
         authorizationService.invalidateUser(id);
 
@@ -133,22 +150,31 @@ public class UserService {
         authorizationService.check(AppPermission.USER_VIEW);
     }
 
-    private void validateUniqueUsername(String username, Long id) {
-        boolean exists = id == null
-                ? appUserRepository.existsByUsernameIgnoreCase(normalizeUsername(username))
-                : appUserRepository.existsByUsernameIgnoreCaseAndIdNot(normalizeUsername(username), id);
+    private KeycloakAdminClient.KeycloakUser createIdentity(String username, String email, String password) {
+        try {
+            return keycloakAdminClient.createUser(keycloakProperties, username, email, password);
+        } catch (RuntimeException exception) {
+            LOGGER.error("event=\"keycloak.user.create.failed\"", exception);
+            throw new UserException("The Keycloak account could not be created.");
+        }
+    }
 
-        if (exists) {
+    private String requirePassword(String password) {
+        if (password == null || password.isBlank() || password.length() < 8) {
+            throw new UserException("Password must be at least 8 characters.");
+        }
+
+        return password;
+    }
+
+    private void validateUniqueUsername(String username) {
+        if (appUserRepository.existsByUsernameIgnoreCase(normalizeUsername(username))) {
             throw new UserException("Username already exists. Please choose a different one.");
         }
     }
 
-    private void validateUniqueEmail(String email, Long id) {
-        boolean exists = id == null
-                ? appUserRepository.existsByEmailIgnoreCase(normalizeEmail(email))
-                : appUserRepository.existsByEmailIgnoreCaseAndIdNot(normalizeEmail(email), id);
-
-        if (exists) {
+    private void validateUniqueEmail(String email) {
+        if (appUserRepository.existsByEmailIgnoreCase(normalizeEmail(email))) {
             throw new UserException("Email already registered. Please use a different one.");
         }
     }

@@ -44,7 +44,8 @@ class KeycloakAdminBootstrapTest {
 
     @Test
     void wrapsConfigurationAndRemoteFailuresWithBootstrapContext() {
-        var invalid = new KeycloakAdminBootstrapProperties(true, null, null, null, null, null, null, null, null, null);
+        var invalid =
+                new KeycloakAdminBootstrapProperties(true, null, null, null, null, null, null, null, null, null, null);
 
         assertThatThrownBy(() -> new KeycloakAdminBootstrap(invalid, client, users).run(null))
                 .isInstanceOf(IllegalStateException.class)
@@ -55,7 +56,8 @@ class KeycloakAdminBootstrapTest {
     static KeycloakAdminBootstrapProperties properties(boolean enabled) {
         return new KeycloakAdminBootstrapProperties(
                 enabled,
-                "https://keycloak",
+                "http://keycloak:7777",
+                "https://keycloak/realms/app",
                 "app",
                 "master",
                 "admin-cli",

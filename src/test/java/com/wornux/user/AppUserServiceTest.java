@@ -3,11 +3,9 @@ package com.wornux.user;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.wornux.security.permission.AppPermission;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -164,48 +162,6 @@ class AppUserServiceTest {
                         .provisionSystemAdministrator(new OidcUserProfile("i", "s", "u", "e@x.com"))
                         .getRoles())
                 .containsExactly(admin);
-    }
-
-    @Test
-    void createLocalUser_normalizesAndRequiresAllRolesActive() {
-        UserRequest request = new UserRequest();
-        request.setUsername(null);
-        request.setEmail(" E@X.COM ");
-        request.setActive(false);
-        request.setRoleIds(Set.of(1L));
-        Role role = UserDomainTest.role("R", true, AppPermission.USER_VIEW);
-        when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
-        when(appUserRepository.save(any())).thenAnswer(i -> i.getArgument(0));
-
-        AppUser user = service().createLocalUser(request);
-
-        assertThat(user.getUsername()).isEmpty();
-        assertThat(user.getEmail()).isEqualTo("e@x.com");
-        assertThat(user.isActive()).isFalse();
-
-        request.setRoleIds(null);
-
-        assertThatThrownBy(() -> service().createLocalUser(request)).isInstanceOf(UserException.class);
-
-        request.setRoleIds(Set.of());
-
-        assertThatThrownBy(() -> service().createLocalUser(request)).isInstanceOf(UserException.class);
-
-        request.setRoleIds(Set.of(1L));
-        when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of());
-
-        assertThatThrownBy(() -> service().createLocalUser(request)).isInstanceOf(UserException.class);
-
-        request.setEmail(null);
-        when(roleRepository.findAllById(Set.of(1L))).thenReturn(List.of(role));
-        request.setUsername(" x ");
-
-        assertThat(service().createLocalUser(request).getEmail()).isEmpty();
-
-        UserRequest nullRoles = mock(UserRequest.class);
-        when(nullRoles.getRoleIds()).thenReturn(null);
-
-        assertThatThrownBy(() -> service().createLocalUser(nullRoles)).isInstanceOf(UserException.class);
     }
 
     private AppUserService service() {

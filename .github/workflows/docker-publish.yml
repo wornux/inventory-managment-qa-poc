@@ -1,6 +1,11 @@
 name: Docker Publish
 
 on:
+  workflow_call:
+    outputs:
+      digest:
+        description: Published image digest
+        value: ${{ jobs.docker-publish.outputs.digest }}
   workflow_dispatch:
 
 permissions:
@@ -10,6 +15,10 @@ jobs:
   docker-publish:
     name: Docker Build and Publish
     runs-on: ubuntu-latest
+    env:
+      IMAGE_NAME: cristiandelahooz/qa-final-project
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,16 +36,19 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: wornux/qa-final-project
+          images: ${{ env.IMAGE_NAME }}
           tags: |
             type=ref,event=branch
-            type=sha,prefix=sha-
+            type=sha,prefix=sha-,format=long
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
 
       - name: Build and publish Docker image
+        id: build
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

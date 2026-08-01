@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record KeycloakAdminBootstrapProperties(
         boolean enabled,
         String serverUrl,
+        String issuer,
         String realm,
         String adminRealm,
         String adminClientId,
@@ -15,16 +16,13 @@ public record KeycloakAdminBootstrapProperties(
         String userEmail,
         String userPassword) {
 
-    String issuer() {
-        return trimTrailingSlash(serverUrl) + "/realms/" + required("realm", realm);
-    }
-
     String baseUrl() {
         return trimTrailingSlash(required("server-url", serverUrl));
     }
 
     void validate() {
         required("server-url", serverUrl);
+        required("issuer", issuer);
         required("realm", realm);
         required("admin-realm", adminRealm);
         required("admin-client-id", adminClientId);
