@@ -993,6 +993,9 @@
       "serviceAccountsEnabled": true,
       "publicClient": false,
       "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "1800"
+      },
       "protocolMappers": [
         {
           "name": "service account email",
