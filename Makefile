@@ -1,4 +1,4 @@
-.PHONY: jmeter-edit performance-test demo-alert
+.PHONY: jmeter-edit performance-test security-scan demo-alert
 
 DEMO_ALERT_HOST ?= app.cristiandelahoz.dev
 BREAKPOINT ?= false
@@ -6,6 +6,13 @@ BREAKPOINT_MAX_USERS ?= 500
 # ponytail: keep each thread below the realm's 300s access-token lifetime; add token refresh for longer runs.
 BREAKPOINT_RAMP_SECONDS ?= 240
 BREAKPOINT_DURATION_SECONDS ?= 270
+
+security-scan:
+	@test -f .env || { echo ".env not found. Copy .env.example to .env and configure NVD_API_KEY."; exit 1; }
+	@NVD_API_KEY="$$(awk -F= '/^NVD_API_KEY=/{sub(/^[^=]*=/, ""); print; exit}' .env)"; \
+	test -n "$$NVD_API_KEY" && test "$$NVD_API_KEY" != "change-me-nvd-api-key" \
+		|| { echo "NVD_API_KEY is missing from .env or still has its example value."; exit 1; }; \
+	NVD_API_KEY="$$NVD_API_KEY" ./mvnw -Psecurity-scan verify
 
 demo-alert:
 	@ssh -o StrictHostKeyChecking=accept-new root@$(DEMO_ALERT_HOST) '\
