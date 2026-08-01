@@ -1,10 +1,20 @@
-.PHONY: jmeter-edit performance-test
+.PHONY: jmeter-edit performance-test demo-alert
 
+DEMO_ALERT_HOST ?= app.cristiandelahoz.dev
 BREAKPOINT ?= false
 BREAKPOINT_MAX_USERS ?= 500
 # ponytail: keep each thread below the realm's 300s access-token lifetime; add token refresh for longer runs.
 BREAKPOINT_RAMP_SECONDS ?= 240
 BREAKPOINT_DURATION_SECONDS ?= 270
+
+demo-alert:
+	@ssh -o StrictHostKeyChecking=accept-new root@$(DEMO_ALERT_HOST) '\
+		set -eu; \
+		start=$$(date -u +%Y-%m-%dT%H:%M:%SZ); \
+		end=$$(date -u -d "+2 minutes" +%Y-%m-%dT%H:%M:%SZ); \
+		status=$$(printf '\''[{"labels":{"alertname":"DemoLowStock","severity":"warning","environment":"production","demo":"true"},"annotations":{"summary":"Demo: products are at or below minimum stock","description":"Synthetic low-stock alert triggered with make demo-alert."},"startsAt":"%s","endsAt":"%s"}]'\'' "$$start" "$$end" | curl -sS -o /dev/null -w "%{http_code}" -H "Content-Type: application/json" --data-binary @- http://127.0.0.1:9093/api/v2/alerts); \
+		test "$$status" = 200; \
+		echo "DemoLowStock sent; Slack notification follows after Alertmanager'\''s 10-second group wait."'
 
 jmeter-edit:
 	@command -v jmeter >/dev/null || { echo "JMeter is not installed. Run: brew install jmeter"; exit 1; }
