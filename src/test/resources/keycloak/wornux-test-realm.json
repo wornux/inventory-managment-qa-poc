@@ -23,6 +23,44 @@
         "roles",
         "basic"
       ]
+    },
+    {
+      "clientId": "inventory-automation",
+      "name": "Security automation integration tests",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${TEST_AUTOMATION_CLIENT_SECRET}",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "fullScopeAllowed": false,
+      "attributes": {
+        "access.token.lifespan": "1800"
+      },
+      "defaultClientScopes": [
+        "profile",
+        "email"
+      ],
+      "protocolMappers": [
+        {
+          "name": "service account email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "consentRequired": false,
+          "config": {
+            "claim.name": "email",
+            "claim.value": "inventory-automation@example.test",
+            "jsonType.label": "String",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false",
+            "introspection.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [

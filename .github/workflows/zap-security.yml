@@ -1,0 +1,50 @@
+name: Authenticated OWASP ZAP
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  zap-security:
+    name: Authenticated API Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    environment: staging
+
+    env:
+      APP_BASE_URL: ${{ vars.STAGING_APP_URL }}
+      ZAP_TARGET_URL: ${{ vars.STAGING_APP_URL }}
+      KEYCLOAK_BASE_URL: ${{ vars.STAGING_KEYCLOAK_URL }}
+      KEYCLOAK_REALM: wornux
+      ZAP_CLIENT_ID: inventory-automation
+      ZAP_ENVIRONMENT: staging
+      KEYCLOAK_AUTOMATION_CLIENT_SECRET: ${{ secrets.KEYCLOAK_AUTOMATION_CLIENT_SECRET }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Verify staging configuration
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          test -n "${APP_BASE_URL}"
+          test -n "${ZAP_TARGET_URL}"
+          test -n "${KEYCLOAK_BASE_URL}"
+          test -n "${KEYCLOAK_AUTOMATION_CLIENT_SECRET}"
+
+      - name: Run authenticated OWASP ZAP scan
+        shell: bash
+        run: ./zap/run-authenticated-api-scan.sh
+
+      - name: Upload sanitized ZAP reports
+        if: success() || failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: authenticated-zap-reports
+          path: zap/reports
+          if-no-files-found: warn
+          retention-days: 14

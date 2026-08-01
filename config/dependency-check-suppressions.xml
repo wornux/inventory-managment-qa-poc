@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<suppressions xmlns="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.4.xsd"
+              xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+              xsi:schemaLocation="https://jeremylong.github.io/DependencyCheck/dependency-suppression.1.4.xsd
+                                  https://dependency-check.github.io/DependencyCheck/dependency-suppression.1.4.xsd">
+    <suppress until="2027-01-31Z">
+        <notes><![CDATA[
+        CVE-2026-53914 affects Kotlin build-cache metadata processing. The matched
+        kotlin-stdlib artifact does not contain or process the vulnerable build cache.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/org\.jetbrains\.kotlin/kotlin-stdlib@.*$</packageUrl>
+        <cve>CVE-2026-53914</cve>
+    </suppress>
+    <suppress until="2027-01-31Z">
+        <notes><![CDATA[
+        CVE-2026-39883 affects OpenTelemetry Go PATH handling on BSD and Solaris.
+        Dependency-Check incorrectly matched it to the Java semantic conventions artifact.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:maven/io\.opentelemetry\.semconv/opentelemetry-semconv@.*$</packageUrl>
+        <cve>CVE-2026-39883</cve>
+    </suppress>
+    <suppress until="2026-10-31Z">
+        <notes><![CDATA[
+        GHSA-qwww-vcr4-c8h2 affects React Router's unstable React Server Components mode.
+        This application uses server-side Vaadin Flow and has no Hilla or RSC routes. Review
+        this suppression when Vaadin supports React Router 8.3.0 or another fixed release.
+        ]]></notes>
+        <packageUrl regex="true">^pkg:npm/react-router@.*$</packageUrl>
+        <vulnerabilityName>GHSA-qwww-vcr4-c8h2</vulnerabilityName>
+    </suppress>
+</suppressions>

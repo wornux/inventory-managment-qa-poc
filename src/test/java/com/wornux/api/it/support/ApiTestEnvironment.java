@@ -13,6 +13,8 @@ final class ApiTestEnvironment {
 
     static final String REALM = "wornux-test";
     static final String CLIENT = "integration-tests";
+    static final String AUTOMATION_CLIENT = "inventory-automation";
+    static final String AUTOMATION_CLIENT_SECRET = randomSecret();
     static final String MANAGER_USERNAME = "system-administrator";
     static final String MANAGER_EMAIL = "system-administrator@example.test";
     static final String VIEWER_USERNAME = "inventory-user";
@@ -34,6 +36,7 @@ final class ApiTestEnvironment {
             .withExposedPorts(8080)
             .withEnv("KC_BOOTSTRAP_ADMIN_USERNAME", KEYCLOAK_ADMIN_USERNAME)
             .withEnv("KC_BOOTSTRAP_ADMIN_PASSWORD", KEYCLOAK_ADMIN_PASSWORD)
+            .withEnv("TEST_AUTOMATION_CLIENT_SECRET", AUTOMATION_CLIENT_SECRET)
             .withEnv("TEST_WAREHOUSE_OPERATOR_PASSWORD", WAREHOUSE_PASSWORD)
             .withEnv("TEST_INVENTORY_USER_PASSWORD", VIEWER_PASSWORD)
             .withEnv("TEST_DEACTIVATION_OPERATOR_PASSWORD", DEACTIVATION_PASSWORD)
