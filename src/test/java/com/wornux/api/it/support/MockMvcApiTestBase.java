@@ -26,6 +26,7 @@ import tools.jackson.databind.json.JsonMapper;
         webEnvironment = SpringBootTest.WebEnvironment.MOCK,
         properties = {
             "spring.profiles.active=api-test",
+            "app.security.cors.allowed-origins=https://trusted-client.test",
             "spring.jpa.hibernate.ddl-auto=validate",
             "spring.flyway.enabled=true",
             "spring.flyway.locations=classpath:db/migration/prod",

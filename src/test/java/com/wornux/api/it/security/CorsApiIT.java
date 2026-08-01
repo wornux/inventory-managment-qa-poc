@@ -13,9 +13,7 @@ import com.wornux.api.it.support.TokenProvider;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
-import org.springframework.test.context.TestPropertySource;
 
-@TestPropertySource(properties = "app.security.cors.allowed-origins=https://trusted-client.test")
 class CorsApiIT extends MockMvcApiTestBase {
 
     @Test
